@@ -26,6 +26,7 @@
 #include <cfg/cfg_init.h>
 #include <controller/controller_init.h>
 #include <physical_devices/tables/device_manager.h>
+#include <physical_devices/ovsdb_client/ovsdb_client.h>
 
 #include <physical_devices/ovs_tor_agent/tor_agent_init.h>
 #include <physical_devices/ovs_tor_agent/tor_agent_param.h>
@@ -81,10 +82,13 @@ void TorAgentInit::CreateDBTables() {
 
 void TorAgentInit::RegisterDBClients() {
     device_manager_->RegisterDBClients();
+    ovsdb_client_.reset(OvsdbClient::Allocate(agent(),
+                        static_cast<TorAgentParam *>(agent_param())));
 }
 
 void TorAgentInit::InitModules() {
     device_manager_->Init();
+    ovsdb_client_->Init();
 }
 
 void TorAgentInit::ConnectToController() {

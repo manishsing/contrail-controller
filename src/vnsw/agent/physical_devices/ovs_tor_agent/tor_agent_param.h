@@ -34,6 +34,10 @@ class TorAgentParam : public AgentParam  {
     void AddOptions();
     std::string tor_id() const { return tor_info_.id_; }
 
+    std::string tor_protocol() const { return tor_info_.protocol_; }
+    Ip4Address tor_ip() const { return tor_info_.ip_; }
+    int tor_port() const { return tor_info_.port_; }
+
  private:
     virtual void InitFromConfig();
     virtual void InitFromArguments();

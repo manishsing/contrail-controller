@@ -13,8 +13,20 @@ import subprocess
 Import('AgentEnv')
 env = AgentEnv.Clone()
 
-env.Append(LIBPATH = [ '../tables' ])
-env.Prepend(LIBS = [ 'vnswinit' ])
+# Function to append TOP level directory
+def AddTopDir(list):
+    return map(lambda x: Dir(env['TOP'] + '/' + x).abspath, list)
+
+env.Append(CPPPATH = AddTopDir(['ovsdb-client/']))
+env.Append(LIBPATH = [
+        '../tables',
+        '../ovsdb_client'
+        ])
+env.Prepend(LIBS = [
+        'vnswinit',
+        'ovsdbclient',
+        'openvswitch'
+        ])
 env.Append(LIBS = [ 'physical_devices' ])
 
 env.GenerateBuildInfoCode(

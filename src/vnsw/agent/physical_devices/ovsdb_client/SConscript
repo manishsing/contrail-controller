@@ -1,0 +1,27 @@
+#
+# Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
+#
+
+# -*- mode: python; -*-
+
+Import('AgentEnv')
+
+env = AgentEnv.Clone()
+env.CppEnableExceptions()
+
+env.Append(CPPPATH = './')
+env.Append(CPPPATH = '#/build/include/openvswitch/include')
+env.Append(CPPPATH = '#/build/include/openvswitch/lib')
+env.Append(LIBPATH = '#/build/lib')
+env.Append(LIBS = 'openvswitch')
+
+libovsdbclient = env.Library('ovsdbclient', [
+                                             'ovsdb_api.c',
+                                             'ovsdb_client.cc',
+                                             'ovsdb_client_idl.cc',
+                                             'ovsdb_client_tcp.cc',
+                                             'ovsdb_entry.cc',
+                                             'physical_switch_ovsdb.cc',
+                                             'logical_switch_ovsdb.cc',
+                                             ])
+env.Requires(libovsdbclient, '#/build/include/openvswitch/include')

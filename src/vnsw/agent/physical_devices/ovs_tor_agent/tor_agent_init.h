@@ -13,6 +13,7 @@
 class Agent;
 class AgentParam;
 class PhysicalDeviceManager;
+class OvsdbClient;
 
 // The class to drive agent initialization.
 // Defines control parameters used to enable/disable agent features
@@ -41,6 +42,7 @@ class TorAgentInit : public AgentInit {
 
  private:
     std::auto_ptr<PhysicalDeviceManager> device_manager_;
+    std::auto_ptr<OvsdbClient> ovsdb_client_;
     DISALLOW_COPY_AND_ASSIGN(TorAgentInit);
 };
 
