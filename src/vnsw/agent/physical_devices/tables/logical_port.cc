@@ -153,13 +153,13 @@ static LogicalPortKey *BuildKey(const autogen::LogicalInterface *port) {
     autogen::IdPermsType id_perms = port->id_perms();
     boost::uuids::uuid u;
     CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong, u);
-    return new DefaultLogicalPortKey(u);
+    return new VlanLogicalPortKey(u);
 }
 
 static LogicalPortData *BuildData(const Agent *agent, IFMapNode *node,
                                   const autogen::LogicalInterface *port) {
     // Find link with physical-interface adjacency
-    boost::uuids::uuid physical_port_uuid;
+    boost::uuids::uuid physical_port_uuid = nil_uuid();
     IFMapNode *adj_node = NULL;
     adj_node = agent->cfg_listener()->FindAdjacentIFMapNode
         (agent, node, "physical-interface");
@@ -172,7 +172,7 @@ static LogicalPortData *BuildData(const Agent *agent, IFMapNode *node,
     }
 
     // Find link with virtual-machine-interface adjacency
-    boost::uuids::uuid vmi_uuid;
+    boost::uuids::uuid vmi_uuid = nil_uuid();
     adj_node = agent->cfg_listener()->FindAdjacentIFMapNode
         (agent, node, "virtual-machine-interface");
     if (adj_node) {
@@ -184,8 +184,11 @@ static LogicalPortData *BuildData(const Agent *agent, IFMapNode *node,
                    vmi_uuid);
     }
 
-    return new LogicalPortData(node->name(), port->display_name(),
-                               physical_port_uuid, vmi_uuid);
+    return new AGENT::VlanLogicalPortData(node->name(),
+                                                     port->display_name(),
+                                                     physical_port_uuid,
+                                                     vmi_uuid,
+                                                     port->vlan_tag());
 }
 
 bool LogicalPortTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
@@ -222,6 +225,9 @@ class LogicalPortSandesh : public AgentSandesh {
     }
 };
 
+void LogicalPortEntry::SetSandeshData(SandeshLogicalPort *data) const {
+}
+
 static void SetLogicalPortSandeshData(const LogicalPortEntry *entry,
                                        SandeshLogicalPort *data) {
     data->set_uuid(UuidToString(entry->uuid()));
@@ -232,6 +238,13 @@ static void SetLogicalPortSandeshData(const LogicalPortEntry *entry,
     } else {
         data->set_physical_port("INVALID");
     }
+
+    if (entry->vm_interface()) {
+        data->set_physical_port(entry->vm_interface()->name());
+    } else {
+        data->set_physical_port("INVALID");
+    }
+    entry->SetSandeshData(data);
 }
 
 bool LogicalPortEntry::DBEntrySandesh(Sandesh *resp, std::string &name) const {
@@ -314,6 +327,10 @@ bool VlanLogicalPortEntry::Copy(LogicalPortTable *table,
     }
 
     return ret;
+}
+
+void VlanLogicalPortEntry::SetSandeshData(SandeshLogicalPort *data) const {
+    data->set_vlan_tag(vlan_);
 }
 
 //////////////////////////////////////////////////////////////////////////////

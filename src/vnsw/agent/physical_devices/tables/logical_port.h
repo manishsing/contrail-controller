@@ -11,6 +11,7 @@
 class IFMapDependencyManager;
 
 class VmInterface;
+class SandeshLogicalPort;
 
 namespace AGENT {
 struct LogicalPortKey;
@@ -43,6 +44,7 @@ class LogicalPortEntry : AgentRefCount<LogicalPortEntry>, public AgentDBEntry {
     bool CopyBase(LogicalPortTable *table, const LogicalPortData *data);
     virtual bool Copy(LogicalPortTable *table, const LogicalPortData *data) = 0;
 
+    virtual void SetSandeshData(SandeshLogicalPort *data) const;
     void SendObjectLog(AgentLogEvent::type event) const;
     bool DBEntrySandesh(Sandesh *sresp, std::string &name) const;
 
@@ -136,6 +138,7 @@ class VlanLogicalPortEntry : public LogicalPortEntry {
 
     uint16_t vlan() const { return vlan_; }
     bool Copy(LogicalPortTable *table, const LogicalPortData *data);
+    void SetSandeshData(SandeshLogicalPort *data) const;
 
  private:
     uint16_t vlan_;

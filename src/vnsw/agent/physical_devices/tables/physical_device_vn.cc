@@ -147,7 +147,7 @@ void PhysicalDeviceVnTable::ConfigUpdate(IFMapNode *node) {
         (node->GetObject());
     assert(router);
     autogen::IdPermsType id_perms = router->id_perms();
-    boost::uuids::uuid router_uuid;
+    boost::uuids::uuid router_uuid = nil_uuid();
     CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong,
                router_uuid);
 
