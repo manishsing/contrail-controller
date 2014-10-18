@@ -20,6 +20,7 @@ class TorAgentParam : public AgentParam  {
     struct TorInfo {
         std::string type_;
         Ip4Address ip_;
+        Ip4Address tsn_ip_;
         std::string id_;
         // Protocol to connect to ToR
         std::string protocol_;
@@ -33,6 +34,10 @@ class TorAgentParam : public AgentParam  {
 
     void AddOptions();
     std::string tor_id() const { return tor_info_.id_; }
+    std::string tor_protocol() const { return tor_info_.protocol_; }
+    Ip4Address tor_ip() const { return tor_info_.ip_; }
+    Ip4Address tsn_ip() const { return tor_info_.tsn_ip_; }
+    int tor_port() const { return tor_info_.port_; }
 
  private:
     virtual void InitFromConfig();
