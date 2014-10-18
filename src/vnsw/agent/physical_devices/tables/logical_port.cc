@@ -58,6 +58,11 @@ bool LogicalPortEntry::CopyBase(LogicalPortTable *table,
                                 const LogicalPortData *data) {
     bool ret = false;
 
+    if (fq_name_ != data->fq_name_) {
+        fq_name_ = data->fq_name_;
+        ret = true;
+    }
+
     if (name_ != data->name_) {
         name_ = data->name_;
         ret = true;
@@ -179,7 +184,8 @@ static LogicalPortData *BuildData(const Agent *agent, IFMapNode *node,
                    vmi_uuid);
     }
 
-    return new LogicalPortData(node->name(), physical_port_uuid, vmi_uuid);
+    return new LogicalPortData(node->name(), port->display_name(),
+                               physical_port_uuid, vmi_uuid);
 }
 
 bool LogicalPortTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
@@ -219,6 +225,7 @@ class LogicalPortSandesh : public AgentSandesh {
 static void SetLogicalPortSandeshData(const LogicalPortEntry *entry,
                                        SandeshLogicalPort *data) {
     data->set_uuid(UuidToString(entry->uuid()));
+    data->set_fq_name(entry->fq_name());
     data->set_name(entry->name());
     if (entry->physical_port()) {
         data->set_physical_port(entry->physical_port()->name());
@@ -270,6 +277,7 @@ void LogicalPortEntry::SendObjectLog(AgentLogEvent::type event) const {
     info.set_event(str);
 
     info.set_uuid(UuidToString(uuid_));
+    info.set_fq_name(fq_name_);
     info.set_name(name_);
     if (physical_port_) {
         info.set_physical_port(physical_port_->name());

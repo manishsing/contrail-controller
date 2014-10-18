@@ -19,13 +19,15 @@ struct PhysicalDeviceKey : public AgentKey {
 };
 
 struct PhysicalDeviceData : public AgentData {
-    PhysicalDeviceData(const std::string &name, const std::string &vendor,
-                    const IpAddress &ip, const IpAddress &mgmt_ip,
-                    const std::string &protocol) :
-        AgentData(), name_(name), vendor_(vendor), ip_(ip),
+    PhysicalDeviceData(const std::string &fq_name, const std::string &name,
+                       const std::string &vendor,
+                       const IpAddress &ip, const IpAddress &mgmt_ip,
+                       const std::string &protocol) :
+        AgentData(), fq_name_(fq_name), name_(name), vendor_(vendor), ip_(ip),
         management_ip_(mgmt_ip), protocol_(protocol) { }
     virtual ~PhysicalDeviceData() { }
 
+    std::string fq_name_;
     std::string name_;
     std::string vendor_;
     IpAddress ip_;
@@ -55,6 +57,7 @@ class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
 
     bool Copy(const PhysicalDeviceData *data);
     const boost::uuids::uuid &uuid() const { return uuid_; }
+    const std::string &fq_name() const { return fq_name_; }
     const std::string &name() const { return name_; }
     const std::string &vendor() const { return vendor_; }
     const IpAddress &ip() const { return ip_; }
@@ -67,6 +70,7 @@ class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
  private:
     friend class PhysicalDeviceTable;
     boost::uuids::uuid uuid_;
+    std::string fq_name_;
     std::string name_;
     std::string vendor_;
     IpAddress ip_;

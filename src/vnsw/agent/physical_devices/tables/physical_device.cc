@@ -72,6 +72,11 @@ void PhysicalDeviceEntry::SetKey(const DBRequestKey *key) {
 bool PhysicalDeviceEntry::Copy(const PhysicalDeviceData *data) {
     bool ret = false;
 
+    if (fq_name_ != data->fq_name_) {
+        fq_name_ = data->fq_name_;
+        ret = true;
+    }
+
     if (name_ != data->name_) {
         name_ = data->name_;
         ret = true;
@@ -174,8 +179,8 @@ static PhysicalDeviceData *BuildData(const IFMapNode *node,
     IpAddress ip = IpAddress::from_string(router->dataplane_ip(), ec);
     IpAddress mip = IpAddress::from_string(router->management_ip(), ec);
     assert(!ec);
-    return new PhysicalDeviceData(node->name(), router->vendor_name(),
-                                  ip, mip, "ovs");
+    return new PhysicalDeviceData(node->name(), router->display_name(),
+                                  router->vendor_name(), ip, mip, "OVS");
 }
 
 bool PhysicalDeviceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
@@ -221,6 +226,7 @@ class DeviceSandesh : public AgentSandesh {
 static void SetDeviceSandeshData(const PhysicalDeviceEntry *entry,
                                       SandeshDevice *data) {
     data->set_uuid(UuidToString(entry->uuid()));
+    data->set_fq_name(entry->fq_name());
     data->set_name(entry->name());
     data->set_vendor(entry->vendor());
     data->set_ip_address(entry->ip().to_string());
@@ -272,6 +278,7 @@ void PhysicalDeviceEntry::SendObjectLog(AgentLogEvent::type event) const {
     info.set_event(str);
 
     info.set_uuid(UuidToString(uuid_));
+    info.set_fq_name(fq_name_);
     info.set_name(name_);
     info.set_vendor(vendor_);
     info.set_ip_address(ip_.to_string());

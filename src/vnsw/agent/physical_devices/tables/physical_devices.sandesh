@@ -7,10 +7,11 @@
  ****************************************************************************/
 struct SandeshDevice {
     1: string uuid;
-    2: string name;
-    3: string vendor;
-    4: string ip_address;
-    5: string management_protocol;
+    2: string fq_name;
+    3: string name;
+    4: string vendor;
+    5: string ip_address;
+    6: string management_protocol;
 }
 
 response sandesh SandeshDeviceListResp {
@@ -25,10 +26,11 @@ struct DeviceObjectLogInfo {
     1: string event;
     2: string uuid;
     3: i32 ref_count;
-    4: string name;
-    5: string vendor;
-    6: string ip_address;
-    7: string management_protocol;
+    4: string fq_name;
+    5: string name;
+    6: string vendor;
+    7: string ip_address;
+    8: string management_protocol;
 }
 
 objectlog sandesh DeviceObjectLog {
@@ -42,8 +44,9 @@ struct PhysicalPortObjectLogInfo {
     1: string event;
     2: string uuid;
     3: i32 ref_count;
-    4: string name;
-    5: string device;
+    4: string fq_name;
+    5: string name;
+    6: string device;
 }
 
 objectlog sandesh PhysicalPortObjectLog {
@@ -52,8 +55,9 @@ objectlog sandesh PhysicalPortObjectLog {
 
 struct SandeshPhysicalPort {
     1: string uuid;
-    2: string name;
-    3: string device;
+    2: string fq_name;
+    3: string name;
+    4: string device;
 }
 
 response sandesh SandeshPhysicalPortListResp {
@@ -70,8 +74,9 @@ request sandesh SandeshPhysicalPortReq {
  ****************************************************************************/
 struct SandeshLogicalPort {
     1: string uuid;
-    2: string name;
-    3: string physical_port;
+    2: string fq_name;
+    3: string name;
+    4: string physical_port;
 }
 
 response sandesh SandeshLogicalPortListResp {
@@ -87,8 +92,9 @@ struct LogicalPortObjectLogInfo {
     1: string event;
     2: string uuid;
     3: i32 ref_count;
-    4: string name;
-    5: string physical_port;
+    4: string fq_name;
+    5: string name;
+    6: string physical_port;
 }
 
 objectlog sandesh LogicalPortObjectLog {

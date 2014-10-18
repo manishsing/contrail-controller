@@ -53,6 +53,11 @@ bool PhysicalPortEntry::Copy(PhysicalPortTable *table,
                              const PhysicalPortData *data) {
     bool ret = false;
 
+    if (fq_name_ != data->fq_name_) {
+        fq_name_ = data->fq_name_;
+        ret = true;
+    }
+
     if (name_ != data->name_) {
         name_ = data->name_;
         ret = true;
@@ -148,7 +153,7 @@ static PhysicalPortData *BuildData(const Agent *agent, IFMapNode *node,
                    dev_uuid);
     }
 
-    return new PhysicalPortData(node->name(), dev_uuid);
+    return new PhysicalPortData(node->name(), port->display_name(), dev_uuid);
 }
 
 bool PhysicalPortTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
@@ -188,6 +193,7 @@ class AgentPhysicalPortSandesh : public AgentSandesh {
 static void SetPhysicalPortSandeshData(const PhysicalPortEntry *entry,
                                        SandeshPhysicalPort *data) {
     data->set_uuid(UuidToString(entry->uuid()));
+    data->set_fq_name(entry->fq_name());
     data->set_name(entry->name());
     if (entry->device()) {
         data->set_device(entry->device()->name());
@@ -240,6 +246,7 @@ void PhysicalPortEntry::SendObjectLog(AgentLogEvent::type event) const {
     info.set_event(str);
 
     info.set_uuid(UuidToString(uuid_));
+    info.set_fq_name(fq_name_);
     info.set_name(name_);
     if (device_) {
         info.set_device(device_->name());
