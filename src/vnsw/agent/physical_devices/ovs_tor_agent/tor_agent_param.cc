@@ -27,6 +27,8 @@ void TorAgentParam::AddOptions() {
     tor.add_options()
         ("TOR.tor_ip", boost_po::value<string>()->default_value(""),
          "IP Address of the ToR being managed")
+        ("TOR.tsn_ip", boost_po::value<string>()->default_value(""),
+         "IP Address of the ToR Service Node")
         ("TOR.tor_id", boost_po::value<string>()->default_value(""),
          "Identifier of the TOR");
     AgentParam::AddOptions(tor);
@@ -39,6 +41,7 @@ void TorAgentParam::InitFromConfig() {
 
     // Parse ToR specific arguments
     ParseIp("TOR.tor_ip", &tor_info_.ip_);
+    ParseIp("TOR.tsn_ip", &tor_info_.tsn_ip_);
     GetValueFromTree<string>(tor_info_.id_, "TOR.tor_id");
     GetValueFromTree<string>(tor_info_.type_, "TOR.tor_type");
     GetValueFromTree<string>(tor_info_.protocol_, "TOR.tor_ovs_protocol");
@@ -53,6 +56,7 @@ void TorAgentParam::InitFromArguments() {
     boost::program_options::variables_map vars = var_map();
 
     ParseIpArgument(vars, tor_info_.ip_, "TOR.tor_ip");
+    ParseIpArgument(vars, tor_info_.tsn_ip_, "TOR.tsn_ip");
     GetOptValue<string>(vars, tor_info_.id_, "TOR.tor_id");
     GetOptValue<string>(vars, tor_info_.type_, "TOR.tor_type");
     GetOptValue<string>(vars, tor_info_.protocol_, "TOR.tor_ovs_protocol");
@@ -62,6 +66,11 @@ void TorAgentParam::InitFromArguments() {
 int TorAgentParam::Validate() {
     if (tor_info_.ip_ == Ip4Address::from_string("0.0.0.0")) {
         LOG(ERROR, "Configuration error. ToR IP address not specified");
+        return (EINVAL);
+    }
+
+    if (tor_info_.tsn_ip_ == Ip4Address::from_string("0.0.0.0")) {
+        LOG(ERROR, "Configuration error. TSN IP address not specified");
         return (EINVAL);
     }
 
