@@ -13,9 +13,18 @@ import subprocess
 Import('AgentEnv')
 env = AgentEnv.Clone()
 
-env.Append(LIBPATH = [ '../tables' ])
-env.Prepend(LIBS = [ 'vnswinit' ])
-env.Append(LIBS = [ 'physical_devices' ])
+env.Append(LIBPATH = [
+                      '../tables',
+                      'ovsdb_client'
+                     ])
+env.Prepend(LIBS = [
+                    'ovsdbclient',
+                    'openvswitch',
+                    'vnswinit'
+                   ])
+env.Append(LIBS = [
+                   'physical_devices'
+                  ])
 
 env.GenerateBuildInfoCode(
     target='buildinfo.cc',
@@ -36,6 +45,7 @@ tor_agent = env.Program(target = 'tor_agent',
                                  ])
 
 env.Alias('agent:tor_agent', tor_agent)
+env.SConscript('ovsdb_client/SConscript', exports='AgentEnv', duplicate=0)
 
 # Local Variables:
 # mode: python

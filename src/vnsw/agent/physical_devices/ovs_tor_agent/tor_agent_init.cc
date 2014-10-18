@@ -30,11 +30,13 @@
 #include <physical_devices/ovs_tor_agent/tor_agent_init.h>
 #include <physical_devices/ovs_tor_agent/tor_agent_param.h>
 #include <physical_devices/ovs_tor_agent/ovs_peer.h>
+#include <physical_devices/ovs_tor_agent/ovsdb_client/ovsdb_client.h>
 
 #include <string>
 
 using std::string;
 using std::cout;
+using OVSDB::OvsdbClient;
 
 TorAgentInit::TorAgentInit()  {
 }
@@ -78,6 +80,8 @@ void TorAgentInit::CreatePeers() {
 void TorAgentInit::CreateModules() {
     device_manager_.reset(new PhysicalDeviceManager(agent()));
     agent()->set_device_manager(device_manager_.get());
+    ovsdb_client_.reset(OvsdbClient::Allocate(agent(),
+                static_cast<TorAgentParam *>(agent_param())));
 }
 
 void TorAgentInit::CreateDBTables() {
@@ -86,6 +90,7 @@ void TorAgentInit::CreateDBTables() {
 
 void TorAgentInit::RegisterDBClients() {
     device_manager_->RegisterDBClients();
+    ovsdb_client_->RegisterClients();
 }
 
 void TorAgentInit::InitModules() {

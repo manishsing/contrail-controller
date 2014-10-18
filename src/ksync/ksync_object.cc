@@ -239,6 +239,8 @@ bool KSyncEntry::IsResolved() {
     KSyncObject *obj = GetObject();
     if (obj->IsIndexValid() && index_ == kInvalidIndex)
         return false;
+    if (IsDataResolved() == false)
+        return false;
     return ((state_ >= IN_SYNC) && (state_ < DEL_DEFER_SYNC));
 }
 
@@ -945,6 +947,7 @@ void KSyncObject::NotifyEvent(KSyncEntry *entry, KSyncEntry::KSyncEvent event) {
             break;
 
         case KSyncEntry::SYNC_WAIT:
+            dep_reval = true;
             state = KSyncSM_SyncWait(this, entry, event);
             break;
 
