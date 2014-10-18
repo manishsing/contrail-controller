@@ -24,7 +24,7 @@ class LogicalPortEntry : AgentRefCount<LogicalPortEntry>, public AgentDBEntry {
     };
 
     explicit LogicalPortEntry(const boost::uuids::uuid &id) :
-        uuid_(id), name_(), physical_port_(), vm_interface_() { }
+        uuid_(id), fq_name_(), physical_port_(), vm_interface_() { }
     virtual ~LogicalPortEntry() { }
 
     virtual bool IsLess(const DBEntry &rhs) const;
@@ -35,6 +35,7 @@ class LogicalPortEntry : AgentRefCount<LogicalPortEntry>, public AgentDBEntry {
     }
 
     const boost::uuids::uuid &uuid() const { return uuid_; }
+    const std::string &fq_name() const { return fq_name_; }
     const std::string &name() const { return name_; }
     PhysicalPortEntry *physical_port() const { return physical_port_.get(); }
     VmInterface *vm_interface() const;
@@ -48,6 +49,7 @@ class LogicalPortEntry : AgentRefCount<LogicalPortEntry>, public AgentDBEntry {
  private:
     friend class LogicalPortTable;
     boost::uuids::uuid uuid_;
+    std::string fq_name_;
     std::string name_;
     PhysicalPortEntryRef physical_port_;
     InterfaceRef vm_interface_;
@@ -94,11 +96,14 @@ struct LogicalPortKey : public AgentKey {
 };
 
 struct LogicalPortData : public AgentData {
-    LogicalPortData(const std::string &name, const boost::uuids::uuid &port,
+    LogicalPortData(const std::string &fq_name, const std::string &name,
+                    const boost::uuids::uuid &port,
                     const boost::uuids::uuid &vif) :
-        name_(name), physical_port_(port), vm_interface_(vif) { }
+        fq_name_(fq_name), name_(name), physical_port_(port),
+        vm_interface_(vif) { }
     virtual ~LogicalPortData() { }
 
+    std::string fq_name_;
     std::string name_;
     boost::uuids::uuid physical_port_;
     boost::uuids::uuid vm_interface_;
@@ -113,9 +118,10 @@ struct VlanLogicalPortKey : public LogicalPortKey {
 };
 
 struct VlanLogicalPortData : public LogicalPortData {
-    VlanLogicalPortData(const std::string &name, const boost::uuids::uuid &port,
+    VlanLogicalPortData(const std::string &fq_name, const std::string &name,
+                        const boost::uuids::uuid &port,
                         const boost::uuids::uuid &vif, uint16_t vlan) :
-        LogicalPortData(name, port, vif), vlan_(vlan) { }
+        LogicalPortData(fq_name, name, port, vif), vlan_(vlan) { }
     virtual ~VlanLogicalPortData() { }
 
     uint16_t vlan_;
@@ -145,10 +151,10 @@ struct DefaultLogicalPortKey : public LogicalPortKey {
 };
 
 struct DefaultLogicalPortData : public LogicalPortData {
-    DefaultLogicalPortData(const std::string &name,
+    DefaultLogicalPortData(const std::string &fq_name, const std::string &name,
                            const boost::uuids::uuid &port,
                            const boost::uuids::uuid &vif) :
-        LogicalPortData(name, port, vif) { }
+        LogicalPortData(fq_name, name, port, vif) { }
     virtual ~DefaultLogicalPortData() { }
 };
 

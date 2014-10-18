@@ -20,10 +20,12 @@ struct PhysicalPortKey : public AgentKey {
 };
 
 struct PhysicalPortData : public AgentData {
-    PhysicalPortData(const std::string &name, const boost::uuids::uuid &dev) :
-        name_(name), device_(dev) { }
+    PhysicalPortData(const std::string fq_name, const std::string &name,
+                     const boost::uuids::uuid &dev) :
+        fq_name_(fq_name), name_(name), device_(dev) { }
     virtual ~PhysicalPortData() { }
 
+    std::string fq_name_;
     std::string name_;
     boost::uuids::uuid device_;
 };
@@ -43,6 +45,7 @@ class PhysicalPortEntry : AgentRefCount<PhysicalPortEntry>, public AgentDBEntry{
     }
 
     const boost::uuids::uuid &uuid() const { return uuid_; }
+    const std::string &fq_name() const { return fq_name_; }
     const std::string &name() const { return name_; }
     PhysicalDeviceEntry *device() const { return device_.get(); }
 
@@ -54,6 +57,7 @@ class PhysicalPortEntry : AgentRefCount<PhysicalPortEntry>, public AgentDBEntry{
  private:
     friend class PhysicalPortTable;
     boost::uuids::uuid uuid_;
+    std::string fq_name_;
     std::string name_;
     PhysicalDeviceEntryRef device_;
     DISALLOW_COPY_AND_ASSIGN(PhysicalPortEntry);
