@@ -77,6 +77,8 @@ struct SandeshLogicalPort {
     2: string fq_name;
     3: string name;
     4: string physical_port;
+    5: string vif;
+    6: u16 vlan_tag;
 }
 
 response sandesh SandeshLogicalPortListResp {
@@ -95,6 +97,8 @@ struct LogicalPortObjectLogInfo {
     4: string fq_name;
     5: string name;
     6: string physical_port;
+    7: string vif;
+    8: u16 vlan_tag;
 }
 
 objectlog sandesh LogicalPortObjectLog {

@@ -140,7 +140,7 @@ static PhysicalPortKey *BuildKey(const autogen::PhysicalInterface *port) {
 
 static PhysicalPortData *BuildData(const Agent *agent, IFMapNode *node,
                                    const autogen::PhysicalInterface *port) {
-    boost::uuids::uuid dev_uuid;
+    boost::uuids::uuid dev_uuid = nil_uuid();
     // Find link with physical-router adjacency
     IFMapNode *adj_node = NULL;
     adj_node = agent->cfg_listener()->FindAdjacentIFMapNode(agent, node,

@@ -176,9 +176,10 @@ static PhysicalDeviceKey *BuildKey(const autogen::PhysicalRouter *router) {
 static PhysicalDeviceData *BuildData(const IFMapNode *node,
                                      const autogen::PhysicalRouter *router) {
     boost::system::error_code ec;
-    IpAddress ip = IpAddress::from_string(router->dataplane_ip(), ec);
-    IpAddress mip = IpAddress::from_string(router->management_ip(), ec);
-    assert(!ec);
+    IpAddress ip = IpAddress();
+    IpAddress mip = IpAddress();
+    ip = IpAddress::from_string(router->dataplane_ip(), ec);
+    mip = IpAddress::from_string(router->management_ip(), ec);
     return new PhysicalDeviceData(node->name(), router->display_name(),
                                   router->vendor_name(), ip, mip, "OVS");
 }
