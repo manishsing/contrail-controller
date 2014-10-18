@@ -182,6 +182,14 @@ void Agent::CopyConfig(AgentParam *params) {
     int count = 0;
     int dns_count = 0;
 
+    if (params_->tsn_ip_1().to_ulong()) {
+        tsn_ip_1_ = params_->tsn_ip_1().to_string();
+    }
+
+    if (params_->tsn_ip_2().to_ulong()) {
+        tsn_ip_2_ = params_->tsn_ip_2().to_string();
+    }
+
     if (params_->xmpp_server_1().to_ulong()) {
         SetAgentMcastLabelRange(count);
         xs_addr_[count++] = params_->xmpp_server_1().to_string();
@@ -231,6 +239,7 @@ void Agent::CopyConfig(AgentParam *params) {
     simulate_evpn_tor_ = params->simulate_evpn_tor();
     debug_ = params_->debug();
     test_mode_ = params_->test_mode();
+    tsn_enabled_ = params_->isTsnEnabled();
 }
 
 DiscoveryAgentClient *Agent::discovery_client() const {
@@ -335,6 +344,8 @@ void Agent::InitPeers() {
     ecmp_peer_.reset(new Peer(Peer::ECMP_PEER, ECMP_PEER_NAME));
     vgw_peer_.reset(new Peer(Peer::VGW_PEER, VGW_PEER_NAME));
     multicast_peer_.reset(new Peer(Peer::MULTICAST_PEER, MULTICAST_PEER_NAME));
+    multicast_tor_peer_.reset(new Peer(Peer::MULTICAST_TOR_PEER,
+                                       MULTICAST_TOR_PEER_NAME));
     multicast_tree_builder_peer_.reset(
                                  new Peer(Peer::MULTICAST_FABRIC_TREE_BUILDER,
                                           MULTICAST_FABRIC_TREE_BUILDER_NAME));
@@ -353,7 +364,8 @@ Agent::Agent() :
     acl_table_(NULL), mirror_table_(NULL), vrf_assign_table_(NULL),
     mirror_cfg_table_(NULL), intf_mirror_cfg_table_(NULL),
     intf_cfg_table_(NULL), router_id_(0), prefix_len_(0), 
-    gateway_id_(0), xs_cfg_addr_(""), xs_idx_(0), xs_addr_(), xs_port_(),
+    gateway_id_(0), xs_cfg_addr_(""), xs_idx_(0),
+    tsn_ip_1_(), tsn_ip_2_(), xs_addr_(), xs_port_(),
     xs_stime_(), xs_dns_idx_(0), dns_addr_(), dns_port_(),
     dss_addr_(""), dss_port_(0), dss_xs_instances_(0),
     discovery_client_name_(),
@@ -367,7 +379,7 @@ Agent::Agent() :
     ksync_sync_mode_(true), mgmt_ip_(""),
     vxlan_network_identifier_mode_(AUTOMATIC), headless_agent_mode_(false), 
     connection_state_(NULL), debug_(false), test_mode_(false),
-    init_done_(false), simulate_evpn_tor_(false) {
+    init_done_(false), simulate_evpn_tor_(false), tsn_enabled_(false) {
 
     assert(singleton_ == NULL);
     singleton_ = this;

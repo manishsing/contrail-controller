@@ -195,12 +195,22 @@ done:
     }
 }
 
+static const AgentPath *GetMulticastExportablePath(const Agent *agent,
+                                                   const AgentRoute *route) {
+    const AgentPath *active_path = route->FindPath(agent->local_vm_peer());
+    //If no loca peer, then look for tor peer as that should also result
+    //in export of route.
+    if (active_path == NULL)
+        active_path = route->FindPath(agent->multicast_tor_peer());
+    return active_path;
+}
+
 static bool RouteCanDissociate(const AgentRoute *route) {
     bool can_dissociate = route->IsDeleted();
     if (route->is_multicast()) {
         Agent *agent = static_cast<AgentRouteTable*>(route->get_table())->
             agent();
-        const AgentPath *active_path = route->FindPath(agent->local_vm_peer());
+        const AgentPath *active_path = GetMulticastExportablePath(agent, route);
         if (active_path == NULL)
             return true;
         const NextHop *nh = active_path ? active_path->nexthop(agent) : NULL;
@@ -263,7 +273,6 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
     }
 
     if (!route_can_be_dissociated) {
-
         if (!(agent->simulate_evpn_tor()) && ((state->exported_ == false) ||
                                               (state->force_chg_ == true))) {
             //Sending 255.255.255.255 for fabric tree
@@ -278,7 +287,7 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
         }
 
         //Sending ff:ff:ff:ff:ff:ff for evpn replication
-        const AgentPath *active_path = route->FindPath(agent->local_vm_peer());
+        const AgentPath *active_path = GetMulticastExportablePath(agent, route);
         //const AgentPath *active_path = route->GetActivePath();
         TunnelType::Type old_tunnel_type = state->tunnel_type_;
         uint32_t old_label = state->label_;

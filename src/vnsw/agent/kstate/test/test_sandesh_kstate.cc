@@ -586,20 +586,10 @@ TEST_F(KStateSandeshTest, NhTest_flags) {
     flags = NH_FLAG_COMPOSITE_FABRIC;
     KSyncSockTypeMap::NHAdd(212, flags);
 
-    flags = NH_FLAG_VALID|NH_FLAG_COMPOSITE_MULTI_PROTO;
-    KSyncSockTypeMap::NHAdd(213, flags);
-    flags = NH_FLAG_COMPOSITE_MULTI_PROTO;
-    KSyncSockTypeMap::NHAdd(214, flags);
-
     flags = NH_FLAG_VALID|NH_FLAG_COMPOSITE_L2;
-    KSyncSockTypeMap::NHAdd(215, flags);
+    KSyncSockTypeMap::NHAdd(213, flags);
     flags = NH_FLAG_COMPOSITE_L2;
-    KSyncSockTypeMap::NHAdd(216, flags);
-
-    flags = NH_FLAG_VALID|NH_FLAG_COMPOSITE_L3;
-    KSyncSockTypeMap::NHAdd(217, flags);
-    flags = NH_FLAG_COMPOSITE_L3;
-    KSyncSockTypeMap::NHAdd(218, flags);
+    KSyncSockTypeMap::NHAdd(214, flags);
 
     //Send NH DUMP request
     ClearCount();
@@ -628,10 +618,6 @@ TEST_F(KStateSandeshTest, NhTest_flags) {
     KSyncSockTypeMap::NHDelete(212);
     KSyncSockTypeMap::NHDelete(213);
     KSyncSockTypeMap::NHDelete(214);
-    KSyncSockTypeMap::NHDelete(215);
-    KSyncSockTypeMap::NHDelete(216);
-    KSyncSockTypeMap::NHDelete(217);
-    KSyncSockTypeMap::NHDelete(218);
 }
 
 TEST_F(KStateSandeshTest, NhTest_MultiResponse) {
