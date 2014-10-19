@@ -20,9 +20,8 @@ using OVSDB::OvsdbDBObject;
 
 LogicalSwitchEntry::LogicalSwitchEntry(OvsdbDBObject *table,
         const AGENT::PhysicalDeviceVnEntry *entry) : OvsdbDBEntry(table),
-        mcast_local_row_(NULL), mcast_remote_row_(NULL),
-        old_mcast_remote_row_(NULL) {
-    name_ = entry->vn()->GetName();
+        name_(UuidToString(entry->vn()->GetUuid())), mcast_local_row_(NULL),
+        mcast_remote_row_(NULL), old_mcast_remote_row_(NULL) {
     vxlan_id_ = entry->vn()->GetVxLanId();
     device_name_ = entry->device()->name();
 }

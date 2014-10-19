@@ -16,14 +16,18 @@ extern "C" {
 #include <physical_devices/tables/physical_device_vn.h>
 #include <physical_devices/tables/logical_port.h>
 
+using OVSDB::OvsdbDBEntry;
 using OVSDB::VlanPortBindingEntry;
 using OVSDB::VlanPortBindingTable;
 using OVSDB::PhysicalPortEntry;
 using OVSDB::LogicalSwitchEntry;
 
 VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
-        const AGENT::VlanLogicalPortEntry *entry) : OvsdbDBEntry(table_) {
-    logical_switch_name_ = entry->vm_interface()->vn()->GetName();
+        const AGENT::VlanLogicalPortEntry *entry) : OvsdbDBEntry(table_),
+        logical_switch_name_("") {
+    if (entry->vm_interface())
+        logical_switch_name_ =
+            UuidToString(entry->vm_interface()->vn()->GetUuid());
     physical_port_name_ = entry->physical_port()->name();
     vlan_ = entry->vlan();
 }
@@ -39,26 +43,29 @@ void VlanPortBindingEntry::AddMsg(struct ovsdb_idl_txn *txn) {
     PhysicalPortTable *p_table = table_->client_idl()->physical_port_table();
     PhysicalPortEntry key(p_table, physical_port_name_.c_str());
     physical_port_ = p_table->GetReference(&key);
-    LogicalSwitchTable *l_table = table_->client_idl()->logical_switch_table();
-    LogicalSwitchEntry ls_key(l_table, logical_switch_name_.c_str());
-    logical_switch_ = l_table->GetReference(&ls_key);
-
     PhysicalPortEntry *port =
         static_cast<PhysicalPortEntry *>(physical_port_.get());
-    port->AddBinding(vlan_,
-            static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
+
+    if (!logical_switch_name_.empty()) {
+        LogicalSwitchTable *l_table =
+            table_->client_idl()->logical_switch_table();
+        LogicalSwitchEntry ls_key(l_table, logical_switch_name_.c_str());
+        logical_switch_ = l_table->GetReference(&ls_key);
+        port->AddBinding(vlan_,
+                static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
+    } else {
+        port->DeleteBinding(vlan_, NULL);
+    }
     port->Encode(txn);
 }
 
 void VlanPortBindingEntry::ChangeMsg(struct ovsdb_idl_txn *txn) {
-    if (physical_port_) {
-        PhysicalPortEntry *port =
-            static_cast<PhysicalPortEntry *>(physical_port_.get());
-        port->DeleteBinding(vlan_,
-                static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
-        physical_port_ = NULL;
-        logical_switch_ = NULL;
-    }
+    PhysicalPortEntry *port =
+        static_cast<PhysicalPortEntry *>(physical_port_.get());
+    port->DeleteBinding(vlan_,
+            static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
+    logical_switch_ = NULL;
+
     AddMsg(txn);
 }
 
@@ -76,6 +83,16 @@ void VlanPortBindingEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
 }
 
 bool VlanPortBindingEntry::Sync(DBEntry *db_entry) {
+    AGENT::VlanLogicalPortEntry *entry =
+        static_cast<AGENT::VlanLogicalPortEntry *>(db_entry);
+    std::string ls_name("");
+    if (entry->vm_interface()) {
+        ls_name = UuidToString(entry->vm_interface()->vn()->GetUuid());
+    }
+    if (ls_name != logical_switch_name_) {
+        logical_switch_name_ = ls_name;
+        return true;
+    }
     return false;
 }
 
@@ -84,10 +101,7 @@ bool VlanPortBindingEntry::IsLess(const KSyncEntry &entry) const {
         static_cast<const VlanPortBindingEntry&>(entry);
     if (vlan_ != vps_entry.vlan_)
         return vlan_ < vps_entry.vlan_;
-    if (physical_port_name_ != vps_entry.physical_port_name_)
-        return physical_port_name_ < vps_entry.physical_port_name_;
-
-    return logical_switch_name_ < vps_entry.logical_switch_name_;
+    return physical_port_name_ < vps_entry.physical_port_name_;
 }
 
 KSyncEntry *VlanPortBindingEntry::UnresolvedReference() {
@@ -97,6 +111,9 @@ KSyncEntry *VlanPortBindingEntry::UnresolvedReference() {
         static_cast<PhysicalPortEntry *>(p_table->GetReference(&key));
     if (!p_port->IsResolved()) {
         return p_port;
+    }
+    if (logical_switch_name_.empty()) {
+        return NULL;
     }
     LogicalSwitchTable *l_table = table_->client_idl()->logical_switch_table();
     LogicalSwitchEntry ls_key(l_table, logical_switch_name_.c_str());
@@ -131,5 +148,9 @@ KSyncEntry *VlanPortBindingTable::DBToKSyncEntry(const DBEntry* db_entry) {
         static_cast<const AGENT::VlanLogicalPortEntry *>(db_entry);
     VlanPortBindingEntry *key = new VlanPortBindingEntry(this, entry);
     return static_cast<KSyncEntry *>(key);
+}
+
+OvsdbDBEntry *VlanPortBindingTable::AllocOvsEntry(struct ovsdb_idl_row *row) {
+    return NULL;
 }
 

@@ -15,6 +15,7 @@ extern "C" {
 #include <physical_switch_ovsdb.h>
 #include <logical_switch_ovsdb.h>
 #include <physical_port_ovsdb.h>
+#include <vlan_port_binding_ovsdb.h>
 #if 0
 #include <physical_locator_ovsdb.h>
 #include <unicast_mac_local_ovsdb.h>
@@ -70,6 +71,8 @@ OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent) :
     logical_switch_table_.reset(new LogicalSwitchTable(this,
                (DBTable *)agent->device_manager()->physical_device_vn_table()));
     physical_port_table_.reset(new PhysicalPortTable(this));
+    vlan_port_table_.reset(new VlanPortBindingTable(this,
+                (DBTable *)agent->device_manager()->logical_port_table()));
 #if 0 //TODO
     physical_locator_table_.reset(new PhysicalLocatorTable(this,
                 (DBTable *)agent->nexthop_table()));
