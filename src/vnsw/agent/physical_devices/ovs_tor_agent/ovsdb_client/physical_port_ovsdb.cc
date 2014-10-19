@@ -59,9 +59,11 @@ void PhysicalPortEntry::Encode(struct ovsdb_idl_txn *txn) {
 }
 
 void PhysicalPortEntry::AddBinding(int16_t vlan, LogicalSwitchEntry *ls) {
+    binding_table_[vlan] = ls;
 }
 
 void PhysicalPortEntry::DeleteBinding(int16_t vlan, LogicalSwitchEntry *ls) {
+    binding_table_.erase(vlan);
 }
 
 void PhysicalPortEntry::OverrideOvs() {

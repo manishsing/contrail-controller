@@ -22,6 +22,7 @@ public:
     void OvsdbNotify(OvsdbClientIdl::Op, struct ovsdb_idl_row*);
     KSyncEntry *Alloc(const KSyncEntry *key, uint32_t index);
     KSyncEntry *DBToKSyncEntry(const DBEntry*);
+    OvsdbDBEntry* AllocOvsEntry(struct ovsdb_idl_row*);
 private:
     DISALLOW_COPY_AND_ASSIGN(VlanPortBindingTable);
 };
@@ -44,8 +45,8 @@ private:
     friend class VlanPortBindingTable;
     KSyncEntryPtr logical_switch_;
     KSyncEntryPtr physical_port_;
-    std::string physical_port_name_;
     std::string logical_switch_name_;
+    std::string physical_port_name_;
     uint16_t vlan_;
     DISALLOW_COPY_AND_ASSIGN(VlanPortBindingEntry);
 };
