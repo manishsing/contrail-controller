@@ -89,7 +89,7 @@ ovsdb_wrapper_idl_encode_monitor_request(struct ovsdb_idl *idl)
     return ovsdb_idl_encode_monitor_request(idl);
 }
 
-void 
+void
 ovsdb_wrapper_idl_msg_process(struct ovsdb_idl *idl, struct jsonrpc_msg *msg)
 {
     ovsdb_idl_msg_process(idl, msg);
@@ -285,7 +285,7 @@ char *
 ovsdb_wrapper_physical_locator_dst_ip(struct ovsdb_idl_row *row)
 {
     struct vteprec_physical_locator *p =
-        row ? CONTAINER_OF(row, struct vteprec_physical_locator, header_) : NULL; 
+        row ? CONTAINER_OF(row, struct vteprec_physical_locator, header_) : NULL;
     return p->dst_ip;
 }
 
@@ -294,7 +294,7 @@ ovsdb_wrapper_add_physical_locator(struct ovsdb_idl_txn *txn,
         struct ovsdb_idl_row *row, const char *dip)
 {
     struct vteprec_physical_locator *p =
-        row ? CONTAINER_OF(row, struct vteprec_physical_locator, header_) : NULL; 
+        row ? CONTAINER_OF(row, struct vteprec_physical_locator, header_) : NULL;
     if (p == NULL)
         p = vteprec_physical_locator_insert(txn);
     vteprec_physical_locator_set_dst_ip(p, dip);
@@ -305,7 +305,7 @@ void
 ovsdb_wrapper_delete_physical_locator(struct ovsdb_idl_row *row)
 {
     struct vteprec_physical_locator *p =
-        row ? CONTAINER_OF(row, struct vteprec_physical_locator, header_) : NULL; 
+        row ? CONTAINER_OF(row, struct vteprec_physical_locator, header_) : NULL;
     vteprec_physical_locator_delete(p);
 }
 
@@ -313,7 +313,7 @@ ovsdb_wrapper_delete_physical_locator(struct ovsdb_idl_row *row)
 char *
 ovsdb_wrapper_ucast_mac_local_mac(struct ovsdb_idl_row *row)
 {
-    struct vteprec_ucast_macs_local *mac = 
+    struct vteprec_ucast_macs_local *mac =
         row ? CONTAINER_OF(row, struct vteprec_ucast_macs_local, header_) : NULL;
     return mac->MAC;
 }
@@ -321,7 +321,7 @@ ovsdb_wrapper_ucast_mac_local_mac(struct ovsdb_idl_row *row)
 char *
 ovsdb_wrapper_ucast_mac_local_ip(struct ovsdb_idl_row *row)
 {
-    struct vteprec_ucast_macs_local *mac = 
+    struct vteprec_ucast_macs_local *mac =
         row ? CONTAINER_OF(row, struct vteprec_ucast_macs_local, header_) : NULL;
     return mac->ipaddr;
 }
@@ -329,7 +329,7 @@ ovsdb_wrapper_ucast_mac_local_ip(struct ovsdb_idl_row *row)
 char *
 ovsdb_wrapper_ucast_mac_local_logical_switch(struct ovsdb_idl_row *row)
 {
-    struct vteprec_ucast_macs_local *mac = 
+    struct vteprec_ucast_macs_local *mac =
         row ? CONTAINER_OF(row, struct vteprec_ucast_macs_local, header_) : NULL;
     if (mac->logical_switch) {
         return mac->logical_switch->name;
@@ -340,8 +340,71 @@ ovsdb_wrapper_ucast_mac_local_logical_switch(struct ovsdb_idl_row *row)
 char *
 ovsdb_wrapper_ucast_mac_local_dst_ip(struct ovsdb_idl_row *row)
 {
-    struct vteprec_ucast_macs_local *mac = 
+    struct vteprec_ucast_macs_local *mac =
         row ? CONTAINER_OF(row, struct vteprec_ucast_macs_local, header_) : NULL;
+    if (mac->locator) {
+        return mac->locator->dst_ip;
+    }
+    return NULL;
+}
+
+/* unicast mac remote */
+void
+obvsdb_wrapper_add_ucast_mac_remote(struct ovsdb_idl_txn *txn, const char *mac,
+        struct ovsdb_idl_row *ls, const char *dest_ip)
+{
+    struct vteprec_ucast_macs_remote *ucast =
+        vteprec_ucast_macs_remote_insert(txn);
+    vteprec_ucast_macs_remote_set_MAC(ucast, mac);
+    struct vteprec_logical_switch *l_switch =
+        ls? CONTAINER_OF(ls, struct vteprec_logical_switch, header_) : NULL;
+    vteprec_ucast_macs_remote_set_logical_switch(ucast, l_switch);
+    struct vteprec_physical_locator *p = vteprec_physical_locator_insert(txn);
+    vteprec_physical_locator_set_dst_ip(p, dest_ip);
+    vteprec_physical_locator_set_encapsulation_type(p, "vxlan_over_ipv4");
+    vteprec_ucast_macs_remote_set_locator(ucast, p);
+}
+
+void
+ovsdb_wrapper_delete_ucast_mac_remote(struct ovsdb_idl_row *row)
+{
+    struct vteprec_ucast_macs_remote *ucast =
+        row ? CONTAINER_OF(row, struct vteprec_ucast_macs_remote, header_) : NULL;
+    vteprec_ucast_macs_remote_delete(ucast);
+}
+
+char *
+ovsdb_wrapper_ucast_mac_remote_mac(struct ovsdb_idl_row *row)
+{
+    struct vteprec_ucast_macs_remote *mac =
+        row ? CONTAINER_OF(row, struct vteprec_ucast_macs_remote, header_) : NULL;
+    return mac->MAC;
+}
+
+char *
+ovsdb_wrapper_ucast_mac_remote_ip(struct ovsdb_idl_row *row)
+{
+    struct vteprec_ucast_macs_remote *mac =
+        row ? CONTAINER_OF(row, struct vteprec_ucast_macs_remote, header_) : NULL;
+    return mac->ipaddr;
+}
+
+char *
+ovsdb_wrapper_ucast_mac_remote_logical_switch(struct ovsdb_idl_row *row)
+{
+    struct vteprec_ucast_macs_remote *mac =
+        row ? CONTAINER_OF(row, struct vteprec_ucast_macs_remote, header_) : NULL;
+    if (mac->logical_switch) {
+        return mac->logical_switch->name;
+    }
+    return NULL;
+}
+
+char *
+ovsdb_wrapper_ucast_mac_remote_dst_ip(struct ovsdb_idl_row *row)
+{
+    struct vteprec_ucast_macs_remote *mac =
+        row ? CONTAINER_OF(row, struct vteprec_ucast_macs_remote, header_) : NULL;
     if (mac->locator) {
         return mac->locator->dst_ip;
     }

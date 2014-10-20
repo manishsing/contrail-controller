@@ -73,6 +73,13 @@ char *ovsdb_wrapper_ucast_mac_local_logical_switch(struct ovsdb_idl_row *row);
 char *ovsdb_wrapper_ucast_mac_local_dst_ip(struct ovsdb_idl_row *row);
 
 /* unicast mac remote */
+void obvsdb_wrapper_add_ucast_mac_remote(struct ovsdb_idl_txn *txn,
+        const char *mac, struct ovsdb_idl_row *ls, const char *dest_ip);
+void ovsdb_wrapper_delete_ucast_mac_remote(struct ovsdb_idl_row *row);
+char *ovsdb_wrapper_ucast_mac_remote_mac(struct ovsdb_idl_row *row);
+char *ovsdb_wrapper_ucast_mac_remote_ip(struct ovsdb_idl_row *row);
+char *ovsdb_wrapper_ucast_mac_remote_logical_switch(struct ovsdb_idl_row *row);
+char *ovsdb_wrapper_ucast_mac_remote_dst_ip(struct ovsdb_idl_row *row);
 
 /* multicast mac local */
 void ovsdb_wrapper_delete_mcast_mac_local(struct ovsdb_idl_row *row);
