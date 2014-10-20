@@ -63,6 +63,9 @@ bool OvsdbRouteData::AddChangePath(Agent *agent, AgentPath *path) {
     TunnelNHKey key(tor_vrf_, router_id_, tor_ip_, false, type);
     nh = static_cast<NextHop *>(agent->nexthop_table()->FindActiveEntry(&key));
 
+    path->set_tunnel_bmap(TunnelType::VxlanType());
+    path->set_tunnel_type(TunnelType::ComputeType(path->tunnel_bmap()));
+
     path->set_unresolved(false);
     if (path->ChangeNH(agent, nh) == true)
         ret = true;

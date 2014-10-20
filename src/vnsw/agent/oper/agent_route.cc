@@ -522,7 +522,8 @@ AgentPath *AgentRoute::FindLocalVmPortPath() const {
         }
         if (path->peer()->GetType() == Peer::ECMP_PEER ||
             path->peer()->GetType() == Peer::VGW_PEER ||
-            path->peer()->GetType() == Peer::LOCAL_VM_PORT_PEER) {
+            path->peer()->GetType() == Peer::LOCAL_VM_PORT_PEER ||
+            path->peer()->GetType() == Peer::OVS_PEER) {
             return const_cast<AgentPath *>(path);
         }
     }
