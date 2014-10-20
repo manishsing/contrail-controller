@@ -20,6 +20,7 @@ extern "C" {
 #include <physical_port_ovsdb.h>
 #include <vlan_port_binding_ovsdb.h>
 #include <unicast_mac_local_ovsdb.h>
+#include <unicast_mac_remote_ovsdb.h>
 #if 0
 #include <physical_locator_ovsdb.h>
 #endif
@@ -82,6 +83,7 @@ OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent,
                 (DBTable *)agent->device_manager()->logical_port_table()));
     unicast_mac_local_ovsdb_.reset(new UnicastMacLocalOvsdb(this,
                 route_peer()));
+    vrf_ovsdb_.reset(new VrfOvsdbObject(this, (DBTable *)agent->vrf_table()));
 #if 0 //TODO
     physical_locator_table_.reset(new PhysicalLocatorTable(this,
                 (DBTable *)agent->nexthop_table()));
