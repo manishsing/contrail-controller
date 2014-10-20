@@ -61,3 +61,18 @@ traceobject sandesh OvsdbLogicalSwitch {
     1: SandeshLogicalSwitchInfo l_switch;
 }
 
+/****************************************************************************
+  Sandesh definitions for Unicast Mac Remote.
+ ****************************************************************************/
+
+struct SandeshUnicastMacRemoteInfo {
+    1: string op;
+    2: string mac;
+    3: string logical_switch;
+    4: string dest_ip;
+}
+
+traceobject sandesh OvsdbUnicastMacRemote {
+    1: SandeshUnicastMacRemoteInfo ucast_remote;
+}
+
