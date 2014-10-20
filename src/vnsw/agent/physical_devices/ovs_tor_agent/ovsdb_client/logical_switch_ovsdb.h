@@ -32,6 +32,12 @@ private:
 
 class LogicalSwitchEntry : public OvsdbDBEntry {
 public:
+    enum Trace {
+        ADD_REQ,
+        DEL_REQ,
+        ADD_ACK,
+        DEL_ACK,
+    };
     LogicalSwitchEntry(OvsdbDBObject *table, const char *name) :
         OvsdbDBEntry(table), name_(name) {}
     LogicalSwitchEntry(OvsdbDBObject *table, const LogicalSwitchEntry *key);
@@ -51,6 +57,8 @@ public:
     std::string ToString() const {return "Logical Switch";}
     KSyncEntry* UnresolvedReference();
 private:
+    void SendTrace(Trace event) const;
+
     friend class LogicalSwitchTable;
     std::string name_;
     std::string device_name_;

@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
     MiscUtils::LogVersionInfo(build_info, Category::VROUTER);
 
     init.set_agent_param(&params);
+    agent->set_agent_init(&init);
     // Read agent parameters from config file and arguments
     init.ProcessOptions(init_file, argv[0]);
 

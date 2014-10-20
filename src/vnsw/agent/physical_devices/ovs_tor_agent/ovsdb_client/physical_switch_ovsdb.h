@@ -22,6 +22,10 @@ private:
 
 class PhysicalSwitchEntry : public OvsdbEntry {
 public:
+    enum Trace {
+        ADD,
+        DEL,
+    };
     PhysicalSwitchEntry(PhysicalSwitchTable *table, const std::string &name);
     ~PhysicalSwitchEntry();
 
@@ -29,7 +33,7 @@ public:
     std::string ToString() const {return "Physical Switch";}
     KSyncEntry* UnresolvedReference();
 private:
-    PhysicalSwitchEntry(PhysicalSwitchTable *table, const PhysicalSwitchEntry *key);
+    void SendTrace(Trace event) const;
 
     friend class PhysicalSwitchTable;
     std::string name_;

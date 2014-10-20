@@ -7,6 +7,7 @@ extern "C" {
 };
 #include <ovsdb_client_idl.h>
 #include <physical_switch_ovsdb.h>
+#include <ovsdb_types.h>
 
 using OVSDB::PhysicalSwitchEntry;
 using OVSDB::PhysicalSwitchTable;
@@ -21,11 +22,22 @@ PhysicalSwitchEntry::~PhysicalSwitchEntry() {
 bool PhysicalSwitchEntry::IsLess(const KSyncEntry &entry) const {
     const PhysicalSwitchEntry &ps_entry =
         static_cast<const PhysicalSwitchEntry&>(entry);
-    return (name_.compare(ps_entry.name_) < 0);
+    return (name_ < ps_entry.name_);
 }
 
 KSyncEntry *PhysicalSwitchEntry::UnresolvedReference() {
     return NULL;
+}
+
+void PhysicalSwitchEntry::SendTrace(Trace event) const {
+    SandeshPhysicalSwitchInfo info;
+    if (event == ADD) {
+        info.set_op("Add");
+    } else {
+        info.set_op("Delete");
+    }
+    info.set_name(name_);
+    OVSDB_TRACE(PhysicalSwitch, info);
 }
 
 PhysicalSwitchTable::PhysicalSwitchTable(OvsdbClientIdl *idl) :
@@ -40,22 +52,22 @@ PhysicalSwitchTable::~PhysicalSwitchTable() {
 
 void PhysicalSwitchTable::Notify(OvsdbClientIdl::Op op,
         struct ovsdb_idl_row *row) {
+    const char *name = ovsdb_wrapper_physical_switch_name(row);
     if (op == OvsdbClientIdl::OVSDB_DEL) {
-        printf("Delete of Physical Switch %s\n",
-                ovsdb_wrapper_physical_switch_name(row));
-        PhysicalSwitchEntry key(this, ovsdb_wrapper_physical_switch_name(row));
+        PhysicalSwitchEntry key(this, name);
         PhysicalSwitchEntry *entry =
             static_cast<PhysicalSwitchEntry *>(Find(&key));
-        if (entry != NULL)
+        if (entry != NULL) {
+            entry->SendTrace(PhysicalSwitchEntry::DEL);
             Delete(entry);
+        }
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        printf("Add/Change of Physical Switch %s\n",
-                ovsdb_wrapper_physical_switch_name(row));
-        PhysicalSwitchEntry key(this, ovsdb_wrapper_physical_switch_name(row));
+        PhysicalSwitchEntry key(this, name);
         PhysicalSwitchEntry *entry =
             static_cast<PhysicalSwitchEntry *>(Find(&key));
         if (entry == NULL) {
-            Create(&key);
+            entry = static_cast<PhysicalSwitchEntry *>(Create(&key));
+            entry->SendTrace(PhysicalSwitchEntry::ADD);
         }
     } else {
         assert(0);
