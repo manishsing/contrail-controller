@@ -337,6 +337,17 @@ ovsdb_wrapper_ucast_mac_local_logical_switch(struct ovsdb_idl_row *row)
     return NULL;
 }
 
+char *
+ovsdb_wrapper_ucast_mac_local_dst_ip(struct ovsdb_idl_row *row)
+{
+    struct vteprec_ucast_macs_local *mac = 
+        row ? CONTAINER_OF(row, struct vteprec_ucast_macs_local, header_) : NULL;
+    if (mac->locator) {
+        return mac->locator->dst_ip;
+    }
+    return NULL;
+}
+
 /* multicast mac local */
 void
 ovsdb_wrapper_delete_mcast_mac_local(struct ovsdb_idl_row *row)

@@ -25,6 +25,14 @@ response sandesh OvsdbClientResp {
 request sandesh OvsdbClientReq {
 }
 
+traceobject sandesh OvsdbTrace {
+    1: string log;
+}
+
+traceobject sandesh OvsdbError {
+    1: string error;
+}
+
 /****************************************************************************
   Sandesh definitions for Physical Switch.
  ****************************************************************************/

@@ -10,15 +10,18 @@
 extern "C" {
 #include <ovsdb_wrapper.h>
 };
+#include <oper/agent_sandesh.h>
+#include <ovsdb_types.h>
 #include <ovsdb_client_idl.h>
+#include <ovsdb_route_peer.h>
 #include <ovsdb_entry.h>
 #include <physical_switch_ovsdb.h>
 #include <logical_switch_ovsdb.h>
 #include <physical_port_ovsdb.h>
 #include <vlan_port_binding_ovsdb.h>
+#include <unicast_mac_local_ovsdb.h>
 #if 0
 #include <physical_locator_ovsdb.h>
-#include <unicast_mac_local_ovsdb.h>
 #endif
 
 #include <physical_devices/tables/device_manager.h>
@@ -53,15 +56,16 @@ void ovsdb_wrapper_idl_txn_ack(void *idl_base, struct ovsdb_idl_txn *txn) {
     bool success = ovsdb_wrapper_is_txn_success(txn);
     client_idl->DeleteTxn(txn);
     if (!success) {
-        printf("Transaction failed\n");
+        OVSDB_TRACE(Error, "Transaction failed");
     }
     if (entry)
         entry->Ack(success);
 }
 };
 
-OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent) :
-    idl_(ovsdb_wrapper_idl_create()), session_(session), pending_txn_() {
+OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent,
+        OvsPeerManager *manager) : idl_(ovsdb_wrapper_idl_create()),
+    session_(session), pending_txn_() {
     vtep_global_= ovsdb_wrapper_vteprec_global_first(idl_);
     ovsdb_wrapper_idl_set_callback(idl_, (void *)this,
             ovsdb_wrapper_idl_callback, ovsdb_wrapper_idl_txn_ack);
@@ -69,16 +73,18 @@ OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent) :
     for (int i = 0; i < OVSDB_TYPE_COUNT; i++) {
         callback_[i] = NULL;
     }
+    route_peer_.reset(manager->Allocate(IpAddress()));
     physical_switch_table_.reset(new PhysicalSwitchTable(this));
     logical_switch_table_.reset(new LogicalSwitchTable(this,
                (DBTable *)agent->device_manager()->physical_device_vn_table()));
     physical_port_table_.reset(new PhysicalPortTable(this));
     vlan_port_table_.reset(new VlanPortBindingTable(this,
                 (DBTable *)agent->device_manager()->logical_port_table()));
+    unicast_mac_local_ovsdb_.reset(new UnicastMacLocalOvsdb(this,
+                route_peer()));
 #if 0 //TODO
     physical_locator_table_.reset(new PhysicalLocatorTable(this,
                 (DBTable *)agent->nexthop_table()));
-    unicast_mac_local_table_.reset(new UnicastMacLocalTable(this));
 #endif
 }
 

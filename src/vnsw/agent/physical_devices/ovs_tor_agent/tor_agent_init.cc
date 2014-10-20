@@ -81,7 +81,8 @@ void TorAgentInit::CreateModules() {
     device_manager_.reset(new PhysicalDeviceManager(agent()));
     agent()->set_device_manager(device_manager_.get());
     ovsdb_client_.reset(OvsdbClient::Allocate(agent(),
-                static_cast<TorAgentParam *>(agent_param())));
+                static_cast<TorAgentParam *>(agent_param()),
+                ovs_peer_manager()));
 }
 
 void TorAgentInit::CreateDBTables() {

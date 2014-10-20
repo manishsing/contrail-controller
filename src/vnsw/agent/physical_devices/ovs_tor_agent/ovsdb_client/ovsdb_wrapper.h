@@ -69,8 +69,8 @@ void ovsdb_wrapper_delete_physical_locator(struct ovsdb_idl_row *);
 /* unicast mac local */
 char *ovsdb_wrapper_ucast_mac_local_mac(struct ovsdb_idl_row *row);
 char *ovsdb_wrapper_ucast_mac_local_ip(struct ovsdb_idl_row *row);
-char *
-ovsdb_wrapper_ucast_mac_local_logical_switch(struct ovsdb_idl_row *row);
+char *ovsdb_wrapper_ucast_mac_local_logical_switch(struct ovsdb_idl_row *row);
+char *ovsdb_wrapper_ucast_mac_local_dst_ip(struct ovsdb_idl_row *row);
 
 /* unicast mac remote */
 
