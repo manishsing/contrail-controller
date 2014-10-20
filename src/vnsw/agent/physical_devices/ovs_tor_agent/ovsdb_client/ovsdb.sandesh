@@ -25,3 +25,31 @@ response sandesh OvsdbClientResp {
 request sandesh OvsdbClientReq {
 }
 
+/****************************************************************************
+  Sandesh definitions for Physical Switch.
+ ****************************************************************************/
+
+struct SandeshPhysicalSwitchInfo {
+    1: string op;
+    2: string name;
+}
+
+traceobject sandesh OvsdbPhysicalSwitch {
+    1: SandeshPhysicalSwitchInfo p_switch;
+}
+
+/****************************************************************************
+  Sandesh definitions for Logical Switch.
+ ****************************************************************************/
+
+struct SandeshLogicalSwitchInfo {
+    1: string op;
+    2: string name;
+    3: u64 vxlan;
+    4: string device_name;
+}
+
+traceobject sandesh OvsdbLogicalSwitch {
+    1: SandeshLogicalSwitchInfo l_switch;
+}
+

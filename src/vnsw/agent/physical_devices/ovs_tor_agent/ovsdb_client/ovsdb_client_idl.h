@@ -11,6 +11,11 @@
 #include <cmn/agent.h>
 #include <agent_types.h>
 
+extern SandeshTraceBufferPtr OvsdbTraceBuf;
+#define OVSDB_TRACE(obj, ...)\
+do {\
+    Ovsdb##obj::TraceMsg(OvsdbTraceBuf, __FILE__, __LINE__, __VA_ARGS__);\
+} while(false);
 
 namespace OVSDB {
 class OvsdbClientSession;

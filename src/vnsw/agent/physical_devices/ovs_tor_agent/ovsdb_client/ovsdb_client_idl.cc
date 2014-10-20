@@ -23,6 +23,8 @@ extern "C" {
 
 #include <physical_devices/tables/device_manager.h>
 
+SandeshTraceBufferPtr OvsdbTraceBuf(SandeshTraceBufferCreate("Ovsdb", 5000));
+
 namespace AGENT {
 class PhysicalDeviceTable;
 class PhysicalPortTable;

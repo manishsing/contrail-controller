@@ -11,6 +11,7 @@ extern "C" {
 #include <oper/vn.h>
 #include <physical_devices/tables/physical_device.h>
 #include <physical_devices/tables/physical_device_vn.h>
+#include <ovsdb_types.h>
 
 using namespace AGENT;
 using OVSDB::LogicalSwitchEntry;
@@ -55,6 +56,7 @@ void LogicalSwitchEntry::AddMsg(struct ovsdb_idl_txn *txn) {
     if (old_mcast_remote_row_ != NULL) {
         ovsdb_wrapper_delete_mcast_mac_remote(old_mcast_remote_row_);
     }
+    SendTrace(LogicalSwitchEntry::ADD_REQ);
 }
 
 void LogicalSwitchEntry::ChangeMsg(struct ovsdb_idl_txn *txn) {
@@ -72,6 +74,7 @@ void LogicalSwitchEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
         ovsdb_wrapper_delete_mcast_mac_remote(old_mcast_remote_row_);
     }
     ovsdb_wrapper_delete_logical_switch(ovs_entry_);
+    SendTrace(LogicalSwitchEntry::DEL_REQ);
 }
 
 void LogicalSwitchEntry::OvsdbChange() {
@@ -110,6 +113,30 @@ KSyncEntry *LogicalSwitchEntry::UnresolvedReference() {
     return NULL;
 }
 
+void LogicalSwitchEntry::SendTrace(Trace event) const {
+    SandeshLogicalSwitchInfo info;
+    switch (event) {
+    case ADD_REQ:
+        info.set_op("Add Requested");
+        break;
+    case DEL_REQ:
+        info.set_op("Delete Requested");
+        break;
+    case ADD_ACK:
+        info.set_op("Add Received");
+        break;
+    case DEL_ACK:
+        info.set_op("Delete Received");
+        break;
+    default:
+        info.set_op("unknown");
+    }
+    info.set_name(name_);
+    info.set_device_name(device_name_);
+    info.set_vxlan(vxlan_id_);
+    OVSDB_TRACE(LogicalSwitch, info);
+}
+
 LogicalSwitchTable::LogicalSwitchTable(OvsdbClientIdl *idl, DBTable *table) :
     OvsdbDBObject(idl, table) {
     idl->Register(OvsdbClientIdl::OVSDB_LOGICAL_SWITCH,
@@ -130,18 +157,18 @@ LogicalSwitchTable::~LogicalSwitchTable() {
 
 void LogicalSwitchTable::OvsdbNotify(OvsdbClientIdl::Op op,
         struct ovsdb_idl_row *row) {
+    const char *name = ovsdb_wrapper_logical_switch_name(row);
+    int64_t vxlan = ovsdb_wrapper_logical_switch_tunnel_key(row);
     if (op == OvsdbClientIdl::OVSDB_DEL) {
-        printf("Delete of Logical Switch %s, VxLAN %ld\n",
-                ovsdb_wrapper_logical_switch_name(row),
-                ovsdb_wrapper_logical_switch_tunnel_key(row));
-        LogicalSwitchEntry key(this, ovsdb_wrapper_logical_switch_name(row));
+        LogicalSwitchEntry key(this, name);
         NotifyDeleteOvsdb((OvsdbDBEntry*)&key);
+        key.vxlan_id_ = vxlan;
+        key.SendTrace(LogicalSwitchEntry::DEL_ACK);
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        printf("Add/Change of Logical Switch %s, Vxlan %ld\n",
-                ovsdb_wrapper_logical_switch_name(row),
-                ovsdb_wrapper_logical_switch_tunnel_key(row));
-        LogicalSwitchEntry key(this, ovsdb_wrapper_logical_switch_name(row));
+        LogicalSwitchEntry key(this, name);
         NotifyAddOvsdb((OvsdbDBEntry*)&key, row);
+        key.vxlan_id_ = vxlan;
+        key.SendTrace(LogicalSwitchEntry::ADD_ACK);
     } else {
         assert(0);
     }
@@ -202,17 +229,6 @@ void LogicalSwitchTable::OvsdbMcastRemoteMacNotify(OvsdbClientIdl::Op op,
                 entry->OvsdbChange();
             }
         }
-    } else {
-        assert(0);
-    }
-    if (op == OvsdbClientIdl::OVSDB_DEL) {
-        printf("Delete of Logical Switch %s, VxLAN %ld\n",
-                ovsdb_wrapper_logical_switch_name(row),
-                ovsdb_wrapper_logical_switch_tunnel_key(row));
-    } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        printf("Add/Change of Logical Switch %s, Vxlan %ld\n",
-                ovsdb_wrapper_logical_switch_name(row),
-                ovsdb_wrapper_logical_switch_tunnel_key(row));
     } else {
         assert(0);
     }
