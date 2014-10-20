@@ -14,10 +14,11 @@ using OVSDB::OvsdbClientTcp;
 using OVSDB::OvsdbClientTcpSession;
 using OVSDB::OvsdbClientTcpSessionReader;
 
-OvsdbClientTcp::OvsdbClientTcp(Agent *agent, TorAgentParam *params) :
-        TcpServer(agent->event_manager()), agent_(agent), session_(NULL),
-        server_ep_(IpAddress(params->tor_ip()), params->tor_port()),
-        tsn_ip_(params->tsn_ip()) {
+OvsdbClientTcp::OvsdbClientTcp(Agent *agent, TorAgentParam *params,
+        OvsPeerManager *manager) : TcpServer(agent->event_manager()),
+    OvsdbClient(manager), agent_(agent), session_(NULL),
+    server_ep_(IpAddress(params->tor_ip()), params->tor_port()),
+    tsn_ip_(params->tsn_ip()) {
 }
 
 OvsdbClientTcp::~OvsdbClientTcp() {
@@ -29,7 +30,8 @@ void OvsdbClientTcp::RegisterClients() {
 }
 
 TcpSession *OvsdbClientTcp::AllocSession(Socket *socket) {
-    TcpSession *session = new OvsdbClientTcpSession(agent_, this, socket);
+    TcpSession *session = new OvsdbClientTcpSession(agent_, peer_manager_,
+                                                    this, socket);
     session->set_observer(boost::bind(&OvsdbClientTcp::OnSessionEvent,
                                       this, _1, _2));
     return session;
@@ -82,8 +84,9 @@ void OvsdbClientTcp::AddSessionInfo(SandeshOvsdbClient &client){
     client.set_sessions(session_list);
 }
 
-OvsdbClientTcpSession::OvsdbClientTcpSession(Agent *agent, TcpServer *server,
-        Socket *sock, bool async_ready) : OvsdbClientSession(agent),
+OvsdbClientTcpSession::OvsdbClientTcpSession(Agent *agent,
+        OvsPeerManager *manager, TcpServer *server, Socket *sock,
+        bool async_ready) : OvsdbClientSession(agent, manager),
     TcpSession(server, sock, async_ready), status_("Init") {
     reader_ = new OvsdbClientTcpSessionReader(this, 
             boost::bind(&OvsdbClientTcpSession::RecvMsg, this, _1, _2));

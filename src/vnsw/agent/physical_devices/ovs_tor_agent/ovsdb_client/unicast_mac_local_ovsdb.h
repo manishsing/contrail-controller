@@ -2,39 +2,26 @@
  * Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
  */
 
-#ifndef __UNICAST_MAC_LOCAL_OVSDB_H__
-#define __UNICAST_MAC_LOCAL_OVSDB_H__
+#ifndef SRC_VNSW_AGENT_PHYSICAL_DEVICES_OVS_TOR_AGENT_OVSDB_CLIENT_OVSDB_ROUTE_H_
+#define SRC_VNSW_AGENT_PHYSICAL_DEVICES_OVS_TOR_AGENT_OVSDB_CLIENT_OVSDB_ROUTE_H_
 
-#include <ovsdb_object.h>
+#include <ovsdb_client_idl.h>
+class OvsPeer;
 
-class UnicastMacLocalTable : public OvsdbObject {
+namespace OVSDB {
+class UnicastMacLocalOvsdb {
 public:
-    UnicastMacLocalTable(OvsdbClientIdl *idl);
-    virtual ~UnicastMacLocalTable();
+    UnicastMacLocalOvsdb(OvsdbClientIdl *idl, OvsPeer *peer);
+    ~UnicastMacLocalOvsdb();
 
-    void Notify(OvsdbClientIdl::Op, struct ovsdb_idl_row *);
-    KSyncEntry *Alloc(const KSyncEntry *key, uint32_t index);
+    void Notify(OvsdbClientIdl::Op op, struct ovsdb_idl_row *row);
+
 private:
-    DISALLOW_COPY_AND_ASSIGN(UnicastMacLocalTable);
+    OvsdbClientIdl *client_idl_;
+    OvsPeer *peer_;
+    DISALLOW_COPY_AND_ASSIGN(UnicastMacLocalOvsdb);
+};
 };
 
-class UnicastMacLocalEntry : public OvsdbEntry {
-public:
-    UnicastMacLocalEntry(UnicastMacLocalTable *table,
-            struct ovsdb_idl_row *ovsdb_row, std::string mac,
-            std::string ip_addr, std::string ls_name);
-
-    bool IsLess(const KSyncEntry&) const;
-    std::string ToString() const {return "Unicast Mac Local";}
-    KSyncEntry* UnresolvedReference();
-private:
-    friend class UnicastMacLocalTable;
-    struct ovsdb_idl_row *ovsdb_row_;
-    std::string mac_;
-    std::string ip_addr_;
-    std::string ls_name_;
-    UnicastMacLocalTable *table_;
-};
-
-#endif //__UNICAST_MAC_LOCAL_OVSDB_H__
+#endif //SRC_VNSW_AGENT_PHYSICAL_DEVICES_OVS_TOR_AGENT_OVSDB_CLIENT_OVSDB_ROUTE_H_
 

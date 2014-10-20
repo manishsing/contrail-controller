@@ -17,6 +17,9 @@ do {\
     Ovsdb##obj::TraceMsg(OvsdbTraceBuf, __FILE__, __LINE__, __VA_ARGS__);\
 } while(false);
 
+class OvsPeer;
+class OvsPeerManager;
+
 namespace OVSDB {
 class OvsdbClientSession;
 class PhysicalSwitchTable;
@@ -24,7 +27,7 @@ class LogicalSwitchTable;
 class PhysicalPortTable;
 class VlanPortBindingTable;
 class PhysicalLocatorTable;
-class UnicastMacLocalTable;
+class UnicastMacLocalOvsdb;
 class OvsdbEntryBase;
 
 class OvsdbClientIdl {
@@ -50,7 +53,7 @@ public:
     typedef boost::function<void(OvsdbClientIdl::Op, struct ovsdb_idl_row *)> NotifyCB;
     typedef std::map<struct ovsdb_idl_txn *, OvsdbEntryBase *> PendingTxnMap;
 
-    OvsdbClientIdl(OvsdbClientSession *session, Agent *agent);
+    OvsdbClientIdl(OvsdbClientSession *session, Agent *agent, OvsPeerManager *manager);
     virtual ~OvsdbClientIdl();
 
     // Send request to start monitoring OVSDB server
@@ -68,6 +71,7 @@ public:
     // Get TOR Service Node IP
     Ip4Address tsn_ip();
 
+    OvsPeer *route_peer() {return route_peer_.get();}
     PhysicalSwitchTable *physical_switch_table() {return physical_switch_table_.get();}
     LogicalSwitchTable *logical_switch_table() {return logical_switch_table_.get();}
     PhysicalPortTable *physical_port_table() {return physical_port_table_.get();}
@@ -84,20 +88,22 @@ private:
     OvsdbClientSession *session_;
     NotifyCB callback_[OVSDB_TYPE_COUNT];
     PendingTxnMap pending_txn_;
+    std::auto_ptr<OvsPeer> route_peer_;
     std::auto_ptr<PhysicalSwitchTable> physical_switch_table_;
     std::auto_ptr<LogicalSwitchTable> logical_switch_table_;
     std::auto_ptr<PhysicalPortTable> physical_port_table_;
     std::auto_ptr<VlanPortBindingTable> vlan_port_table_;
+    std::auto_ptr<UnicastMacLocalOvsdb> unicast_mac_local_ovsdb_;
 #if 0 //TODO
     std::auto_ptr<PhysicalLocatorTable> physical_locator_table_;
-    std::auto_ptr<UnicastMacLocalTable> unicast_mac_local_table_;
 #endif
     DISALLOW_COPY_AND_ASSIGN(OvsdbClientIdl);
 };
 
 class OvsdbClientSession {
 public:
-    OvsdbClientSession(Agent *agent) : client_idl_(this, agent), agent_(agent) {}
+    OvsdbClientSession(Agent *agent, OvsPeerManager *manager) :
+        client_idl_(this, agent, manager), agent_(agent) {}
     virtual ~OvsdbClientSession() {}
 
     virtual Ip4Address tsn_ip() = 0;

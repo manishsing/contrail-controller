@@ -14,8 +14,9 @@ using OVSDB::OvsdbClient;
 void OvsdbClient::Init() {
 }
 
-OvsdbClient *OvsdbClient::Allocate(Agent *agent, TorAgentParam *params) {
-    return (new OvsdbClientTcp(agent, params));
+OvsdbClient *OvsdbClient::Allocate(Agent *agent, TorAgentParam *params,
+        OvsPeerManager *manager) {
+    return (new OvsdbClientTcp(agent, params, manager));
 }
 
 /////////////////////////////////////////////////////////////////////////////

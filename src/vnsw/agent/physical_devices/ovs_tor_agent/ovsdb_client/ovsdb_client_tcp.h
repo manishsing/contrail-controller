@@ -44,8 +44,8 @@ public:
         u_int8_t *buf;
         std::size_t len;
     };
-    OvsdbClientTcpSession(Agent *agent, TcpServer *server, Socket *sock,
-                        bool async_ready = true);
+    OvsdbClientTcpSession(Agent *agent, OvsPeerManager *manager,
+            TcpServer *server, Socket *sock, bool async_ready = true);
     ~OvsdbClientTcpSession();
 
     // Send message to OVSDB server
@@ -71,7 +71,8 @@ private:
 
 class OvsdbClientTcp : public TcpServer, public OvsdbClient {
 public:
-    OvsdbClientTcp(Agent *agent, TorAgentParam *params);
+    OvsdbClientTcp(Agent *agent, TorAgentParam *params,
+            OvsPeerManager *manager);
     virtual ~OvsdbClientTcp();
 
     virtual TcpSession *AllocSession(Socket *socket);
