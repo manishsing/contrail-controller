@@ -6,6 +6,7 @@ extern "C" {
 }
 #include <ovsdb_object.h>
 #include <ovsdb_entry.h>
+#include <ovsdb_types.h>
 
 using OVSDB::OvsdbEntry;
 using OVSDB::OvsdbDBEntry;
@@ -134,14 +135,14 @@ void OvsdbDBEntry::Ack(bool success) {
         // On Failure try again
         if (IsDelAckWaiting()) {
             //Delete();
-            printf("Delete Transaction failed for %s\n", ToString().c_str());
+            OVSDB_TRACE(Error, "Delete Transaction failed for " + ToString());
             object->NotifyEvent(this, KSyncEntry::DEL_ACK);
         } else if (IsAddChangeAckWaiting()) {
-            printf("Add Transaction failed for %s\n", ToString().c_str());
+            OVSDB_TRACE(Error, "Add Transaction failed for " + ToString());
             object->NotifyEvent(this, KSyncEntry::ADD_ACK);
             //Add();
         } else {
-            printf("Ovsdb Delete Transaction failed for %s\n", ToString().c_str());
+            OVSDB_TRACE(Error, "Ovsdb Delete Transaction failed for " + ToString());
             object->OvsdbNotify(OvsdbClientIdl::OVSDB_ADD, ovs_entry_);
             delete this;
             //Delete();

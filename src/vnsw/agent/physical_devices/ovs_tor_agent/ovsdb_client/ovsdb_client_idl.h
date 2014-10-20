@@ -28,6 +28,7 @@ class PhysicalPortTable;
 class VlanPortBindingTable;
 class PhysicalLocatorTable;
 class UnicastMacLocalOvsdb;
+class VrfOvsdbObject;
 class OvsdbEntryBase;
 
 class OvsdbClientIdl {
@@ -94,6 +95,7 @@ private:
     std::auto_ptr<PhysicalPortTable> physical_port_table_;
     std::auto_ptr<VlanPortBindingTable> vlan_port_table_;
     std::auto_ptr<UnicastMacLocalOvsdb> unicast_mac_local_ovsdb_;
+    std::auto_ptr<VrfOvsdbObject> vrf_ovsdb_;
 #if 0 //TODO
     std::auto_ptr<PhysicalLocatorTable> physical_locator_table_;
 #endif
