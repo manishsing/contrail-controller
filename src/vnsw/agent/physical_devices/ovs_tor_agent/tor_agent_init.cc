@@ -29,7 +29,7 @@
 
 #include <physical_devices/ovs_tor_agent/tor_agent_init.h>
 #include <physical_devices/ovs_tor_agent/tor_agent_param.h>
-#include <physical_devices/ovs_tor_agent/ovs_peer.h>
+#include <physical_devices/ovs_tor_agent/ovsdb_client/ovsdb_route_peer.h>
 #include <physical_devices/ovs_tor_agent/ovsdb_client/ovsdb_client.h>
 
 #include <string>
@@ -74,7 +74,7 @@ void TorAgentInit::FactoryInit() {
 }
 
 void TorAgentInit::CreatePeers() {
-    ovs_peer_manager_.reset(new OvsPeerManager());
+    ovs_peer_manager_.reset(new OvsPeerManager(agent()));
 }
 
 void TorAgentInit::CreateModules() {
