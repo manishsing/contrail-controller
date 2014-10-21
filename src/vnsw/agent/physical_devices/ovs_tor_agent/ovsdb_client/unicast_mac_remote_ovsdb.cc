@@ -7,6 +7,7 @@ extern "C" {
 };
 #include <logical_switch_ovsdb.h>
 #include <unicast_mac_remote_ovsdb.h>
+#include <physical_locator_ovsdb.h>
 
 #include <oper/vn.h>
 #include <oper/vrf.h>
@@ -62,8 +63,20 @@ void UnicastMacRemoteEntry::AddMsg(struct ovsdb_idl_txn *txn) {
         static_cast<LogicalSwitchEntry *>(l_table->GetReference(&key));
     logical_switch_ = logical_switch;
     if (ovs_entry_ == NULL && !dest_ip_.empty()) {
+        PhysicalLocatorTable *pl_table =
+            table_->client_idl()->physical_locator_table();
+        PhysicalLocatorEntry pl_key(pl_table, dest_ip_);
+        /*
+         * we don't take reference to physical locator, just use if locator
+         * is existing or we will create a new one.
+         */
+        PhysicalLocatorEntry *pl_entry =
+            static_cast<PhysicalLocatorEntry *>(pl_table->Find(&pl_key));
+        struct ovsdb_idl_row *pl_row = NULL;
+        if (pl_entry)
+            pl_row = pl_entry->ovs_entry();
         obvsdb_wrapper_add_ucast_mac_remote(txn, mac_.c_str(),
-                logical_switch->ovs_entry(), dest_ip_.c_str());
+                logical_switch->ovs_entry(), pl_row, dest_ip_.c_str());
         SendTrace(UnicastMacRemoteEntry::ADD_REQ);
     }
 }
@@ -74,8 +87,10 @@ void UnicastMacRemoteEntry::ChangeMsg(struct ovsdb_idl_txn *txn) {
 
 void UnicastMacRemoteEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
     logical_switch_ = NULL;
-    ovsdb_wrapper_delete_ucast_mac_remote(ovs_entry_);
-    SendTrace(UnicastMacRemoteEntry::DEL_REQ);
+    if (ovs_entry_) {
+        ovsdb_wrapper_delete_ucast_mac_remote(ovs_entry_);
+        SendTrace(UnicastMacRemoteEntry::DEL_REQ);
+    }
 }
 
 void UnicastMacRemoteEntry::OvsdbChange() {

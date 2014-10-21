@@ -31,6 +31,7 @@ public:
     bool Change();
     bool Delete();
 
+    struct ovsdb_idl_row *ovs_entry() {return ovs_entry_;}
     KSyncObject* GetObject();
     void Ack(bool success);
 protected:

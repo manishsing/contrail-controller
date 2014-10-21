@@ -25,6 +25,7 @@ class OvsdbClientSession;
 class PhysicalSwitchTable;
 class LogicalSwitchTable;
 class PhysicalPortTable;
+class PhysicalLocatorTable;
 class VlanPortBindingTable;
 class PhysicalLocatorTable;
 class UnicastMacLocalOvsdb;
@@ -72,10 +73,12 @@ public:
     // Get TOR Service Node IP
     Ip4Address tsn_ip();
 
-    OvsPeer *route_peer() {return route_peer_.get();}
-    PhysicalSwitchTable *physical_switch_table() {return physical_switch_table_.get();}
-    LogicalSwitchTable *logical_switch_table() {return logical_switch_table_.get();}
-    PhysicalPortTable *physical_port_table() {return physical_port_table_.get();}
+    OvsPeer *route_peer();
+    PhysicalSwitchTable *physical_switch_table();
+    LogicalSwitchTable *logical_switch_table();
+    PhysicalPortTable *physical_port_table();
+    PhysicalLocatorTable *physical_locator_table();
+
 private:
     friend void ovsdb_wrapper_idl_callback(void *, int, struct ovsdb_idl_row *);
     friend void ovsdb_wrapper_idl_txn_ack(void *, struct ovsdb_idl_txn *);
@@ -90,38 +93,13 @@ private:
     std::auto_ptr<PhysicalSwitchTable> physical_switch_table_;
     std::auto_ptr<LogicalSwitchTable> logical_switch_table_;
     std::auto_ptr<PhysicalPortTable> physical_port_table_;
+    std::auto_ptr<PhysicalLocatorTable> physical_locator_table_;
     std::auto_ptr<VlanPortBindingTable> vlan_port_table_;
     std::auto_ptr<UnicastMacLocalOvsdb> unicast_mac_local_ovsdb_;
     std::auto_ptr<VrfOvsdbObject> vrf_ovsdb_;
     DISALLOW_COPY_AND_ASSIGN(OvsdbClientIdl);
 };
+};  // namespace OVSDB
 
-class OvsdbClientSession {
-public:
-    OvsdbClientSession(Agent *agent, OvsPeerManager *manager) :
-        client_idl_(this, agent, manager), agent_(agent) {}
-    virtual ~OvsdbClientSession() {}
-
-    virtual Ip4Address tsn_ip() = 0;
-    virtual void SendMsg(u_int8_t *buf, std::size_t len) = 0;
-    void MessageProcess(const u_int8_t *buf, std::size_t len) {
-        client_idl_.MessageProcess(buf, len);
-    }
-
-    void OnEstablish() {
-        client_idl_.SendMointorReq();
-    }
-
-    void OnClose() {
-        assert(0);
-    }
-private:
-    friend class OvsdbClientIdl;
-    OvsdbClientIdl client_idl_;
-    Agent *agent_;
-    DISALLOW_COPY_AND_ASSIGN(OvsdbClientSession);
-};
-};
-
-#endif // SRC_VNSW_AGENT_PHYSICAL_DEVICES_OVS_TOR_AGENT_OVSDB_CLIENT_OVSDB_CLIENT_IDL_H_
+#endif  // SRC_VNSW_AGENT_PHYSICAL_DEVICES_OVS_TOR_AGENT_OVSDB_CLIENT_OVSDB_CLIENT_IDL_H_
 
