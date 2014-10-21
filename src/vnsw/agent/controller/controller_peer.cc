@@ -123,14 +123,32 @@ void AgentXmppChannel::ReceiveEvpnUpdate(XmlPugi *pugi) {
                 CONTROLLER_TRACE(Trace, GetBgpPeerName(), vrf_name,
                                  "EVPN Delete Node id:" + id);
 
-                char *mac_str =
-                    strtok_r(const_cast<char *>(id.c_str()), "-", &saveptr);
+                char buff[id.length() + 1];
+                uint16_t offset = 0;
+                strcpy(buff, id.c_str());
+
+                char *mac_str = strtok_r(buff + offset, "-", &saveptr);
                 uint32_t ethernet_tag = 0;
-                if (strlen(saveptr) != 0) {
+                if (mac_str) {
                     ethernet_tag = atoi(mac_str);
-                    mac_str = saveptr;
+                    offset += strlen(mac_str) + 1;
                 }
-                MacAddress mac(mac_str);
+
+                mac_str = strtok_r(buff + offset, ",", &saveptr);
+                if (mac_str == NULL) {
+                    CONTROLLER_TRACE(Trace, GetBgpPeerName(), vrf_name,
+                                     "Error parsing MAC from retract-id: " +id);
+                    continue;
+                }
+
+                boost::system::error_code ec;
+                MacAddress mac(mac_str, &ec);
+                if (ec) {
+                    CONTROLLER_TRACE(Trace, GetBgpPeerName(), vrf_name,
+                                     "Error decoding MAC from retract-id: "+id);
+                    continue;
+                }
+
                 if (mac == MacAddress::BroadcastMac()) {
                     //Deletes the peer path for all boradcast and
                     //traverses the subnet route in VRF to issue delete of peer
