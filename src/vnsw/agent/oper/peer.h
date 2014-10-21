@@ -24,6 +24,7 @@
 class AgentXmppChannel;
 class ControllerRouteWalker;
 class VrfTable;
+class AgentPath;
 
 class Peer {
 public:
@@ -43,7 +44,7 @@ public:
         OVS_PEER
     };
 
-    Peer(Type type, const std::string &name);
+    Peer(Type type, const std::string &name, bool controller_export);
     virtual ~Peer();
 
     bool IsLess(const Peer *rhs) const {
@@ -54,6 +55,10 @@ public:
         return Compare(rhs);
     }
     virtual bool Compare(const Peer *rhs) const {return false;}
+    // Should we export path from this peer to controller?
+    virtual bool export_to_controller() const {return export_to_controller_;}
+    virtual const Ip4Address *NexthopIp(Agent *agent,
+                                        const AgentPath *path) const;
 
     const std::string &GetName() const { return name_; }
     const Type GetType() const { return type_; }
@@ -61,6 +66,7 @@ public:
 private:
     Type type_;
     std::string name_;
+    bool export_to_controller_;
     DISALLOW_COPY_AND_ASSIGN(Peer);
 };
 
@@ -123,7 +129,7 @@ private:
 class LocalVmPortPeer : public Peer {
 public:
     LocalVmPortPeer(const std::string &name, uint64_t handle) :
-        Peer(Peer::LOCAL_VM_PORT_PEER, name), handle_(handle) {
+        Peer(Peer::LOCAL_VM_PORT_PEER, name, true), handle_(handle) {
     }
 
     virtual ~LocalVmPortPeer() { }
@@ -142,10 +148,11 @@ private:
 // ECMP peer
 class EcmpPeer : public Peer {
 public:
-    EcmpPeer() : Peer(Peer::ECMP_PEER, "ECMP") { }
+    EcmpPeer() : Peer(Peer::ECMP_PEER, "ECMP", true) { }
     virtual ~EcmpPeer() { }
 
     bool Compare(const Peer *rhs) const { return false; }
+    bool ExportToController() const {return true;}
 private:
     DISALLOW_COPY_AND_ASSIGN(EcmpPeer);
 };

@@ -959,7 +959,7 @@ public:
 
 class TestNhPeer : public Peer {
 public:
-    TestNhPeer() : Peer(BGP_PEER, "TestNH"), dummy_(0) { };
+    TestNhPeer() : Peer(BGP_PEER, "TestNH", false), dummy_(0) { };
     int dummy_;
 };
 
@@ -1498,7 +1498,7 @@ TEST_F(RouteTest, PathPreference_1) {
     CreateVmportEnv(input, 1);
     client->WaitForIdle();
 
-    Peer peer(Peer::LOCAL_VM_PORT_PEER, "test_peer");
+    Peer peer(Peer::LOCAL_VM_PORT_PEER, "test_peer", true);
     Ip4Address ip = Ip4Address::from_string("1.1.1.10");
     //Enqueue path change for non existent path
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);

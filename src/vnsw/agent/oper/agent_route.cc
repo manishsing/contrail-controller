@@ -520,6 +520,10 @@ AgentPath *AgentRoute::FindLocalVmPortPath() const {
         if (path->peer() == NULL) {
             continue;
         }
+        if (path->peer()->export_to_controller()) {
+            return const_cast<AgentPath *>(path);
+        }
+
         if (path->peer()->GetType() == Peer::ECMP_PEER ||
             path->peer()->GetType() == Peer::VGW_PEER ||
             path->peer()->GetType() == Peer::LOCAL_VM_PORT_PEER ||

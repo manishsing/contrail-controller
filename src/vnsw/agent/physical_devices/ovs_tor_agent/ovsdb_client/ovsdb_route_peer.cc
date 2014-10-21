@@ -4,9 +4,12 @@
 #include <physical_devices/ovs_tor_agent/ovsdb_client/ovsdb_route_peer.h>
 #include <physical_devices/ovs_tor_agent/ovsdb_client/ovsdb_route_data.h>
 
+#include <oper/nexthop.h>
+#include <oper/tunnel_nh.h>
+
 OvsPeer::OvsPeer(const IpAddress &peer_ip, uint64_t gen_id,
                  OvsPeerManager *peer_manager) :
-    Peer(Peer::OVS_PEER, "OVS-" + peer_ip.to_string()), peer_ip_(peer_ip),
+    Peer(Peer::OVS_PEER, "OVS-" + peer_ip.to_string(), true), peer_ip_(peer_ip),
     gen_id_(gen_id), peer_manager_(peer_manager) {
 }
 
@@ -50,6 +53,32 @@ bool OvsPeer::AddOvsRoute(const boost::uuids::uuid &vn_uuid,
     return true;
 }
 
+bool OvsPeer::DeleteOvsRoute(const boost::uuids::uuid &vn_uuid,
+                             const MacAddress &mac) {
+    Agent *agent = peer_manager_->agent();
+    VnEntry *vn = agent->vn_table()->Find(vn_uuid);
+    if (vn == NULL)
+        return false;
+
+    VrfEntry *vrf = vn->GetVrf();
+    if (vrf == NULL)
+        return false;
+
+    Layer2AgentRouteTable *table = static_cast<Layer2AgentRouteTable *>
+        (vrf->GetLayer2RouteTable());
+    table->DeleteReq(this, vrf->GetName(), mac, vn->vxlan_id()->vxlan_id(),
+                     new OvsdbRouteData(this));
+    return true;
+}
+
+const Ip4Address *OvsPeer::NexthopIp(Agent *agent,
+                                     const AgentPath *path) const {
+    const TunnelNH *nh = dynamic_cast<const TunnelNH *>(path->nexthop(agent));
+    if (nh == NULL)
+        return agent->router_ip_ptr();
+    return nh->GetDip();
+}
+
 OvsPeerManager::OvsPeerManager(Agent *agent) : gen_id_(0), agent_(agent) {
 }
 
@@ -70,4 +99,8 @@ void OvsPeerManager::Free(OvsPeer *peer) {
 
 Agent *OvsPeerManager::agent() const {
     return agent_;
+}
+
+uint32_t OvsPeerManager::Size() const {
+    return table_.size();
 }

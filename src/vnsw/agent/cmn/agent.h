@@ -363,6 +363,7 @@ public:
     }
 
     Ip4Address router_id() const {return router_id_;}
+    const Ip4Address *router_ip_ptr() const {return &router_id_;}
     void set_router_id(const Ip4Address &addr) {
         router_id_ = addr;
         set_router_id_configured(true);
