@@ -139,8 +139,8 @@ void OvsdbDBEntry::Ack(bool success) {
             object->NotifyEvent(this, KSyncEntry::DEL_ACK);
         } else if (IsAddChangeAckWaiting()) {
             OVSDB_TRACE(Error, "Add Transaction failed for " + ToString());
-            object->NotifyEvent(this, KSyncEntry::ADD_ACK);
-            //Add();
+            //object->NotifyEvent(this, KSyncEntry::ADD_ACK);
+            Add();
         } else {
             OVSDB_TRACE(Error, "Ovsdb Delete Transaction failed for " + ToString());
             object->OvsdbNotify(OvsdbClientIdl::OVSDB_ADD, ovs_entry_);

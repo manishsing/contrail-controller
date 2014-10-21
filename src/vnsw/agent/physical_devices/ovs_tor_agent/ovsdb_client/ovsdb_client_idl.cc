@@ -13,11 +13,13 @@ extern "C" {
 #include <oper/agent_sandesh.h>
 #include <ovsdb_types.h>
 #include <ovsdb_client_idl.h>
+#include <ovsdb_client_session.h>
 #include <ovsdb_route_peer.h>
 #include <ovsdb_entry.h>
 #include <physical_switch_ovsdb.h>
 #include <logical_switch_ovsdb.h>
 #include <physical_port_ovsdb.h>
+#include <physical_locator_ovsdb.h>
 #include <vlan_port_binding_ovsdb.h>
 #include <unicast_mac_local_ovsdb.h>
 #include <unicast_mac_remote_ovsdb.h>
@@ -36,6 +38,10 @@ class PhysicalDeviceVnTable;
 using OVSDB::OvsdbClientIdl;
 using OVSDB::OvsdbClientSession;
 using OVSDB::OvsdbEntryBase;
+using OVSDB::PhysicalSwitchTable;
+using OVSDB::LogicalSwitchTable;
+using OVSDB::PhysicalPortTable;
+using OVSDB::PhysicalLocatorTable;
 
 namespace OVSDB {
 void ovsdb_wrapper_idl_callback(void *idl_base, int op,
@@ -76,6 +82,7 @@ OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent,
     logical_switch_table_.reset(new LogicalSwitchTable(this,
                (DBTable *)agent->device_manager()->physical_device_vn_table()));
     physical_port_table_.reset(new PhysicalPortTable(this));
+    physical_locator_table_.reset(new PhysicalLocatorTable(this));
     vlan_port_table_.reset(new VlanPortBindingTable(this,
                 (DBTable *)agent->device_manager()->logical_port_table()));
     unicast_mac_local_ovsdb_.reset(new UnicastMacLocalOvsdb(this,
@@ -88,6 +95,7 @@ OvsdbClientIdl::~OvsdbClientIdl() {
 }
 
 void OvsdbClientIdl::SendMointorReq() {
+    OVSDB_TRACE(Trace, "Sending Monitor Request");
     SendJsonRpc(ovsdb_wrapper_idl_encode_monitor_request(idl_));
 }
 
@@ -146,5 +154,25 @@ void OvsdbClientIdl::DeleteTxn(struct ovsdb_idl_txn *txn) {
 
 Ip4Address OvsdbClientIdl::tsn_ip() {
     return session_->tsn_ip();
+}
+
+OvsPeer *OvsdbClientIdl::route_peer() {
+    return route_peer_.get();
+}
+
+PhysicalSwitchTable *OvsdbClientIdl::physical_switch_table() {
+    return physical_switch_table_.get();
+}
+
+LogicalSwitchTable *OvsdbClientIdl::logical_switch_table() {
+    return logical_switch_table_.get();
+}
+
+PhysicalPortTable *OvsdbClientIdl::physical_port_table() {
+    return physical_port_table_.get();
+}
+
+PhysicalLocatorTable *OvsdbClientIdl::physical_locator_table() {
+    return physical_locator_table_.get();
 }
 

@@ -14,6 +14,7 @@
 #include <agent_types.h>
 #include <ovsdb_client.h>
 #include <ovsdb_client_idl.h>
+#include <ovsdb_client_session.h>
 
 namespace OVSDB {
 class OvsdbClientTcpSessionReader : public TcpMessageReader {

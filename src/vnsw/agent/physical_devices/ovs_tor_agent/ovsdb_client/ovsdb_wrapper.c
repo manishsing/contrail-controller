@@ -351,7 +351,7 @@ ovsdb_wrapper_ucast_mac_local_dst_ip(struct ovsdb_idl_row *row)
 /* unicast mac remote */
 void
 obvsdb_wrapper_add_ucast_mac_remote(struct ovsdb_idl_txn *txn, const char *mac,
-        struct ovsdb_idl_row *ls, const char *dest_ip)
+        struct ovsdb_idl_row *ls, struct ovsdb_idl_row *pl, const char *dest_ip)
 {
     struct vteprec_ucast_macs_remote *ucast =
         vteprec_ucast_macs_remote_insert(txn);
@@ -359,9 +359,13 @@ obvsdb_wrapper_add_ucast_mac_remote(struct ovsdb_idl_txn *txn, const char *mac,
     struct vteprec_logical_switch *l_switch =
         ls? CONTAINER_OF(ls, struct vteprec_logical_switch, header_) : NULL;
     vteprec_ucast_macs_remote_set_logical_switch(ucast, l_switch);
-    struct vteprec_physical_locator *p = vteprec_physical_locator_insert(txn);
-    vteprec_physical_locator_set_dst_ip(p, dest_ip);
-    vteprec_physical_locator_set_encapsulation_type(p, "vxlan_over_ipv4");
+    struct vteprec_physical_locator *p =
+        pl ? CONTAINER_OF(pl, struct vteprec_physical_locator, header_) : NULL;
+    if (p == NULL) {
+        p = vteprec_physical_locator_insert(txn);
+        vteprec_physical_locator_set_dst_ip(p, dest_ip);
+        vteprec_physical_locator_set_encapsulation_type(p, "vxlan_over_ipv4");
+    }
     vteprec_ucast_macs_remote_set_locator(ucast, p);
 }
 
