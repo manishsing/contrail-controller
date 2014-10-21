@@ -1569,6 +1569,7 @@ bool AgentXmppChannel::ControllerSendV4V6UnicastRouteCommon(AgentRoute *route,
 }
 
 bool AgentXmppChannel::ControllerSendEvpnRouteCommon(AgentRoute *route,
+                                                     const Ip4Address *nh_ip,
                                                      std::string vn,
                                                      uint32_t label,
                                                      uint32_t tunnel_bmap,
@@ -1601,11 +1602,9 @@ bool AgentXmppChannel::ControllerSendEvpnRouteCommon(AgentRoute *route,
     item.entry.nlri.address = rstr.str();
     assert(item.entry.nlri.address != "0.0.0.0");
 
-    string rtr(agent_->router_id().to_string());
-
     autogen::EnetNextHopType nh;
     nh.af = Address::INET;
-    nh.address = rtr;
+    nh.address = nh_ip->to_string();
     nh.label = label;
 
     item.entry.nlri.ethernet_tag = 0;
@@ -1800,6 +1799,7 @@ bool AgentXmppChannel::ControllerSendMcastRouteCommon(AgentRoute *route,
 
 bool AgentXmppChannel::ControllerSendEvpnRouteAdd(AgentXmppChannel *peer,
                                                   AgentRoute *route,
+                                                  const Ip4Address *nh_ip,
                                                   std::string vn,
                                                   uint32_t label,
                                                   uint32_t tunnel_bmap) {
@@ -1809,6 +1809,7 @@ bool AgentXmppChannel::ControllerSendEvpnRouteAdd(AgentXmppChannel *peer,
                      route->vrf()->GetName(),
                      route->ToString(), true, label);
     return (peer->ControllerSendEvpnRouteCommon(route,
+                                                nh_ip,
                                                 vn,
                                                 label,
                                                 tunnel_bmap,
@@ -1825,7 +1826,9 @@ bool AgentXmppChannel::ControllerSendEvpnRouteDelete(AgentXmppChannel *peer,
     CONTROLLER_TRACE(RouteExport, peer->GetBgpPeerName(),
                      route->vrf()->GetName(),
                      route->ToString(), false, label);
+    Ip4Address nh_ip = Ip4Address(0);
     return (peer->ControllerSendEvpnRouteCommon(route,
+                                                &nh_ip,
                                                 vn,
                                                 label,
                                                 tunnel_bmap,
@@ -1834,6 +1837,7 @@ bool AgentXmppChannel::ControllerSendEvpnRouteDelete(AgentXmppChannel *peer,
 
 bool AgentXmppChannel::ControllerSendRouteAdd(AgentXmppChannel *peer,
                                               AgentRoute *route,
+                                              const Ip4Address *nexthop_ip,
                                               std::string vn,
                                               uint32_t label,
                                               TunnelType::TypeBmap bmap,
@@ -1858,7 +1862,7 @@ bool AgentXmppChannel::ControllerSendRouteAdd(AgentXmppChannel *peer,
                                                    type);
     }
     if (type == Agent::LAYER2) {
-        ret = peer->ControllerSendEvpnRouteCommon(route, vn,
+        ret = peer->ControllerSendEvpnRouteCommon(route, nexthop_ip, vn,
                                                   label, bmap, true);
     }
     return ret;
@@ -1892,7 +1896,8 @@ bool AgentXmppChannel::ControllerSendRouteDelete(AgentXmppChannel *peer,
                                                        type);
     }
     if (type == Agent::LAYER2) {
-        ret = peer->ControllerSendEvpnRouteCommon(route, vn,
+        Ip4Address nh_ip(0);
+        ret = peer->ControllerSendEvpnRouteCommon(route, &nh_ip, vn,
                                                   label, bmap, false);
     }
     return ret;

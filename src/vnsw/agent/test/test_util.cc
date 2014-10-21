@@ -425,7 +425,7 @@ VrfEntry *VrfGet(const char *name, bool ret_del) {
     VrfKey key(name);
     VrfEntry *vrf =
         static_cast<VrfEntry *>(agent->vrf_table()->Find(&key, ret_del));
-    if (ret_del == false && vrf->IsDeleted())
+    if (vrf && (ret_del == false && vrf->IsDeleted()))
         vrf = NULL;
 
     return vrf;

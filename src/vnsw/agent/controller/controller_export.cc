@@ -118,6 +118,8 @@ void RouteExport::UnicastNotify(AgentXmppChannel *bgp_xmpp_peer,
                                 DBTablePartBase *partition, DBEntryBase *e,
                                 Agent::RouteTableType type) {
     AgentRoute *route = static_cast<AgentRoute *>(e);
+    AgentRouteTable *table = static_cast<AgentRouteTable *>
+        (partition->parent());
     State *state = static_cast<State *>(route->GetState(partition->parent(),
                                                         id_));
     AgentPath *path = route->FindLocalVmPortPath();
@@ -171,7 +173,8 @@ void RouteExport::UnicastNotify(AgentXmppChannel *bgp_xmpp_peer,
             state->Update(path);
             state->exported_ = 
                 AgentXmppChannel::ControllerSendRouteAdd(bgp_xmpp_peer, 
-                        static_cast<AgentRoute * >(route), state->vn_, 
+                        static_cast<AgentRoute * >(route),
+                        path->NexthopIp(table->agent()), state->vn_,
                         state->label_, path->GetTunnelBmap(),
                         &path->sg_list(), type, state->path_preference_);
         }
@@ -216,6 +219,8 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
                                   DBTablePartBase *partition, 
                                   DBEntryBase *e) {
     AgentRoute *route = static_cast<AgentRoute *>(e);
+    AgentRouteTable *table = static_cast<AgentRouteTable *>
+        (partition->parent());
     State *state = static_cast<State *>(route->GetState(partition->parent(), id_));
     bool route_can_be_dissociated = RouteCanDissociate(route);
     const Agent *agent = bgp_xmpp_peer->agent();
@@ -301,11 +306,9 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
                         withdraw = true;
                 }
                 if (withdraw) {
-                    AgentXmppChannel::ControllerSendEvpnRouteDelete(bgp_xmpp_peer,
-                                                           route,
-                                                           state->vn_,
-                                                           withdraw_label,
-                                                           state->tunnel_type_);
+                    AgentXmppChannel::ControllerSendEvpnRouteDelete
+                        (bgp_xmpp_peer, route, state->vn_, withdraw_label,
+                         state->tunnel_type_);
                     state->evpn_exported_ = false;
                 }
             }
@@ -328,11 +331,11 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
                 state->vn_ = route->dest_vn_name();
                 if (associate) {
                     state->evpn_exported_ =
-                        AgentXmppChannel::ControllerSendEvpnRouteAdd(bgp_xmpp_peer,
-                                                        route,
-                                                        route->dest_vn_name(),
-                                                        state->label_,
-                                                        TunnelType::AllType());
+                        AgentXmppChannel::ControllerSendEvpnRouteAdd
+                        (bgp_xmpp_peer, route,
+                         active_path->NexthopIp(table->agent()),
+                         route->dest_vn_name(), state->label_,
+                         TunnelType::AllType());
                 } else {
                     state->evpn_exported_ =
                         AgentXmppChannel::ControllerSendEvpnRouteDelete(bgp_xmpp_peer,

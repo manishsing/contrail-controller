@@ -24,6 +24,10 @@ OvsdbRouteData::OvsdbRouteData(const Peer *peer, uint32_t vxlan_id,
     tor_vrf_(tor_vrf), router_id_(router_id), dest_vn_name_(dest_vn_name) {
 }
 
+OvsdbRouteData::OvsdbRouteData(const Peer *peer) :
+    AgentRouteData(false), peer_(peer), vxlan_id_() {
+}
+
 OvsdbRouteData::~OvsdbRouteData() {
 }
 

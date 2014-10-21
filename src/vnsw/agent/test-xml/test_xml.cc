@@ -137,6 +137,10 @@ void AgentUtXmlTest::AddValidateEntry(const std::string &name,
 AgentUtXmlTest::AgentUtXmlTestConfigCreateFn
 AgentUtXmlTest::GetConfigCreateFn(const std::string &name) {
     AgentUtXmlTestConfigFactory::iterator iter = config_factory_.find(name);
+    if (iter == config_factory_.end()) {
+        return AgentUtXmlTest::AgentUtXmlTestConfigCreateFn();
+    }
+
     return iter->second;
 }
 

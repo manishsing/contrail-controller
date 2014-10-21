@@ -39,3 +39,5 @@ libovsdbclient = env.Library('ovsdbclient',
                                  'unicast_mac_remote_ovsdb.cc',
                              ])
 env.Requires(libovsdbclient, '#/build/include/openvswitch/include')
+
+env.SConscript('test/SConscript', exports='AgentEnv', duplicate=0)

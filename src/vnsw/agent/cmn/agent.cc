@@ -329,15 +329,19 @@ void Agent::InitXenLinkLocalIntf() {
 
 void Agent::InitPeers() {
     // Create peer entries
-    local_peer_.reset(new Peer(Peer::LOCAL_PEER, LOCAL_PEER_NAME));
-    local_vm_peer_.reset(new Peer(Peer::LOCAL_VM_PEER, LOCAL_VM_PEER_NAME));
-    linklocal_peer_.reset(new Peer(Peer::LINKLOCAL_PEER, LINKLOCAL_PEER_NAME));
-    ecmp_peer_.reset(new Peer(Peer::ECMP_PEER, ECMP_PEER_NAME));
-    vgw_peer_.reset(new Peer(Peer::VGW_PEER, VGW_PEER_NAME));
-    multicast_peer_.reset(new Peer(Peer::MULTICAST_PEER, MULTICAST_PEER_NAME));
+    local_peer_.reset(new Peer(Peer::LOCAL_PEER, LOCAL_PEER_NAME, false));
+    local_vm_peer_.reset(new Peer(Peer::LOCAL_VM_PEER, LOCAL_VM_PEER_NAME,
+                                  false));
+    linklocal_peer_.reset(new Peer(Peer::LINKLOCAL_PEER, LINKLOCAL_PEER_NAME,
+                                   false));
+    ecmp_peer_.reset(new Peer(Peer::ECMP_PEER, ECMP_PEER_NAME, true));
+    vgw_peer_.reset(new Peer(Peer::VGW_PEER, VGW_PEER_NAME, true));
+    multicast_peer_.reset(new Peer(Peer::MULTICAST_PEER, MULTICAST_PEER_NAME,
+                                   false));
     multicast_tree_builder_peer_.reset(
                                  new Peer(Peer::MULTICAST_FABRIC_TREE_BUILDER,
-                                          MULTICAST_FABRIC_TREE_BUILDER_NAME));
+                                          MULTICAST_FABRIC_TREE_BUILDER_NAME,
+                                          false));
 }
 
 Agent::Agent() :

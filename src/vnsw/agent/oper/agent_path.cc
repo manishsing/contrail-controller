@@ -881,3 +881,11 @@ bool AgentPath::ChangeCompositeNH(Agent *agent,
     }
     return false;
 }
+
+const Ip4Address *AgentPath::NexthopIp(Agent *agent) const {
+    if (peer_ == NULL) {
+        return agent->router_ip_ptr();
+    }
+
+    return peer_->NexthopIp(agent, this);
+}
