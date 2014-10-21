@@ -88,11 +88,18 @@ bool UnicastMacRemoteEntry::Sync(DBEntry *db_entry) {
         static_cast<const Layer2RouteEntry *>(db_entry);
     std::string dest_ip;
     const NextHop *nh = entry->GetActiveNextHop();
+    /* 
+     * TOR Agent will not have any local VM so only tunnel nexthops
+     * are to be looked into
+     */
     if (nh && nh->GetType() == NextHop::TUNNEL) {
+        /*
+         * we don't care the about the tunnel type in nh and always program
+         * the entry to ovsdb expecting vrouter to always handle
+         * VxLAN encapsulation.
+         */
         const TunnelNH *tunnel = static_cast<const TunnelNH *>(nh);
-        if (tunnel->GetTunnelType().GetType() == TunnelType::VXLAN) {
-            dest_ip = tunnel->GetDip()->to_string();
-        }
+        dest_ip = tunnel->GetDip()->to_string();
     }
     bool change = false;
     if (dest_ip_ != dest_ip) {
