@@ -76,9 +76,6 @@ public:
     PhysicalSwitchTable *physical_switch_table() {return physical_switch_table_.get();}
     LogicalSwitchTable *logical_switch_table() {return logical_switch_table_.get();}
     PhysicalPortTable *physical_port_table() {return physical_port_table_.get();}
-#if 0 //TODO
-    PhysicalLocatorTable *physical_locator_table() {return physical_locator_table_.get();}
-#endif
 private:
     friend void ovsdb_wrapper_idl_callback(void *, int, struct ovsdb_idl_row *);
     friend void ovsdb_wrapper_idl_txn_ack(void *, struct ovsdb_idl_txn *);
@@ -96,9 +93,6 @@ private:
     std::auto_ptr<VlanPortBindingTable> vlan_port_table_;
     std::auto_ptr<UnicastMacLocalOvsdb> unicast_mac_local_ovsdb_;
     std::auto_ptr<VrfOvsdbObject> vrf_ovsdb_;
-#if 0 //TODO
-    std::auto_ptr<PhysicalLocatorTable> physical_locator_table_;
-#endif
     DISALLOW_COPY_AND_ASSIGN(OvsdbClientIdl);
 };
 

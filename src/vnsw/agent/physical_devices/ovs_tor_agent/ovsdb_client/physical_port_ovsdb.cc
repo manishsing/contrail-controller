@@ -7,6 +7,7 @@ extern "C" {
 };
 #include <logical_switch_ovsdb.h>
 #include <physical_port_ovsdb.h>
+#include <ovsdb_types.h>
 
 using OVSDB::PhysicalPortEntry;
 using OVSDB::PhysicalPortTable;
@@ -94,20 +95,19 @@ void PhysicalPortTable::Notify(OvsdbClientIdl::Op op,
     bool override_ovs = false;
     PhysicalPortEntry *entry = NULL;
     if (op == OvsdbClientIdl::OVSDB_DEL) {
-        printf("Delete of Physical Port %s\n",
-                ovsdb_wrapper_physical_port_name(row));
+        OVSDB_TRACE(Trace, "Delete of Physical Port " +
+                std::string(ovsdb_wrapper_physical_port_name(row)));
         PhysicalPortEntry key(this, ovsdb_wrapper_physical_port_name(row));
         entry = static_cast<PhysicalPortEntry *>(Find(&key));
         if (entry != NULL) {
-            // TODO trigger notify delete for bindings
             Delete(entry);
         }
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
         PhysicalPortEntry key(this, ovsdb_wrapper_physical_port_name(row));
         entry = static_cast<PhysicalPortEntry *>(Find(&key));
         if (entry == NULL) {
-            printf("Add/Change of Physical Port %s\n",
-                    ovsdb_wrapper_physical_port_name(row));
+            OVSDB_TRACE(Trace, "Add/Change of Physical Port " +
+                    std::string(ovsdb_wrapper_physical_port_name(row)));
             entry = static_cast<PhysicalPortEntry *>(Create(&key));
             entry->ovs_entry_ = row;
         }

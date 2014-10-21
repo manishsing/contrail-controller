@@ -15,6 +15,7 @@ extern "C" {
 #include <physical_devices/tables/physical_device.h>
 #include <physical_devices/tables/physical_device_vn.h>
 #include <physical_devices/tables/logical_port.h>
+#include <ovsdb_types.h>
 
 using OVSDB::OvsdbDBEntry;
 using OVSDB::VlanPortBindingEntry;
@@ -53,7 +54,12 @@ void VlanPortBindingEntry::AddMsg(struct ovsdb_idl_txn *txn) {
         logical_switch_ = l_table->GetReference(&ls_key);
         port->AddBinding(vlan_,
                 static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
+        OVSDB_TRACE(Trace, "Adding port vlan binding port " +
+                physical_port_name_ + " vlan " + integerToString(vlan_) +
+                " to Logical Switch " + logical_switch_name_);
     } else {
+        OVSDB_TRACE(Trace, "Deleting port vlan binding port " +
+                physical_port_name_ + " vlan " + integerToString(vlan_));
         port->DeleteBinding(vlan_, NULL);
     }
     port->Encode(txn);
@@ -62,6 +68,8 @@ void VlanPortBindingEntry::AddMsg(struct ovsdb_idl_txn *txn) {
 void VlanPortBindingEntry::ChangeMsg(struct ovsdb_idl_txn *txn) {
     PhysicalPortEntry *port =
         static_cast<PhysicalPortEntry *>(physical_port_.get());
+    OVSDB_TRACE(Trace, "Deleting port vlan binding port " +
+            physical_port_name_ + " vlan " + integerToString(vlan_));
     port->DeleteBinding(vlan_,
             static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
     logical_switch_ = NULL;
@@ -75,6 +83,8 @@ void VlanPortBindingEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
     }
     PhysicalPortEntry *port =
         static_cast<PhysicalPortEntry *>(physical_port_.get());
+    OVSDB_TRACE(Trace, "Deleting port vlan binding port " +
+            physical_port_name_ + " vlan " + integerToString(vlan_));
     port->DeleteBinding(vlan_,
             static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
     physical_port_ = NULL;
