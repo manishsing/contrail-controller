@@ -184,14 +184,14 @@ void LogicalSwitchTable::OvsdbMcastLocalMacNotify(OvsdbClientIdl::Op op,
         entry = static_cast<LogicalSwitchEntry *>(Find(&key));
     }
     if (op == OvsdbClientIdl::OVSDB_DEL) {
-        printf("Delete of local mcast mac %s, logical switch %s\n",
-                mac, ls ? ls : "");
+        OVSDB_TRACE(Trace, "Delete : Local Mcast MAC" + std::string(mac) +
+                ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
             entry->mcast_local_row_ = NULL;
         }
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        printf("Add of local mcast mac %s, logical switch %s\n",
-                mac, ls ? ls : "");
+        OVSDB_TRACE(Trace, "Add : Local Mcast MAC" + std::string(mac) +
+                ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
             entry->mcast_local_row_ = row;
         }
@@ -210,8 +210,8 @@ void LogicalSwitchTable::OvsdbMcastRemoteMacNotify(OvsdbClientIdl::Op op,
         entry = static_cast<LogicalSwitchEntry *>(Find(&key));
     }
     if (op == OvsdbClientIdl::OVSDB_DEL) {
-        printf("Delete of remote mcast mac %s, logical switch %s\n",
-                mac, ls ? ls : "");
+        OVSDB_TRACE(Trace, "Delete : Remote Mcast MAC" + std::string(mac) +
+                ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
             if (entry->old_mcast_remote_row_ == row)
                 entry->old_mcast_remote_row_ = NULL;
@@ -219,8 +219,8 @@ void LogicalSwitchTable::OvsdbMcastRemoteMacNotify(OvsdbClientIdl::Op op,
                 entry->mcast_remote_row_ = NULL;
         }
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        printf("Add of remote mcast mac %s, logical switch %s\n",
-                mac, ls ? ls : "");
+        OVSDB_TRACE(Trace, "Add : Remote Mcast MAC" + std::string(mac) +
+                ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
             entry->mcast_local_row_ = row;
             if (entry->mcast_remote_row_ != row) {

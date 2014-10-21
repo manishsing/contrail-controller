@@ -45,7 +45,9 @@ void UnicastMacLocalOvsdb::Notify(OvsdbClientIdl::Op op,
         dest = Ip4Address::from_string(dest_ip, err);
     }
     if (op == OvsdbClientIdl::OVSDB_DEL || delete_entry) {
-        //TODO delete function not available in ovs peer
+        OVSDB_TRACE(Trace, string("Deleting Route ") + string(mac_str) +
+                string(" VN uuid ") + string(ls_name));
+        peer_->DeleteOvsRoute(ls_uuid, mac);
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
         OVSDB_TRACE(Trace, string("Adding Route ") + string(mac_str) +
                 string(" VN uuid ") + string(ls_name) +
