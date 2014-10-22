@@ -134,13 +134,23 @@ void OvsdbDBEntry::Ack(bool success) {
     } else {
         // On Failure try again
         if (IsDelAckWaiting()) {
-            //Delete();
             OVSDB_TRACE(Error, "Delete Transaction failed for " + ToString());
-            object->NotifyEvent(this, KSyncEntry::DEL_ACK);
+            //object->NotifyEvent(this, KSyncEntry::DEL_ACK);
+            // if we are waiting to renew, dont retry delete.
+            if (GetState() != RENEW_WAIT) {
+                Delete();
+            } else {
+                object->NotifyEvent(this, KSyncEntry::DEL_ACK);
+            }
         } else if (IsAddChangeAckWaiting()) {
             OVSDB_TRACE(Error, "Add Transaction failed for " + ToString());
             //object->NotifyEvent(this, KSyncEntry::ADD_ACK);
-            Add();
+            // if we are waiting to delete, dont retry add.
+            if (GetState() != DEL_DEFER_SYNC) {
+                Add();
+            } else {
+                object->NotifyEvent(this, KSyncEntry::ADD_ACK);
+            }
         } else {
             OVSDB_TRACE(Error, "Ovsdb Delete Transaction failed for " + ToString());
             object->OvsdbNotify(OvsdbClientIdl::OVSDB_ADD, ovs_entry_);

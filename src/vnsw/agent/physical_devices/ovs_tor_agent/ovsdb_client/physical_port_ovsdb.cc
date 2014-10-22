@@ -68,8 +68,6 @@ void PhysicalPortEntry::DeleteBinding(int16_t vlan, LogicalSwitchEntry *ls) {
 }
 
 void PhysicalPortEntry::OverrideOvs() {
-    return;
-    //OvsdbDBObject *object = static_cast<OvsdbDBObject*>(GetObject());
     struct ovsdb_idl_txn *txn = table_->client_idl()->CreateTxn(this);
     Encode(txn);
     struct jsonrpc_msg *msg = ovsdb_wrapper_idl_txn_encode(txn);

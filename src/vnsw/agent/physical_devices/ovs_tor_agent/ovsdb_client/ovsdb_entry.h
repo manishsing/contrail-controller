@@ -56,6 +56,7 @@ public:
 
     virtual void OvsdbChange() {}
 
+    bool AllowDeleteStateComp() {return false;}
     virtual void NotifyAdd(struct ovsdb_idl_row *);
     virtual void NotifyDelete();
 
@@ -76,6 +77,7 @@ protected:
     OvsdbDBObject *table_;
     struct ovsdb_idl_row *ovs_entry_;
 private:
+    friend class OvsdbDBObject;
     DISALLOW_COPY_AND_ASSIGN(OvsdbDBEntry);
 };
 };

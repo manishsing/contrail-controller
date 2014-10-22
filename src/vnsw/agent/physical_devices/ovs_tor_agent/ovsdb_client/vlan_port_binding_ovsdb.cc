@@ -164,3 +164,15 @@ OvsdbDBEntry *VlanPortBindingTable::AllocOvsEntry(struct ovsdb_idl_row *row) {
     return NULL;
 }
 
+KSyncDBObject::DBFilterResp VlanPortBindingTable::DBEntryFilter(
+        const DBEntry *entry) {
+    const AGENT::VlanLogicalPortEntry *l_port =
+        static_cast<const AGENT::VlanLogicalPortEntry *>(entry);
+    if (l_port->physical_port() == NULL) {
+        // Since we need physical port name as key, ignore entry if physical
+        // port is not yet present.
+        return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.
+    }
+    return DBFilterAccept;
+}
+
