@@ -7,6 +7,7 @@ extern "C" {
 };
 #include <physical_switch_ovsdb.h>
 #include <logical_switch_ovsdb.h>
+#include <physical_locator_ovsdb.h>
 
 #include <oper/vn.h>
 #include <physical_devices/tables/physical_device.h>
@@ -50,8 +51,21 @@ void LogicalSwitchEntry::AddMsg(struct ovsdb_idl_txn *txn) {
                 vxlan_id_);
     /* Add remote multicast entry if not already present */
     if (mcast_remote_row_ == NULL) {
+        std::string dest_ip = table_->client_idl()->tsn_ip().to_string();
+        PhysicalLocatorTable *pl_table =
+            table_->client_idl()->physical_locator_table();
+        PhysicalLocatorEntry pl_key(pl_table, dest_ip);
+        /*
+         * we don't take reference to physical locator, just use if locator
+         * is existing or we will create a new one.
+         */
+        PhysicalLocatorEntry *pl_entry =
+            static_cast<PhysicalLocatorEntry *>(pl_table->Find(&pl_key));
+        struct ovsdb_idl_row *pl_row = NULL;
+        if (pl_entry)
+            pl_row = pl_entry->ovs_entry();
         ovsdb_wrapper_add_mcast_mac_remote(txn, NULL, "unknown-dst", row,
-                table_->client_idl()->tsn_ip().to_string().c_str());
+                pl_row, dest_ip.c_str());
     }
     if (old_mcast_remote_row_ != NULL) {
         ovsdb_wrapper_delete_mcast_mac_remote(old_mcast_remote_row_);
@@ -184,13 +198,13 @@ void LogicalSwitchTable::OvsdbMcastLocalMacNotify(OvsdbClientIdl::Op op,
         entry = static_cast<LogicalSwitchEntry *>(Find(&key));
     }
     if (op == OvsdbClientIdl::OVSDB_DEL) {
-        OVSDB_TRACE(Trace, "Delete : Local Mcast MAC" + std::string(mac) +
+        OVSDB_TRACE(Trace, "Delete : Local Mcast MAC " + std::string(mac) +
                 ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
             entry->mcast_local_row_ = NULL;
         }
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        OVSDB_TRACE(Trace, "Add : Local Mcast MAC" + std::string(mac) +
+        OVSDB_TRACE(Trace, "Add : Local Mcast MAC " + std::string(mac) +
                 ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
             entry->mcast_local_row_ = row;
@@ -210,7 +224,7 @@ void LogicalSwitchTable::OvsdbMcastRemoteMacNotify(OvsdbClientIdl::Op op,
         entry = static_cast<LogicalSwitchEntry *>(Find(&key));
     }
     if (op == OvsdbClientIdl::OVSDB_DEL) {
-        OVSDB_TRACE(Trace, "Delete : Remote Mcast MAC" + std::string(mac) +
+        OVSDB_TRACE(Trace, "Delete : Remote Mcast MAC " + std::string(mac) +
                 ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
             if (entry->old_mcast_remote_row_ == row)
@@ -219,7 +233,7 @@ void LogicalSwitchTable::OvsdbMcastRemoteMacNotify(OvsdbClientIdl::Op op,
                 entry->mcast_remote_row_ = NULL;
         }
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        OVSDB_TRACE(Trace, "Add : Remote Mcast MAC" + std::string(mac) +
+        OVSDB_TRACE(Trace, "Add : Remote Mcast MAC " + std::string(mac) +
                 ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
             entry->mcast_local_row_ = row;
