@@ -679,7 +679,9 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
     }
 
     data->sub_type_ = interface_sub_type;
-    data->vm_mac_ = cfg->mac_addresses().at(0);
+    if (cfg->mac_addresses().size()) {
+        data->vm_mac_ = cfg->mac_addresses().at(0);
+    }
 
     // Get DHCP enable flag from subnet
     if (vn_node && data->addr_.to_ulong()) {
