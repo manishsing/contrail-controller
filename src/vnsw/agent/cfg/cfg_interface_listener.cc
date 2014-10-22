@@ -33,7 +33,7 @@ void InterfaceCfgClient::Notify(DBTablePartBase *partition, DBEntryBase *e) {
 
     if (entry->IsDeleted()) {
         VmInterface::Delete(agent->interface_table(),
-                             entry->GetUuid());
+                             entry->GetUuid(), VmInterface::EXTERNAL);
     } else {
         uint16_t tx_vlan_id = VmInterface::kInvalidVlanId;
         uint16_t rx_vlan_id = VmInterface::kInvalidVlanId;
@@ -48,7 +48,8 @@ void InterfaceCfgClient::Notify(DBTablePartBase *partition, DBEntryBase *e) {
                          entry->GetUuid(), entry->GetIfname(),
                          entry->ip_addr().to_v4(), entry->GetMacAddr(),
                          entry->vm_name(), entry->vm_project_uuid(),
-                         tx_vlan_id, rx_vlan_id, port, entry->ip6_addr());
+                         tx_vlan_id, rx_vlan_id, port, entry->ip6_addr(),
+                         VmInterface::EXTERNAL);
         IFMapNode *node = UuidToIFNode(entry->GetUuid());
         if (node != NULL) {
             DBRequest req;

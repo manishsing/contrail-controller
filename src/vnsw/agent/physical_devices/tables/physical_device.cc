@@ -97,6 +97,11 @@ bool PhysicalDeviceEntry::Copy(const PhysicalDeviceData *data) {
         ret = true;
     }
 
+    if (management_ip_ != data->management_ip_) {
+        management_ip_ = data->management_ip_;
+        ret = true;
+    }
+
     ManagementProtocol proto = FromString(data->protocol_);
     if (protocol_ != proto) {
         protocol_ = proto;

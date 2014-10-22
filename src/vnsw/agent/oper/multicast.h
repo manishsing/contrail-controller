@@ -49,6 +49,7 @@ public:
         boost::system::error_code ec;
         src_address_ =  IpAddress::from_string("0.0.0.0", ec).to_v4();
         local_olist_.clear();
+        tor_olist_.clear();
     };     
     MulticastGroupObject(const std::string &vrf_name, 
                          const Ip4Address &grp_addr,
@@ -57,6 +58,7 @@ public:
         evpn_mpls_label_(0), vxlan_id_(0), layer2_forwarding_(true),
         peer_identifier_(0), deleted_(false) {
         local_olist_.clear();
+        tor_olist_.clear();
     };     
     virtual ~MulticastGroupObject() { };
 
@@ -105,6 +107,14 @@ public:
     int vxlan_id() const {return vxlan_id_;}
     void set_peer_identifier(uint64_t peer_id) {peer_identifier_ = peer_id;}
     uint64_t peer_identifier() {return peer_identifier_;}
+    void AddInTorList(const Ip4Address &ip_addr, uint32_t vxlan_id,
+                      uint32_t tunnel_bmap);
+    void DeleteFromTorList(const Ip4Address &ip_addr, uint32_t vxlan_id,
+                           uint32_t tunnel_bmap);
+    const OlistTunnelEntry *FindInTorList(const Ip4Address &ip_addr,
+                                     uint32_t vxlan_id,
+                                     uint32_t tunnel_bmap);
+    const TunnelOlist &tor_olist() const {return tor_olist_;}
 
 private:
 
@@ -118,6 +128,7 @@ private:
     uint64_t peer_identifier_;
     bool deleted_;
     std::list<uuid> local_olist_; /* UUID of local i/f */
+    TunnelOlist tor_olist_; 
 
     friend class MulticastHandler;
     DISALLOW_COPY_AND_ASSIGN(MulticastGroupObject);
@@ -129,6 +140,10 @@ public:
     static const uint32_t kMulticastTimeout = 5 * 60 * 1000;
     MulticastHandler(Agent *agent);
     virtual ~MulticastHandler() { }
+
+    MulticastGroupObject *CreateMulticastGroupObject(const string &vrf_name,
+                                                     const Ip4Address &ip_addr,
+                                                     const string &vn_name);
 
     /* Called by XMPP to add ctrl node sent olist and label */
     static void ModifyFabricMembers(const Peer *peer,
@@ -151,7 +166,13 @@ public:
                                  const TunnelOlist &olist,
                                  uint32_t ethernet_tag,
                                  uint64_t peer_identifier = 0);
-    //Registered for VN notification
+    static void ModifyTor(DBTablePartBase *partition, DBEntryBase *e);
+    void HandleTor(const VnEntry *vn); 
+    void WalkDone();
+    bool TorWalker(DBTablePartBase *partition, DBEntryBase *entry,
+                   const VnEntry *vn);
+
+        //Registered for VN notification
     static void ModifyVN(DBTablePartBase *partition, DBEntryBase *e);
     //Registered for VM notification
     static void ModifyVmInterface(DBTablePartBase *partition, DBEntryBase *e); 
@@ -179,7 +200,8 @@ public:
                            uint32_t vxlan_id,
                            const std::string &vn_name,
                            bool del_op,
-                           const ComponentNHKeyList &comp_nh_list);
+                           const ComponentNHKeyList &comp_nh_list,
+                           COMPOSITETYPE comp_type);
     void HandleIpam(const VnEntry *vn);
     void HandleFamilyConfig(const VnEntry *vn);
     void HandleVxLanChange(const VnEntry *vn);
@@ -197,6 +219,8 @@ public:
     void DeleteBroadcast(const Peer *peer,
                          const std::string &vrf_name,
                          uint32_t ethernet_tag);
+    void DeleteMulticastObject(const std::string &vrf_name,
+                               const Ip4Address &grp_addr);
 
     const Agent *agent() const {return agent_;}
     void Terminate();
@@ -206,8 +230,6 @@ private:
     void AddToMulticastObjList(MulticastGroupObject *obj) {
         multicast_obj_list_.insert(obj);
     };
-    void DeleteMulticastObject(const std::string &vrf_name,
-                               const Ip4Address &grp_addr);
     std::set<MulticastGroupObject *> &GetMulticastObjList() {
         return this->multicast_obj_list_;
     };
@@ -259,6 +281,7 @@ private:
 
     DBTable::ListenerId vn_listener_id_;
     DBTable::ListenerId interface_listener_id_;
+    DBTable::ListenerId physical_device_vn_listener_id_;;
     DISALLOW_COPY_AND_ASSIGN(MulticastHandler);
 };
 

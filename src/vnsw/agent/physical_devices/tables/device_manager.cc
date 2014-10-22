@@ -14,6 +14,7 @@
 #include <physical_devices/tables/physical_port.h>
 #include <physical_devices/tables/logical_port.h>
 #include <physical_devices/tables/physical_device_vn.h>
+#include <physical_devices/tsn/tsn_vrf_listener.h>
 
 using boost::assign::map_list_of;
 using boost::assign::list_of;
@@ -79,6 +80,9 @@ void PhysicalDeviceManager::RegisterDBClients() {
     physical_port_table_->RegisterDBClients(mgr);
     logical_port_table_->RegisterDBClients(mgr);
     physical_device_vn_table_->RegisterDBClients(mgr);
+    if (agent_->tsn_enabled()) {
+        tsn_vrf_listener_.reset(new TsnVrfListener(agent()));
+    }
 }
 
 void PhysicalDeviceManager::Init() {

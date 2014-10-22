@@ -121,7 +121,9 @@ bool VmTable::IFNodeToReq(IFMapNode *node, DBRequest &req){
     autogen::IdPermsType id_perms = cfg->id_perms();
     boost::uuids::uuid u;
     CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong, u);
+    string virtual_router_type = "none";
 
+    VmInterface::VmSync(agent()->interface_table(), node);
     VmKey *key = new VmKey(u);
     VmData *data = NULL;
     if (node->IsDeleted()) {

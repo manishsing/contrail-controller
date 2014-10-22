@@ -15,6 +15,7 @@
 #include <boost/array.hpp>
 
 #include <net/address.h>
+#include <net/mac_address.h>
 #include <oper/mirror_table.h>
 #include <oper/nexthop.h>
 #include <pkt/pkt_trace.h>
@@ -27,6 +28,7 @@
 #define DHCPV6_SERVER_PORT 547
 #define DHCPV6_CLIENT_PORT 546
 #define DNS_SERVER_PORT 53
+#define VXLAN_UDP_DEST_PORT 4789
 
 #define IPv4_ALEN           4
 #define ARP_TX_BUFF_LEN     128
@@ -89,6 +91,7 @@ struct AgentHdr {
         TRAP_ECMP_RESOLVE = AGENT_TRAP_ECMP_RESOLVE,
         TRAP_SOURCE_MISMATCH = AGENT_TRAP_SOURCE_MISMATCH,
         TRAP_HANDLE_DF = AGENT_TRAP_HANDLE_DF,
+        TRAP_TOR_CONTROL_PKT = AGENT_TRAP_TOR_CONTROL_PKT,
         INVALID = MAX_AGENT_HDR_COMMANDS
     };
 
@@ -222,6 +225,8 @@ public:
 
     PktHandler(Agent *, PktModule *pkt_module);
     virtual ~PktHandler();
+    void RegisterDBClients();
+    void Shutdown();
 
     void Register(PktModuleName type, RcvQueueFunc cb);
 
@@ -253,6 +258,10 @@ public:
 private:
     friend bool ::CallPktParse(PktInfo *pkt_info, uint8_t *ptr, int len);
 
+    typedef std::map<MacAddress, InterfaceConstRef> MacVmBindingMap;
+    typedef std::pair<MacAddress, InterfaceConstRef> MacVmBindingPair;
+
+    void InterfaceNotify(DBEntryBase *entry);
     uint8_t *ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
                            uint8_t *ptr);
     uint8_t *ParseUserPkt(PktInfo *pkt_info, Interface *intf,
@@ -261,12 +270,20 @@ private:
     int ParseMPLSoGRE(PktInfo *pkt_info, uint8_t *pkt);
     int ParseMPLSoUDP(PktInfo *pkt_info, uint8_t *pkt);
     bool IsDHCPPacket(PktInfo *pkt_info);
+    bool IsValidInterface(uint16_t ifindex, Interface **interface);
+    bool IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
+                            PktType::Type &pkt_type, uint8_t *pkt);
 
     // handlers for each module type
     boost::array<RcvQueueFunc, MAX_MODULES> enqueue_cb_;
 
     PktStats stats_;
     boost::array<PktTrace, MAX_MODULES> pkt_trace_;
+
+    // map of VM mac addresses to VM Interface, used in TOR services node
+    // to identify the VM based on incoming packet's mac address.
+    MacVmBindingMap mac_vm_binding_map_;
+    DBTableBase::ListenerId iid_;
 
     Agent *agent_;
     PktModule *pkt_module_;
