@@ -969,7 +969,7 @@ InetUnicastAgentRouteTable::AddSubnetBroadcastRoute(const Peer *peer,
 }
 
 void 
-InetUnicastAgentRouteTable::AddRemoteVmRouteReq(const Peer *peer,
+InetUnicastAgentRouteTable::AddRemoteVmRouteReq(const Peer *peer, 
                                                 const string &vm_vrf,
                                                 const IpAddress &vm_addr,
                                                 uint8_t plen,
