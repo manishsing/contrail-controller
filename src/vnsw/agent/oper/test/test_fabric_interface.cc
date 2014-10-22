@@ -108,7 +108,8 @@ static void CfgIntfSync(FabricInterfaceTest *t, int id, const char *cfg_name,
 }
 
 static void NovaDel(FabricInterfaceTest *t, int id) {
-    VmInterface::Delete(t->interface_table_, MakeUuid(id));
+    VmInterface::Delete(t->interface_table_, MakeUuid(id),
+                        VmInterface::CONFIG);
 }
 
 static void NovaIntfAdd(FabricInterfaceTest *t, int id, const char *name,
@@ -117,7 +118,7 @@ static void NovaIntfAdd(FabricInterfaceTest *t, int id, const char *name,
     VmInterface::Add(t->interface_table_, MakeUuid(id), name, ip.to_v4(), mac,
                      "", MakeUuid(kProjectUuid),
                      VmInterface::kInvalidVlanId, VmInterface::kInvalidVlanId,
-                     Agent::NullString(), Ip6Address());
+                     Agent::NullString(), Ip6Address(), VmInterface::CONFIG);
 }
 
 // Fabric port with IP Address 0.0.0.0. Needs dhcp_relay

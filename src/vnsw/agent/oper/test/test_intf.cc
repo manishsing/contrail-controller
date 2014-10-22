@@ -170,12 +170,12 @@ static void NovaIntfAdd(int id, const char *name, const char *addr,
                      MakeUuid(id), name, ip.to_v4(), mac, "",
                      MakeUuid(kProjectUuid),
                      VmInterface::kInvalidVlanId, VmInterface::kInvalidVlanId,
-                     Agent::NullString(), Ip6Address());
+                     Agent::NullString(), Ip6Address(), VmInterface::EXTERNAL);
 }
 
 static void NovaDel(int id) {
     VmInterface::Delete(Agent::GetInstance()->interface_table(),
-                        MakeUuid(id));
+                        MakeUuid(id), VmInterface::EXTERNAL);
 }
 
 static void FloatingIpAdd(VmInterface::FloatingIpList &list, const char *addr, 
