@@ -55,6 +55,7 @@ void PhysicalLocatorTable::OvsdbNotify(OvsdbClientIdl::Op op,
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
         if (entry == NULL) {
             entry = static_cast<PhysicalLocatorEntry *>(Create(&key));
+            entry->ovs_entry_ = row;
             OVSDB_TRACE(Trace, "Add received for Physical Locator " +
                     entry->dip_);
         }

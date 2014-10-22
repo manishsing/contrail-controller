@@ -93,7 +93,7 @@ ovsdb_wrapper_mcast_mac_local_physical_locator_set(struct ovsdb_idl_row *row);
 /* multicast mac remote */
 void ovsdb_wrapper_add_mcast_mac_remote(struct ovsdb_idl_txn *txn,
     struct ovsdb_idl_row *row, const char *mac, struct ovsdb_idl_row *ls,
-    const char *dst_ip);
+    struct ovsdb_idl_row *pl, const char *dst_ip);
 void ovsdb_wrapper_delete_mcast_mac_remote(struct ovsdb_idl_row *row);
 char *ovsdb_wrapper_mcast_mac_remote_mac(struct ovsdb_idl_row *row);
 char *
