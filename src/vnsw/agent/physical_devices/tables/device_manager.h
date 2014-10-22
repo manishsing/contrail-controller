@@ -14,6 +14,7 @@ class PhysicalPortTable;
 class LogicalPortTable;
 class PhysicalDeviceVnTable;
 }
+class TsnVrfListener;
 
 class PhysicalDeviceManager {
  public:
@@ -43,6 +44,7 @@ class PhysicalDeviceManager {
     AGENT::PhysicalPortTable *physical_port_table_;
     AGENT::LogicalPortTable *logical_port_table_;
     AGENT::PhysicalDeviceVnTable *physical_device_vn_table_;
+    std::auto_ptr<TsnVrfListener> tsn_vrf_listener_;
 
     DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceManager);
 };

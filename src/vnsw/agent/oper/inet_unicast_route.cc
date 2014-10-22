@@ -405,12 +405,26 @@ bool InetUnicastRouteEntry::EcmpDeletePath(AgentPath *path) {
 }
 
 bool InetUnicastRouteEntry::ReComputePathAdd(AgentPath *path) {
+    Agent *agent = 
+        (static_cast<InetUnicastAgentRouteTable *> (get_table()))->agent();
+    AgentPath *local_path = FindPath(agent->local_peer());
+    if (local_path && local_path->is_subnet_discard()) {
+        return ReComputeMulticastPaths(path, false);
+    }
+
     // ECMP path are managed by route module. Update ECMP path with
     // addition of new path
     return EcmpAddPath(path);
 }
 
 bool InetUnicastRouteEntry::ReComputePathDeletion(AgentPath *path) {
+    Agent *agent = 
+        (static_cast<InetUnicastAgentRouteTable *> (get_table()))->agent();
+    AgentPath *local_path = FindPath(agent->local_peer());
+    if (local_path && local_path->is_subnet_discard()) {
+        return ReComputeMulticastPaths(path, true);
+    }
+
     // ECMP path are managed by route module. Update ECMP path with
     // deletion of new path
     return EcmpDeletePath(path);

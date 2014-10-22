@@ -19,6 +19,7 @@
 #define ECMP_PEER_NAME "Ecmp"
 #define VGW_PEER_NAME "Vgw"
 #define MULTICAST_PEER_NAME "Multicast"
+#define MULTICAST_TOR_PEER_NAME "Multicast TOR"
 #define MULTICAST_FABRIC_TREE_BUILDER_NAME "MulticastTreeBuilder"
 
 class AgentXmppChannel;
@@ -41,7 +42,8 @@ public:
         NOVA_PEER,
         VGW_PEER,
         MULTICAST_FABRIC_TREE_BUILDER,
-        OVS_PEER
+        OVS_PEER,
+        MULTICAST_TOR_PEER
     };
 
     Peer(Type type, const std::string &name, bool controller_export);
