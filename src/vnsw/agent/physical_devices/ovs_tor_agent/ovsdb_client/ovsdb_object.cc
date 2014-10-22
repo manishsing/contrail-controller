@@ -40,6 +40,7 @@ void OvsdbDBObject::NotifyAddOvsdb(OvsdbDBEntry *key, struct ovsdb_idl_row *row)
     } else {
         //TODO trigger delete of this entry
         OvsdbDBEntry *del_entry = AllocOvsEntry(row);
+        del_entry->ovs_entry_ = row;
         Delete(del_entry);
         //del_entry->Delete();
         //delete del_entry;

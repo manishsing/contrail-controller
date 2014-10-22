@@ -160,6 +160,11 @@ void KSyncDBObject::UnregisterDb(DBTableBase *table) {
     table_ = NULL;
 }
 
+KSyncDBObject::DBFilterResp KSyncDBObject::DBEntryFilter(const DBEntry *entry) {
+    // Default accept all
+    return DBFilterAccept;
+}
+
 void KSyncDBObject::set_test_id(DBTableBase::ListenerId id) {
     test_id_ = id;
 }
@@ -193,8 +198,13 @@ void KSyncDBObject::Notify(DBTablePartBase *partition, DBEntryBase *e) {
     assert(table_ == table);
     DBState *state = entry->GetState(table, id_);
     KSyncDBEntry *ksync = static_cast<KSyncDBEntry *>(state);
+    DBFilterResp resp = DBFilterAccept;
 
-    if (entry->IsDeleted()) {
+    if (!entry->IsDeleted()) {
+        resp = DBEntryFilter(entry);
+    }
+
+    if (entry->IsDeleted() || resp == DBFilterDelete) {
         // We may get duplicate delete notification in 
         // case of db entry reuse
         // add -> change ->delete(Notify) -> change -> delete(Notify)
@@ -204,6 +214,10 @@ void KSyncDBObject::Notify(DBTablePartBase *partition, DBEntryBase *e) {
             NotifyEvent(ksync, KSyncEntry::DEL_REQ);
         }
     } else {
+        if (resp == DBFilterIgnore) {
+            // DB filter tells us to ignore this Add/Change.
+            return;
+        }
         bool need_sync = false;
         if (ksync == NULL) {
             KSyncEntry *key, *found;

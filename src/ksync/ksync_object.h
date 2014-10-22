@@ -156,6 +156,11 @@ private:
 // Special KSyncObject for DB client
 class KSyncDBObject : public KSyncObject {
 public:
+    enum DBFilterResp {
+        DBFilterAccept,  // Accept DB Entry Add/Change for processing
+        DBFilterIgnore,  // Ignore DB Entry Add/Change
+        DBFilterDelete  // Ignore DB Entry Add/Change and clear previous state
+    };
     // Create KSyncObject. DB Table will be registered later
     KSyncDBObject();
     KSyncDBObject(int max_index);
@@ -179,6 +184,8 @@ public:
     DBTableBase *GetDBTable() { return table_; }
     DBTableBase::ListenerId GetListenerId(DBTableBase *table);
 
+    // Function to filter DB Entries to be used.
+    virtual DBFilterResp DBEntryFilter(const DBEntry *entry);
     // Populate Key in KSyncEntry from DB Entry.
     // Used for lookup of KSyncEntry from DBEntry
     virtual KSyncEntry *DBToKSyncEntry(const DBEntry *entry) = 0;

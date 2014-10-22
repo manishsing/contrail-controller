@@ -192,7 +192,7 @@ void LogicalSwitchTable::OvsdbMcastLocalMacNotify(OvsdbClientIdl::Op op,
         struct ovsdb_idl_row *row) {
     const char *mac = ovsdb_wrapper_mcast_mac_local_mac(row);
     const char *ls = ovsdb_wrapper_mcast_mac_local_logical_switch(row);
-    LogicalSwitchEntry *entry;
+    LogicalSwitchEntry *entry = NULL;
     if (ls) {
         LogicalSwitchEntry key(this, ls);
         entry = static_cast<LogicalSwitchEntry *>(Find(&key));
@@ -236,11 +236,11 @@ void LogicalSwitchTable::OvsdbMcastRemoteMacNotify(OvsdbClientIdl::Op op,
         OVSDB_TRACE(Trace, "Add : Remote Mcast MAC " + std::string(mac) +
                 ", logical switch " + (ls ? std::string(ls) : ""));
         if (entry) {
-            entry->mcast_local_row_ = row;
             if (entry->mcast_remote_row_ != row) {
                 entry->old_mcast_remote_row_ = entry->mcast_remote_row_;
                 entry->mcast_remote_row_ = row;
-                entry->OvsdbChange();
+                if (entry->old_mcast_remote_row_ != NULL)
+                    entry->OvsdbChange();
             }
         }
     } else {
