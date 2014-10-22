@@ -375,6 +375,14 @@ public:
 
     AgentSignal *agent_signal() const { return agent_signal_.get(); }
 
+    const std::string &tsn_ip_1() const {
+        return tsn_ip_1_;
+    }
+
+    const std::string &tsn_ip_2() const {
+        return tsn_ip_2_;
+    }
+
     // TODO: Should they be moved under controller/dns/cfg?
 
     // Common XMPP Client for control-node and config clients
@@ -633,6 +641,7 @@ public:
     const Peer *ecmp_peer() const {return ecmp_peer_.get();}
     const Peer *vgw_peer() const {return vgw_peer_.get();}
     const Peer *multicast_peer() const {return multicast_peer_.get();}
+    const Peer *multicast_tor_peer() const {return multicast_tor_peer_.get();}
     const Peer *multicast_tree_builder_peer() const {
         return multicast_tree_builder_peer_.get();}
 
@@ -716,6 +725,9 @@ public:
 
     bool simulate_evpn_tor() const {return simulate_evpn_tor_;}
     void set_simulate_evpn_tor(bool mode) {simulate_evpn_tor_ = mode;}
+
+    bool tsn_enabled() const {return tsn_enabled_;}
+    void set_tsn_enabled(bool val) {tsn_enabled_ = val;}
 
     IFMapAgentParser *ifmap_parser() const {return ifmap_parser_;}
     void set_ifmap_parser(IFMapAgentParser *parser) {
@@ -834,6 +846,8 @@ private:
     Ip4Address gateway_id_;
     std::string xs_cfg_addr_;
     int8_t xs_idx_;
+    std::string tsn_ip_1_;
+    std::string tsn_ip_2_;
     std::string xs_addr_[MAX_XMPP_SERVERS];
     uint32_t xs_port_[MAX_XMPP_SERVERS];
     uint64_t xs_stime_[MAX_XMPP_SERVERS];
@@ -864,6 +878,7 @@ private:
     std::auto_ptr<Peer> ecmp_peer_;
     std::auto_ptr<Peer> vgw_peer_;
     std::auto_ptr<Peer> multicast_peer_;
+    std::auto_ptr<Peer> multicast_tor_peer_;
     std::auto_ptr<Peer> multicast_tree_builder_peer_;
 
     std::auto_ptr<AgentSignal> agent_signal_;
@@ -884,6 +899,7 @@ private:
     bool test_mode_;
     bool init_done_;
     bool simulate_evpn_tor_;
+    bool tsn_enabled_;
 
     // Flow information
     uint32_t flow_table_size_;

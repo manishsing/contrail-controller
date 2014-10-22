@@ -443,6 +443,12 @@ void AgentParam::ParseHeadlessMode() {
     }
 }
 
+void AgentParam::ParseTsnMode() {
+    if (!GetValueFromTree<bool>(enable_tsn_, "DEFAULT.tsn")) {
+        enable_tsn_ = false;
+    }
+}
+
 void AgentParam::ParseSimulateEvpnTor() {
     if (!GetValueFromTree<bool>(simulate_evpn_tor_,
                                 "DEFAULT.simulate_evpn_tor")) {
@@ -589,6 +595,11 @@ void AgentParam::ParseHeadlessModeArguments
     GetOptValue<bool>(var_map, headless_mode_, "DEFAULT.headless_mode");
 }
 
+void AgentParam::ParseTsnModeArguments
+    (const boost::program_options::variables_map &var_map) {
+    GetOptValue<bool>(var_map, enable_tsn_, "DEFAULT.tsn_mode");
+}
+
 void AgentParam::ParseServiceInstanceArguments
     (const boost::program_options::variables_map &var_map) {
     GetOptValue<string>(var_map, si_netns_command_, "SERVICE-INSTANCE.netns_command");
@@ -629,6 +640,7 @@ void AgentParam::InitFromConfig() {
 
     ParseCollector();
     ParseVirtualHost();
+    ParseServerList("TSN.server", &tsn_ip_1_, &tsn_ip_2_);
     ParseServerList("CONTROL-NODE.server", &xmpp_server_1_, &xmpp_server_2_);
     ParseServerList("DNS.server", &dns_server_1_, &dns_port_1_,
                     &dns_server_2_, &dns_port_2_);
@@ -641,6 +653,7 @@ void AgentParam::InitFromConfig() {
     ParseHeadlessMode();
     ParseSimulateEvpnTor();
     ParseServiceInstance();
+    ParseTsnMode();
     cout << "Config file <" << config_file_ << "> parsing completed.\n";
     return;
 }
@@ -648,6 +661,8 @@ void AgentParam::InitFromConfig() {
 void AgentParam::InitFromArguments() {
     ParseCollectorArguments(var_map_);
     ParseVirtualHostArguments(var_map_);
+    ParseServerListArguments(var_map_, tsn_ip_1_, tsn_ip_2_, 
+                             "CONTROL-NODE.server");
     ParseServerListArguments(var_map_, xmpp_server_1_, xmpp_server_2_, 
                              "CONTROL-NODE.server");
     ParseServerListArguments(var_map_, &dns_server_1_, &dns_port_1_,
@@ -659,6 +674,7 @@ void AgentParam::InitFromArguments() {
     ParseMetadataProxyArguments(var_map_);
     ParseHeadlessModeArguments(var_map_);
     ParseServiceInstanceArguments(var_map_);
+    ParseTsnModeArguments(var_map_);
     return;
 }
 
@@ -848,6 +864,10 @@ void AgentParam::LogConfig() const {
     LOG(DEBUG, "Vmware mode                 : Esxi_Neutron");
     }
     }
+
+    if (enable_tsn_) {
+    LOG(DEBUG, "TSN Agent mode              : Enabled");
+    }
 }
 
 void AgentParam::set_test_mode(bool mode) {
@@ -868,12 +888,15 @@ void AgentParam::ParseArguments(int argc, char *argv[]) {
 AgentParam::AgentParam(Agent *agent, bool enable_flow_options,
                        bool enable_vhost_options,
                        bool enable_hypervisor_options,
-                       bool enable_service_options) :
+                       bool enable_service_options,
+                       bool enable_tsn) :
         enable_flow_options_(enable_flow_options),
         enable_vhost_options_(enable_vhost_options),
         enable_hypervisor_options_(enable_hypervisor_options),
         enable_service_options_(enable_service_options),
-        vhost_(), eth_port_(), xmpp_instance_count_(), xmpp_server_1_(),
+        enable_tsn_(enable_tsn), tsn_ip_1_(), tsn_ip_2_(),
+        vhost_(), eth_port_(),
+        xmpp_instance_count_(), xmpp_server_1_(),
         xmpp_server_2_(), dns_server_1_(), dns_server_2_(),
         dns_port_1_(ContrailPorts::DnsServerPort()),
         dns_port_2_(ContrailPorts::DnsServerPort()),
@@ -924,6 +947,8 @@ AgentParam::AgentParam(Agent *agent, bool enable_flow_options,
          "Sandesh HTTP listener port")
         ("DEFAULT.tunnel_type", opt::value<string>()->default_value("MPLSoGRE"),
          "Tunnel Encapsulation type <MPLSoGRE|MPLSoUDP|VXLAN>")
+        ("DEFAULT.tsn_mode", opt::value<bool>(),
+         "Run compute-node in TSN mode")
         ("DISCOVERY.server", opt::value<string>(), 
          "IP address of discovery server")
         ("DISCOVERY.max_control_nodes", opt::value<uint16_t>(), 

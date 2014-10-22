@@ -534,6 +534,7 @@ bool VnTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
                            VnIpam(subnets.ipam_subnets[i].subnet.ip_prefix,
                                   subnets.ipam_subnets[i].subnet.ip_prefix_len,
                                   subnets.ipam_subnets[i].default_gateway,
+                                  subnets.ipam_subnets[i].dns_server_address,
                                   subnets.ipam_subnets[i].enable_dhcp, ipam_name,
                                   subnets.ipam_subnets[i].dhcp_option_list.dhcp_option,
                                   subnets.ipam_subnets[i].host_routes.route));
@@ -644,15 +645,15 @@ void VnTable::IpamVnSync(IFMapNode *node) {
     return;
 }
 
-void VnTable::UpdateSubnetGateway(const VnIpam &old_ipam, 
-                                  const VnIpam &new_ipam,
-                                  VnEntry *vn) {
+void VnTable::UpdateHostRoute(const IpAddress &old_address, 
+                              const IpAddress &new_address,
+                              VnEntry *vn) {
     VrfEntry *vrf = vn->GetVrf();
 
     if (vrf && (vrf->GetName() != Agent::GetInstance()->
                 linklocal_vrf_name())) {
-        AddHostRouteForGw(vn, new_ipam);
-        DelHostRouteForGw(vn, old_ipam);
+        AddHostRoute(vn, new_address);
+        DelHostRoute(vn, old_address);
     }
 }
 
@@ -681,13 +682,26 @@ bool VnTable::IpamChangeNotify(std::vector<VnIpam> &old_ipam,
             // no change in entry
             bool gateway_changed = ((*it_old).default_gw != 
                                     (*it_new).default_gw);
+            bool dns_changed = ((*it_old).dns_server != (*it_new).dns_server);
 
             if ((*it_old).installed) {
                 (*it_new).installed = true;
                 // VNIPAM comparator does not check for gateway.
                 // If gateway is changed then take appropriate actions.
+                IpAddress unspecified;
                 if (gateway_changed) {
-                    UpdateSubnetGateway((*it_old), (*it_new), vn);
+                    IpAddress &old_address = unspecified;
+                    // remove old entry only if it is not used as dns server
+                    if ((*it_old).default_gw != (*it_new).dns_server)
+                        old_address = (*it_old).default_gw;
+                    UpdateHostRoute(old_address, (*it_new).default_gw, vn);
+                }
+                if (dns_changed) {
+                    IpAddress &old_address = unspecified;
+                    // remove old entry only if it is not used as default gw
+                    if ((*it_old).dns_server != (*it_new).default_gw)
+                        old_address = (*it_old).dns_server;
+                    UpdateHostRoute(old_address, (*it_new).dns_server, vn);
                 }
             } else {
                 AddIPAMRoutes(vn, *it_new);
@@ -696,6 +710,9 @@ bool VnTable::IpamChangeNotify(std::vector<VnIpam> &old_ipam,
 
             if (gateway_changed) { 
                 (*it_old).default_gw = (*it_new).default_gw;
+            }
+            if (dns_changed) { 
+                (*it_old).dns_server = (*it_new).dns_server;
             }
 
             // update DHCP options
@@ -743,7 +760,9 @@ void VnTable::AddIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
         if (vrf->GetName() == Agent::GetInstance()->linklocal_vrf_name()) {
             return;
         }
-        AddHostRouteForGw(vn, ipam);
+        AddHostRoute(vn, ipam.default_gw);
+        if (ipam.dns_server != ipam.default_gw)
+            AddHostRoute(vn, ipam.dns_server);
         AddSubnetRoute(vn, ipam);
         ipam.installed = true;
     }
@@ -752,39 +771,41 @@ void VnTable::AddIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
 void VnTable::DelIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
     VrfEntry *vrf = vn->GetVrf();
     if (vrf && ipam.installed) {
-        DelHostRouteForGw(vn, ipam);
+        DelHostRoute(vn, ipam.default_gw);
+        if (ipam.dns_server != ipam.default_gw)
+            DelHostRoute(vn, ipam.dns_server);
         DelSubnetRoute(vn, ipam);
         ipam.installed = false;
     }
 }
 
 // Add receive route for default gw
-void VnTable::AddHostRouteForGw(VnEntry *vn, const VnIpam &ipam) {
+void VnTable::AddHostRoute(VnEntry *vn, const IpAddress &address) {
     VrfEntry *vrf = vn->GetVrf();
-    if (ipam.IsV4()) {
+    if (address.is_v4()) {
         static_cast<InetUnicastAgentRouteTable *>(vrf->
             GetInet4UnicastRouteTable())->AddHostRoute(vrf->GetName(),
-                ipam.default_gw.to_v4(), 32, vn->GetName());
-    } else if (ipam.IsV6()) {
+                address.to_v4(), 32, vn->GetName());
+    } else if (address.is_v6()) {
         static_cast<InetUnicastAgentRouteTable *>(vrf->
             GetInet6UnicastRouteTable())->AddHostRoute(vrf->GetName(),
-                ipam.default_gw.to_v6(), 128, vn->GetName());
+                address.to_v6(), 128, vn->GetName());
     }
 }
 
 // Del receive route for default gw
-void VnTable::DelHostRouteForGw(VnEntry *vn, const VnIpam &ipam) {
+void VnTable::DelHostRoute(VnEntry *vn, const IpAddress &address) {
     VrfEntry *vrf = vn->GetVrf();
-    if (ipam.IsV4()) {
+    if (address.is_v4()) {
         static_cast<InetUnicastAgentRouteTable *>
             (vrf->GetInet4UnicastRouteTable())->DeleteReq
             (Agent::GetInstance()->local_peer(), vrf->GetName(),
-             ipam.default_gw.to_v4(), 32, NULL);
-    } else if (ipam.IsV6()) {
+             address.to_v4(), 32, NULL);
+    } else if (address.is_v6()) {
         static_cast<InetUnicastAgentRouteTable *>
             (vrf->GetInet6UnicastRouteTable())->DeleteReq
             (Agent::GetInstance()->local_peer(), vrf->GetName(),
-             ipam.default_gw.to_v6(), 128, NULL);
+             address.to_v6(), 128, NULL);
     }
 }
 
@@ -858,6 +879,7 @@ bool VnEntry::DBEntrySandesh(Sandesh *sresp, std::string &name)  const {
             entry.set_gateway(vn_ipam[i].default_gw.to_string());
             entry.set_ipam_name(vn_ipam[i].ipam_name);
             entry.set_dhcp_enable(vn_ipam[i].dhcp_enable ? "true" : "false");
+            entry.set_dns_server(vn_ipam[i].dns_server.to_string());
             vn_subnet_sandesh_list.push_back(entry);
         } 
         data.set_ipam_data(vn_subnet_sandesh_list);
@@ -945,6 +967,8 @@ void VnEntry::SendObjectLog(AgentLogEvent::type event) const {
         sandesh_ipam.set_prefix_len(ipam.plen);
         sandesh_ipam.set_gateway_ip(ipam.default_gw.to_string());
         sandesh_ipam.set_ipam_name(ipam.ipam_name);
+        sandesh_ipam.set_dhcp_enable(ipam.dhcp_enable ? "true" : "false");
+        sandesh_ipam.set_dns_server(ipam.dns_server.to_string());
         ipam_list.push_back(sandesh_ipam);
         ++it;
     }

@@ -248,6 +248,7 @@ public:
     void FillTrace(RouteInfo &route, Trace event, const AgentPath *path);
     bool WaitForTraffic() const;
 protected:
+    bool ReComputeMulticastPaths(AgentPath *path, bool del);
     void SetVrf(VrfEntryRef vrf) { vrf_ = vrf; }
     void RemovePathInternal(AgentPath *path);
     void RemovePath(AgentPath *path);

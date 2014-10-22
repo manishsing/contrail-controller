@@ -58,6 +58,7 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     parent_(entry->parent_),
     policy_enabled_(entry->policy_enabled_),
     sub_type_(entry->sub_type_),
+    vm_sub_type_(entry->vm_sub_type_),
     type_(entry->type_),
     rx_vlan_id_(entry->rx_vlan_id_),
     tx_vlan_id_(entry->tx_vlan_id_),
@@ -89,6 +90,7 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     parent_(NULL),
     policy_enabled_(false),
     sub_type_(InetInterface::VHOST),
+    vm_sub_type_(VmInterface::NONE),
     type_(intf->type()),
     rx_vlan_id_(VmInterface::kInvalidVlanId),
     tx_vlan_id_(VmInterface::kInvalidVlanId),
@@ -113,6 +115,7 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
             InterfaceKSyncEntry tmp(ksync_obj_, vmitf->parent());
             parent_ = ksync_obj_->GetReference(&tmp);
         }
+        vm_sub_type_ = vmitf->sub_type();
     } else if (type_ == Interface::INET) {
         const InetInterface *inet_intf =
         static_cast<const InetInterface *>(intf);
@@ -169,6 +172,7 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
 
     if (intf->type() == Interface::VM_INTERFACE) {
         VmInterface *vm_port = static_cast<VmInterface *>(intf);
+        vm_sub_type_ = vm_port->sub_type();
         if (dhcp_enable_ != vm_port->dhcp_enable_config()) {
             dhcp_enable_ = vm_port->dhcp_enable_config();
             ret = true;
@@ -380,6 +384,10 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
     encoder.set_h_op(op);
     switch (type_) {
     case Interface::VM_INTERFACE: {
+        if (vm_sub_type_ == VmInterface::TOR)
+            return 0;            
+        if (l2_active_ == false)
+            return 0;
         if (dhcp_enable_) {
             flags |= VIF_FLAG_DHCP_ENABLED;
         }
@@ -415,6 +423,7 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
     case Interface::PHYSICAL: {
         encoder.set_vifr_type(VIF_TYPE_PHYSICAL);
         flags |= VIF_FLAG_L3_ENABLED;
+        flags |= VIF_FLAG_L2_ENABLED;
         if (!persistent_) {
             flags |= VIF_FLAG_VHOST_PHYS;
         }
@@ -444,6 +453,7 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             break;
         }
         flags |= VIF_FLAG_L3_ENABLED;
+        flags |= VIF_FLAG_L2_ENABLED;
         break;
     }
 
