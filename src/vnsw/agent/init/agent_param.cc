@@ -358,6 +358,9 @@ void AgentParam::ParseDefaultSection() {
     optional<string> opt_str;
     optional<unsigned int> opt_uint;
 
+    GetValueFromTree<string>(host_name_, "DEFAULT.hostname");
+    GetValueFromTree<string>(agent_name_, "DEFAULT.agent_name");
+
     if (!GetValueFromTree<uint16_t>(http_server_port_, 
                                     "DEFAULT.http_server_port")) {
         http_server_port_ = ContrailPorts::HttpPortAgent();
@@ -372,8 +375,6 @@ void AgentParam::ParseDefaultSection() {
         flow_cache_timeout_ = Agent::kDefaultFlowCacheTimeout;
     }
     
-    GetValueFromTree<string>(host_name_, "DEFAULT.hostname");
-
     if (!GetValueFromTree<string>(log_level_, "DEFAULT.log_level")) {
         log_level_ = "SYS_DEBUG";
     }
@@ -553,6 +554,7 @@ void AgentParam::ParseDefaultSectionArguments
     GetOptValue<uint16_t>(var_map, flow_cache_timeout_, 
                           "DEFAULT.flow_cache_timeout");
     GetOptValue<string>(var_map, host_name_, "DEFAULT.hostname");
+    GetOptValue<string>(var_map, agent_name_, "DEFAULT.agent_name");
     GetOptValue<uint16_t>(var_map, http_server_port_, 
                           "DEFAULT.http_server_port");
     GetOptValue<string>(var_map, log_category_, "DEFAULT.log_category");
@@ -615,6 +617,7 @@ void AgentParam::ParseServiceInstanceArguments
 void AgentParam::InitFromSystem() {
     boost::system::error_code error;
     host_name_ = boost::asio::ip::host_name(error);
+    agent_name_ = host_name_;
 
     struct stat fstat;
     if (stat("/proc/xen", &fstat) == 0) {

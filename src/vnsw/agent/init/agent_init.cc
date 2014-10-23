@@ -55,7 +55,7 @@ string AgentInit::ModuleName() {
 }
 
 string AgentInit::AgentName() {
-    return agent_param_->host_name();
+    return agent_param_->agent_name();
 }
 
 string AgentInit::InstanceId() {

@@ -1343,7 +1343,7 @@ void VmInterface::GetOsParams(Agent *agent) {
 
 // A VM Interface is L3 active under following conditions,
 // - If interface is deleted, it is inactive
-// - VM, VN, VRF are set
+// - VN, VRF are set
 // - For non-VMWARE hypervisors,
 //   The tap interface must be created. This is verified by os_index_
 // - MAC address set for the interface
@@ -1356,7 +1356,7 @@ bool VmInterface::IsActive()  const {
         return false;
     }
 
-    if ((vn_.get() == NULL) || (vm_.get() == NULL) || (vrf_.get() == NULL)) { 
+    if ((vn_.get() == NULL) || (vrf_.get() == NULL)) {
         return false;
     }
 
