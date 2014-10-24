@@ -303,6 +303,7 @@ bool VrfTable::OnChange(DBEntry *entry, const DBRequest *req) {
     VnEntry *vn = agent()->vn_table()->Find(data->vn_uuid_);
     if (vn != vrf->vn_.get()) {
         vrf->vn_.reset(vn);
+        return true;
     }
     return false;
 }
