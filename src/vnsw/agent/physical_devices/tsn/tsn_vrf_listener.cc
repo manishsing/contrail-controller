@@ -30,12 +30,14 @@ void TsnVrfListener::VrfNotify(DBEntryBase *entry) {
         return;
     }
 
-    std::string vn_name;
-    GetVnName(vrf, &vn_name);
-    Layer2AgentRouteTable::AddLayer2ReceiveRoute(agent_->local_peer(),
-                                                 vrf->GetName(), vn_name,
-                                                 address,
-                                                 "pkt0", true);
+    if (vrf->vn()) {
+        Layer2AgentRouteTable::AddLayer2ReceiveRoute(agent_->local_peer(),
+                                                     vrf->GetName(),
+                                                     vrf->vn()->GetName(),
+                                                     address,
+                                                     "pkt0", true);
+    }
+
     //Add TSN route
     boost::system::error_code ec;
     IpAddress tsn_addr =  IpAddress::from_string(agent_->tsn_ip_1(), ec).to_v4();
@@ -54,12 +56,4 @@ void TsnVrfListener::VrfNotify(DBEntryBase *entry) {
                                                     Agent::GetInstance()->fabric_vrf_name(),
                                                     tsn_addr, 32,
                                                     data);
-}
-
-// TODO: change this
-void TsnVrfListener::GetVnName(VrfEntry *vrf, std::string *vn_name) {
-    std::size_t pos = vrf->GetName().find_last_of(":");
-    if (pos == std::string::npos)
-        return;
-    *vn_name = vrf->GetName().substr(0, pos - 1);
 }
