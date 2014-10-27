@@ -173,7 +173,6 @@ void HandleTorRoute(const PhysicalDeviceVnEntry *device_vn,
     uint32_t vxlan_id = vn->GetVxLanId();
     boost::system::error_code ec;
     Ip4Address addr = physical_device->ip().to_v4();
-    addr =  IpAddress::from_string("34.34.34.34", ec).to_v4();
     MulticastGroupObject *obj = MulticastHandler::GetInstance()->
         FindFloodGroupObject(vn->GetVrf()->GetName());
     bool add_request = true;
