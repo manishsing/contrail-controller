@@ -61,6 +61,9 @@ void ovsdb_wrapper_idl_txn_ack(void *idl_base, struct ovsdb_idl_txn *txn) {
     client_idl->DeleteTxn(txn);
     if (!success) {
         OVSDB_TRACE(Error, "Transaction failed");
+        // we don't handle the case where txn fails, when entry is not present
+        // case of unicast_mac_remote entry.
+        assert(entry != NULL);
     }
     if (entry)
         entry->Ack(success);
@@ -69,7 +72,7 @@ void ovsdb_wrapper_idl_txn_ack(void *idl_base, struct ovsdb_idl_txn *txn) {
 
 OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent,
         OvsPeerManager *manager) : idl_(ovsdb_wrapper_idl_create()),
-    session_(session), pending_txn_() {
+    session_(session), agent_(agent), pending_txn_() {
     vtep_global_= ovsdb_wrapper_vteprec_global_first(idl_);
     ovsdb_wrapper_idl_set_callback(idl_, (void *)this,
             ovsdb_wrapper_idl_callback, ovsdb_wrapper_idl_txn_ack);

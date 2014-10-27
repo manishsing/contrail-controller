@@ -21,14 +21,25 @@ OvsdbObject::~OvsdbObject() {
 }
 
 OvsdbDBObject::OvsdbDBObject(OvsdbClientIdl *idl) : KSyncDBObject(),
-    client_idl_(idl) {
+    client_idl_(idl), walkid_(DBTableWalker::kInvalidWalkerId) {
 }
 
-OvsdbDBObject::OvsdbDBObject(OvsdbClientIdl *idl, DBTableBase *tbl) :
-    KSyncDBObject(tbl), client_idl_(idl) {
+OvsdbDBObject::OvsdbDBObject(OvsdbClientIdl *idl, DBTable *tbl) :
+    KSyncDBObject(tbl), client_idl_(idl),
+    walkid_(DBTableWalker::kInvalidWalkerId) {
+    DBTableWalker *walker = client_idl_->agent()->db()->GetWalker();
+    // Start a walker to get the entries which were already present,
+    // when we register to the DB Table
+    walkid_ = walker->WalkTable(tbl, NULL,
+            boost::bind(&OvsdbDBObject::DBWalkNotify, this, _1, _2),
+            boost::bind(&OvsdbDBObject::DBWalkDone, this, _1));
 }
 
 OvsdbDBObject::~OvsdbDBObject() {
+    if (walkid_ != DBTableWalker::kInvalidWalkerId) {
+        DBTableWalker *walker = client_idl_->agent()->db()->GetWalker();
+        walker->WalkCancel(walkid_);
+    }
 }
 
 void OvsdbDBObject::NotifyAddOvsdb(OvsdbDBEntry *key, struct ovsdb_idl_row *row) {
@@ -58,5 +69,14 @@ void OvsdbDBObject::NotifyDeleteOvsdb(OvsdbDBEntry *key) {
             NotifyEvent(entry, KSyncEntry::ADD_CHANGE_REQ);
         }
     }
+}
+
+bool OvsdbDBObject::DBWalkNotify(DBTablePartBase *part, DBEntryBase *entry) {
+    Notify(part, entry);
+    return true;
+}
+
+void OvsdbDBObject::DBWalkDone(DBTableBase *partition) {
+    walkid_ = DBTableWalker::kInvalidWalkerId;
 }
 

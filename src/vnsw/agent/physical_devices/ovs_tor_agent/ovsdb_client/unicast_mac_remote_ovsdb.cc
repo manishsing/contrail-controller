@@ -250,7 +250,15 @@ void VrfOvsdbObject::OvsdbRouteNotify(OvsdbClientIdl::Op op,
         return;
     LogicalSwitchMap::iterator it = logical_switch_map_.find(logical_switch);
     if (it == logical_switch_map_.end()) {
-        // TODO encode the row delete and send
+        // if we fail to find ksync object, encode and send delete.
+        struct ovsdb_idl_txn *txn = client_idl_->CreateTxn(NULL);
+        ovsdb_wrapper_delete_ucast_mac_remote(row);
+        struct jsonrpc_msg *msg = ovsdb_wrapper_idl_txn_encode(txn);
+        if (msg == NULL) {
+            client_idl_->DeleteTxn(txn);
+        } else {
+            client_idl_->SendJsonRpc(msg);
+        }
         return;
     }
     const char *dest_ip = ovsdb_wrapper_ucast_mac_remote_dst_ip(row);
