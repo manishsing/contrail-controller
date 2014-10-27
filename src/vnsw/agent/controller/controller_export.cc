@@ -272,6 +272,13 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
         return;
     }
 
+    // Dont register for multicast if vrouter is not present. If vrouter is
+    // not present, vhost interface will also be not present
+    if (route->GetTableType() == Agent::LAYER2 &&
+        agent->vhost_interface() == NULL) {
+        return;
+    }
+
     if (state == NULL) {
         state = new State();
         route->SetState(partition->parent(), id_, state);

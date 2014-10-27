@@ -230,6 +230,24 @@ static bool InterestedIPv6Protocol(uint8_t proto) {
 
     return false;
 }
+
+uint8_t *PktHandler::ParseEthernetHeader(PktInfo *pkt_info,
+                                         PktType::Type &pkt_type,
+                                         uint8_t *pkt) {
+    pkt_info->eth = (struct ether_header *) pkt;
+    pkt_info->ether_type = ntohs(pkt_info->eth->ether_type);
+
+    if (pkt_info->ether_type == ETHERTYPE_VLAN) {
+        pkt = ((uint8_t *)pkt_info->eth) + sizeof(struct ether_header) + 4;
+        uint16_t *tmp = ((uint16_t *)pkt) - 1;
+        pkt_info->ether_type = ntohs(*tmp);
+    } else {
+        pkt = ((uint8_t *)pkt_info->eth) + sizeof(struct ether_header);
+    }
+
+    return pkt;
+}
+
 uint8_t *PktHandler::ParseIpPacket(PktInfo *pkt_info,
                                    PktType::Type &pkt_type, uint8_t *pkt) {
     if (pkt_info->ether_type == ETHERTYPE_IP) {
@@ -373,16 +391,7 @@ int PktHandler::ParseMPLSoUDP(PktInfo *pkt_info, uint8_t *pkt) {
 uint8_t *PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
                                   PktType::Type &pkt_type, uint8_t *pkt) {
     // get to the actual packet header
-    pkt_info->eth = (struct ether_header *) pkt;
-    pkt_info->ether_type = ntohs(pkt_info->eth->ether_type);
-
-    if (pkt_info->ether_type == ETHERTYPE_VLAN) {
-        pkt = ((uint8_t *)pkt_info->eth) + sizeof(struct ether_header) + 4;
-        uint16_t *tmp = ((uint16_t *)pkt) - 1;
-        pkt_info->ether_type = ntohs(*tmp);
-    } else {
-        pkt = ((uint8_t *)pkt_info->eth) + sizeof(struct ether_header);
-    }
+    pkt = ParseEthernetHeader(pkt_info, pkt_type, pkt);
 
     // Parse payload
     if (pkt_info->ether_type == ETHERTYPE_ARP) {
@@ -515,16 +524,7 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
         pkt += 8;
 
         // get to the actual packet header
-        pkt_info->eth = (struct ether_header *) pkt;
-        pkt_info->ether_type = ntohs(pkt_info->eth->ether_type);
-
-        if (pkt_info->ether_type == ETHERTYPE_VLAN) {
-            pkt = ((uint8_t *)pkt_info->eth) + sizeof(struct ether_header) + 4;
-            uint16_t *tmp = ((uint16_t *)pkt) - 1;
-            pkt_info->ether_type = ntohs(*tmp);
-        } else {
-            pkt = ((uint8_t *)pkt_info->eth) + sizeof(struct ether_header);
-        }
+        pkt = ParseEthernetHeader(pkt_info, pkt_type, pkt);
 
         ether_addr addr;
         memcpy(addr.ether_addr_octet, pkt_info->eth->ether_shost, ETH_ALEN);
@@ -532,6 +532,13 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
         MacVmBindingMap::iterator it = mac_vm_binding_map_.find(address);
         if (it == mac_vm_binding_map_.end())
             return false;
+
+        // update agent_hdr to reflect the VM interface data
+        // cmd_param is set to physical interface id
+        pkt_info->agent_hdr.cmd = AgentHdr::TRAP_TOR_CONTROL_PKT;
+        pkt_info->agent_hdr.cmd_param = pkt_info->agent_hdr.ifindex;
+        pkt_info->agent_hdr.ifindex = it->second->id();
+        pkt_info->agent_hdr.vrf = it->second->vrf_id();
 
         // Parse payload
         if (pkt_info->ether_type == ETHERTYPE_ARP) {
@@ -550,13 +557,6 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
 
         // IP Packets
         pkt = ParseIpPacket(pkt_info, pkt_type, pkt);
-
-        // update agent_hdr to reflect the VM interface data
-        // cmd_param is set to physical interface id
-        pkt_info->agent_hdr.cmd = AgentHdr::TRAP_TOR_CONTROL_PKT;
-        pkt_info->agent_hdr.cmd_param = pkt_info->agent_hdr.ifindex;
-        pkt_info->agent_hdr.ifindex = it->second->id();
-        pkt_info->agent_hdr.vrf = it->second->vrf_id();
         return true;
     }
 

@@ -12,8 +12,6 @@ public:
     void VrfNotify(DBEntryBase *entry);
 
 private:
-    void GetVnName(VrfEntry *vrf, std::string *vn_name);
-
     Agent *agent_;
     DBTableBase::ListenerId vrf_table_listener_id_;
     DISALLOW_COPY_AND_ASSIGN(TsnVrfListener);

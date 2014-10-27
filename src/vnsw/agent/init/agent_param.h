@@ -75,6 +75,7 @@ public:
     const int xen_ll_plen() const { return xen_ll_.plen_; }
     const Ip4Address &xen_ll_gw() const { return xen_ll_.gw_; }
 
+    const std::string &agent_name() const { return agent_name_; }
     const std::string &eth_port() const { return eth_port_; }
     const Ip4Address &tsn_ip_1() const { return tsn_ip_1_; }
     const Ip4Address &tsn_ip_2() const { return tsn_ip_2_; }
@@ -245,6 +246,7 @@ private:
     Ip4Address tsn_ip_2_;
 
     PortInfo vhost_;
+    std::string agent_name_;
     std::string eth_port_;
     uint16_t xmpp_instance_count_;
     Ip4Address xmpp_server_1_;
@@ -264,7 +266,7 @@ private:
     uint16_t linklocal_vm_flows_;
     uint16_t flow_cache_timeout_;
 
-    // Parameters configured from command linke arguments only (for now)
+    // Parameters configured from command line arguments only (for now)
     std::string config_file_;
     std::string program_name_;
     std::string log_file_;

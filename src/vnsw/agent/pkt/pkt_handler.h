@@ -262,6 +262,8 @@ private:
     typedef std::pair<MacAddress, InterfaceConstRef> MacVmBindingPair;
 
     void InterfaceNotify(DBEntryBase *entry);
+    uint8_t *ParseEthernetHeader(PktInfo *pkt_info,
+                                 PktType::Type &pkt_type, uint8_t *pkt);
     uint8_t *ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
                            uint8_t *ptr);
     uint8_t *ParseUserPkt(PktInfo *pkt_info, Interface *intf,
