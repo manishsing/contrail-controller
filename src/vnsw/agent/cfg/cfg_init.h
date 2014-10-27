@@ -57,6 +57,10 @@ public:
         return cfg_service_template_table_;
     }
 
+    IFMapAgentTable *cfg_subnet_table() const {
+        return cfg_subnet_table_;
+    }
+
     Agent *agent() const { return agent_; }
     CfgFilter *cfg_filter() const { return cfg_filter_.get(); }
     CfgListener *cfg_listener() const { return cfg_listener_.get(); }
@@ -108,6 +112,7 @@ private:
     IFMapAgentTable *cfg_vm_port_vrf_table_;
     IFMapAgentTable *cfg_route_table_;
     IFMapAgentTable *cfg_service_template_table_;
+    IFMapAgentTable *cfg_subnet_table_;
 
     DISALLOW_COPY_AND_ASSIGN(AgentConfig);
 };

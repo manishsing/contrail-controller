@@ -54,7 +54,8 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid) :
     oper_dhcp_options_(),
     sg_list_(), floating_ip_list_(), service_vlan_list_(), static_route_list_(),
     allowed_address_pair_list_(), vrf_assign_rule_list_(),
-    vrf_assign_acl_(NULL), vm_ip_gw_addr_(0), vm_ip6_gw_addr_() {
+    vrf_assign_acl_(NULL), vm_ip_gw_addr_(0), vm_ip6_gw_addr_(),
+    subnet_(0), subnet_plen_(0) {
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
@@ -79,7 +80,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     parent_(parent), oper_dhcp_options_(),
     sg_list_(), floating_ip_list_(), service_vlan_list_(), static_route_list_(),
     allowed_address_pair_list_(), vrf_assign_rule_list_(),
-    vrf_assign_acl_(NULL) {
+    vrf_assign_acl_(NULL), subnet_(0), subnet_plen_(0) {
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
@@ -271,6 +272,19 @@ static void BuildStaticRouteList(VmInterfaceConfigData *data, IFMapNode *node) {
                 (VmInterface::StaticRoute(data->vrf_name_, ip, plen));
 
         }
+    }
+}
+
+static void BuildResolveRoute(VmInterfaceConfigData *data, IFMapNode *node) {
+    Subnet *entry = 
+        static_cast<Subnet *>(node->GetObject());
+    assert(entry);
+    Ip4Address ip;
+    boost::system::error_code ec;
+    ip = Ip4Address::from_string(entry->ip_prefix().ip_prefix, ec);
+    if (ec.value() == 0) {
+        data->subnet_ = ip;
+        data->subnet_plen_ = entry->ip_prefix().ip_prefix_len;
     }
 }
 
@@ -483,6 +497,32 @@ static void ReadDhcpEnable(Agent *agent, VmInterfaceConfigData *data,
     }
 }
 
+static bool
+AddPhysicalInterface(Agent *agent, IFMapNode *node) {
+    bool ret = false;
+
+    IFMapNode *physical_node = agent->cfg_listener()->
+        FindAdjacentIFMapNode(agent, node, "physical-router");
+    if (!physical_node) {
+        return ret;
+    }
+
+    autogen::PhysicalRouter *physical_router =
+        static_cast <autogen::PhysicalRouter *>(physical_node->GetObject());
+    if (physical_router->display_name() == agent->host_name()) {
+        autogen::PhysicalInterface *physical_interface =
+            static_cast <autogen::PhysicalInterface *>(node->GetObject());
+        InterfaceTable *intf_table = agent->interface_table();
+        ::PhysicalInterface::Create(intf_table,
+                physical_interface->display_name(),
+                agent->fabric_vrf_name(),
+                true);
+        ret = true;
+    }
+
+    return ret;
+}
+
 // Virtual Machine Interface is added or deleted into oper DB from Nova 
 // messages. The Config notify is used only to change interface.
 bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
@@ -626,6 +666,32 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
         if (adj_node->table() == agent_->cfg()->cfg_route_table()) {
             BuildStaticRouteList(data, adj_node);
         }
+
+        if (adj_node->table() == agent_->cfg()->cfg_subnet_table()) {
+            BuildResolveRoute(data, adj_node);
+        }
+    }
+
+    //Read parent interface name if any
+    IFMapNode *logical_node = agent_->cfg_listener()->
+                              FindAdjacentIFMapNode(agent_, node, 
+                                                     "logical-interface");
+    if (logical_node) {
+        IFMapNode *physical_node = agent_->cfg_listener()->
+            FindAdjacentIFMapNode(agent_, logical_node, "physical-interface");
+        //Add physical interface
+        if (AddPhysicalInterface(agent_, physical_node)) {
+            autogen::PhysicalInterface *physical_interface =
+                static_cast <autogen::PhysicalInterface *>(
+                        physical_node->GetObject());
+            data->parent_interface_ = physical_interface->display_name();
+        }
+    }
+
+    if (data->addr_.to_string() == "1.1.1.2") {
+        boost::system::error_code ec;
+        data->subnet_ = Ip4Address::from_string("1.1.1.0", ec);
+        data->subnet_plen_ = 24;
     }
 
     // Get DHCP enable flag from subnet
@@ -760,6 +826,8 @@ bool VmInterface::Resync(VmInterfaceData *data) {
     bool sg_changed = false;
     bool ecmp_changed = false;
     bool local_pref_changed = false;
+    Ip4Address old_subnet = subnet_;
+    uint8_t  old_subnet_plen = subnet_plen_;
 
     if (data) {
         if (data->type_ == VmInterfaceData::CONFIG) {
@@ -808,7 +876,7 @@ bool VmInterface::Resync(VmInterfaceData *data) {
     ApplyConfig(old_ipv4_active, old_l2_active, old_policy, old_vrf.get(), 
                 old_addr, old_vxlan_id, old_need_linklocal_ip, sg_changed,
                 old_ipv6_active, old_v6_addr, ecmp_changed,
-                local_pref_changed);
+                local_pref_changed, old_subnet, old_subnet_plen);
 
     return ret;
 }
@@ -970,6 +1038,11 @@ bool VmInterface::CopyConfig(VmInterfaceConfigData *data, bool *sg_changed,
         ret = true;
     }
 
+    if (subnet_ != data->subnet_ || subnet_plen_ != data->subnet_plen_) {
+        subnet_ = data->subnet_;
+        subnet_plen_ = data->subnet_plen_;
+    }
+
     // Copy DHCP options; ret is not modified as there is no dependent action
     oper_dhcp_options_ = data->oper_dhcp_options_;
 
@@ -1035,6 +1108,13 @@ bool VmInterface::CopyConfig(VmInterfaceConfigData *data, bool *sg_changed,
         ecmp_ = data->ecmp_;
         *ecmp_changed = true;
     }
+
+    if (data->parent_interface_ != Agent::NullString()) {
+        PhysicalInterfaceKey key(data->parent_interface_);
+        parent_ = static_cast<Interface *>
+            (table->agent()->interface_table()->FindActiveEntry(&key));
+        assert(parent_ != NULL);
+    }
     return ret;
 }
 
@@ -1042,7 +1122,9 @@ void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
                            const Ip4Address &old_addr, int old_vxlan_id,
                            bool force_update, bool policy_change,
                            bool old_ipv6_active, 
-                           const Ip6Address &old_v6_addr) {
+                           const Ip6Address &old_v6_addr,
+                           const Ip4Address &old_subnet,
+                           const uint8_t old_subnet_plen) {
     UpdateSecurityGroup();
     UpdateL3NextHop(old_ipv4_active, old_ipv6_active);
     UpdateL3TunnelId(force_update, policy_change);
@@ -1054,6 +1136,8 @@ void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
         UpdateServiceVlan(force_update, policy_change);
         UpdateAllowedAddressPair(force_update, policy_change);
         UpdateVrfAssignRule();
+        UpdateResolveRoute(old_ipv4_active, force_update, policy_change, 
+                           old_vrf, old_subnet, old_subnet_plen);
     }
     if (ipv6_active_) {
         UpdateIpv6InterfaceRoute(old_ipv6_active, force_update, policy_change,
@@ -1065,7 +1149,9 @@ void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
 void VmInterface::DeleteL3(bool old_ipv4_active, VrfEntry *old_vrf,
                            const Ip4Address &old_addr,
                            bool old_need_linklocal_ip, bool old_ipv6_active,
-                           const Ip6Address &old_v6_addr) {
+                           const Ip6Address &old_v6_addr,
+                           const Ip4Address &old_subnet,
+                           const uint8_t old_subnet_plen) {
     if (old_ipv4_active) {
         DeleteIpv4InterfaceRoute(old_vrf, old_addr);
     }
@@ -1081,6 +1167,7 @@ void VmInterface::DeleteL3(bool old_ipv4_active, VrfEntry *old_vrf,
     DeleteL3TunnelId();
     DeleteVrfAssignRule();
     DeleteL3NextHop(old_ipv4_active, old_ipv6_active);
+    DeleteResolveRoute(old_vrf, old_subnet, old_subnet_plen);
 }
 
 void VmInterface::UpdateVxLan() {
@@ -1117,7 +1204,9 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old
                               int old_vxlan_id, bool old_need_linklocal_ip,
                               bool sg_changed, bool old_ipv6_active, 
                               const Ip6Address &old_v6_addr, bool ecmp_mode_changed,
-                              bool local_pref_changed) {
+                              bool local_pref_changed,
+                              const Ip4Address &old_subnet,
+                              uint8_t old_subnet_plen) {
     bool force_update = false;
     if (sg_changed || ecmp_mode_changed | local_pref_changed) {
         force_update = true;
@@ -1142,10 +1231,12 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old
     // Add/Del/Update L3 
     if ((ipv4_active_ || ipv6_active_) && layer3_forwarding_) {
         UpdateL3(old_ipv4_active, old_vrf, old_addr, old_vxlan_id, force_update,
-                 policy_change, old_ipv6_active, old_v6_addr);
+                 policy_change, old_ipv6_active, old_v6_addr,
+                 old_subnet, old_subnet_plen);
     } else if ((old_ipv4_active || old_ipv6_active)) {
         DeleteL3(old_ipv4_active, old_vrf, old_addr, old_need_linklocal_ip, 
-                 old_ipv6_active, old_v6_addr);
+                 old_ipv6_active, old_v6_addr,
+                 old_subnet, old_subnet_plen);
     }
 
     // Add/Del/Update L2 
@@ -1228,7 +1319,7 @@ bool VmInterface::ResyncIpAddress(const VmInterfaceIpAddressData *data) {
     ipv4_active_ = IsIpv4Active();
     ApplyConfig(old_ipv4_active, l2_active_, policy_enabled_, vrf_.get(), old_addr,
                 vxlan_id_, need_linklocal_ip_, false, ipv6_active_,
-                ip6_addr_, false, false);
+                ip6_addr_, false, false, subnet_, subnet_plen_);
     return ret;
 }
 
@@ -1256,7 +1347,7 @@ bool VmInterface::ResyncOsOperState(const VmInterfaceOsOperStateData *data) {
 
     ApplyConfig(old_ipv4_active, l2_active_, policy_enabled_, vrf_.get(),
                 ip_addr_, vxlan_id_, need_linklocal_ip_, false, 
-                old_ipv6_active, ip6_addr_, false, false);
+                old_ipv6_active, ip6_addr_, false, false, subnet_, subnet_plen_);
     return ret;
 }
 
@@ -1676,6 +1767,40 @@ void VmInterface::UpdateIpv6InterfaceRoute(bool old_ipv6_active, bool force_upda
     }
 }
 
+void VmInterface::UpdateResolveRoute(bool old_ipv4_active, bool force_update,
+                                     bool policy_change, VrfEntry * old_vrf,
+                                     const Ip4Address &old_addr,
+                                     uint8_t old_plen) {
+    if (old_ipv4_active == true && force_update == false
+        && policy_change == false && old_addr == subnet_ &&
+        subnet_plen_ == old_plen) {
+        return;
+    }
+
+    if (old_vrf && (old_vrf != vrf_.get() || 
+        old_addr != subnet_ ||
+        subnet_plen_ != old_plen)) {
+        DeleteResolveRoute(old_vrf, old_addr, old_plen);
+    }
+
+    if (subnet_.to_ulong() != 0 && vrf_.get() != NULL && vn_.get() != NULL) {
+        SecurityGroupList sg_id_list;
+        CopySgIdList(&sg_id_list);
+        VmInterfaceKey vm_intf_key(AgentKey::ADD_DEL_CHANGE, GetUuid(), "");
+
+        InetUnicastAgentRouteTable::AddResolveRoute(peer_.get(), vrf_->GetName(),
+                GetIp4SubnetAddress(subnet_, subnet_plen_),
+                subnet_plen_, vm_intf_key, vn_->table_label(),
+                policy_enabled_, vn_->GetName(), sg_id_list);
+    }
+}
+
+void VmInterface::DeleteResolveRoute(VrfEntry *old_vrf,
+                                     const Ip4Address &old_addr,
+                                     const uint8_t plen) {
+    DeleteRoute(old_vrf->GetName(), old_addr, plen);
+}
+
 void VmInterface::DeleteIpv4InterfaceRoute(VrfEntry *old_vrf,
                                            const Ip4Address &old_addr) {
     if ((old_vrf == NULL) || (old_addr.to_ulong() == 0))
@@ -2083,6 +2208,18 @@ void VmInterface::AddRoute(const std::string &vrf_name, const IpAddress &addr,
     }
 
     return;
+}
+
+void VmInterface::ResolveRoute(const std::string &vrf_name, const Ip4Address &addr,
+                               uint32_t plen, const std::string &dest_vn, bool policy) {
+    SecurityGroupList sg_id_list;
+    CopySgIdList(&sg_id_list);
+    VmInterfaceKey vm_intf_key(AgentKey::ADD_DEL_CHANGE, GetUuid(), "");
+
+    InetUnicastAgentRouteTable::AddResolveRoute(peer_.get(), vrf_name,
+            GetIp4SubnetAddress(addr, plen),
+            plen, vm_intf_key, vn_->table_label(),
+            policy, dest_vn, sg_id_list);
 }
 
 void VmInterface::DeleteRoute(const std::string &vrf_name,
@@ -2796,6 +2933,31 @@ void VmInterface::InstanceIpSync(InterfaceTable *table, IFMapNode *node) {
         }
     }
 
+}
+
+void VmInterface::SubnetSync(InterfaceTable *table, IFMapNode *node) {
+    CfgListener *cfg_listener = table->agent()->cfg_listener();
+    if (cfg_listener->SkipNode(node)) {
+        return;
+    }
+
+    DBGraph *graph =
+        static_cast<IFMapAgentTable *> (node->table())->GetGraph();;
+    for (DBGraphVertex::adjacency_iterator iter = node->begin(graph);
+         iter != node->end(graph); ++iter) {
+        IFMapNode *adj = static_cast<IFMapNode *>(iter.operator->());
+        if (table->agent()->cfg_listener()->SkipNode(adj)) {
+            continue;
+        }
+
+        if (adj->table() ==
+            table->agent()->cfg()->cfg_vm_interface_table()) {
+            DBRequest req;
+            if (table->IFNodeToReq(adj, req)) {
+                table->Enqueue(&req);
+            }
+        }
+    }
 }
 
 void VmInterface::FloatingIpVnSync(InterfaceTable *table, IFMapNode *node) {

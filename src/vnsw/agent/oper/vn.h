@@ -141,7 +141,7 @@ struct VnData : public AgentData {
 class VnEntry : AgentRefCount<VnEntry>, public AgentDBEntry {
 public:
     VnEntry(uuid id) : uuid_(id), vxlan_id_(0), vnid_(0), layer2_forwarding_(true), 
-    layer3_forwarding_(true), admin_state_(true) { }
+    layer3_forwarding_(true), admin_state_(true), table_label_(0) { }
     virtual ~VnEntry() { };
 
     virtual bool IsLess(const DBEntry &rhs) const;
@@ -184,6 +184,10 @@ public:
     bool layer2_forwarding() const {return layer2_forwarding_;};
     bool layer3_forwarding() const {return layer3_forwarding_;};
     bool admin_state() const {return admin_state_;}
+    uint32_t table_label() const { return table_label_;}
+    void set_table_label(uint32_t label) {
+        table_label_ = label;
+    }
 
     AgentDBTable *DBToTable() const;
     uint32_t GetRefCount() const {
@@ -211,6 +215,7 @@ private:
     bool layer3_forwarding_;
     bool admin_state_;
     VxLanIdRef vxlan_id_ref_;
+    uint32_t table_label_;
     DISALLOW_COPY_AND_ASSIGN(VnEntry);
 };
 

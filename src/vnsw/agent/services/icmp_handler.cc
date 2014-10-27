@@ -92,6 +92,13 @@ void IcmpHandler::SendResponse(VmInterface *vm_intf) {
     IcmpChecksum((char *)hdr, icmp_len_);
     pkt_info_->set_len(len);
 
-    Send(GetInterfaceIndex(), pkt_info_->vrf, AgentHdr::TX_SWITCH,
+    /* TODO: check VM interface subtype here and set interface index to parent
+     * interface index for logical interfaces*/
+    uint32_t intf_index = GetInterfaceIndex();
+    /*if (vm_intf->parent() != NULL) {
+          intf_index = vm_intf->parent()->id();
+    }*/
+
+    Send(intf_index, pkt_info_->vrf, AgentHdr::TX_SWITCH,
          PktHandler::ICMP);
 }

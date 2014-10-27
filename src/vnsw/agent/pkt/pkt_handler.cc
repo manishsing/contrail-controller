@@ -92,7 +92,6 @@ void PktHandler::HandleRcvPkt(const AgentHdr &hdr, const PacketBufferPtr &buff){
         if (!vm_itf->layer3_forwarding()) {
             PKT_TRACE(Err, "ipv4 not enabled for interface index <" <<
                       hdr.ifindex << ">");
-            agent_->stats()->incr_pkt_dropped();
             goto drop;
         }
     }

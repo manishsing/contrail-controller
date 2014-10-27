@@ -210,7 +210,6 @@ void AgentInit::CreateVrfBase() {
 
 void AgentInit::CreateNextHopsBase() {
     DiscardNH::Create();
-    ResolveNH::Create();
 
     DiscardNHKey key;
     NextHop *nh = static_cast<NextHop *>

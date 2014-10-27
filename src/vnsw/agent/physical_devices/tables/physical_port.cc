@@ -62,6 +62,14 @@ bool PhysicalPortEntry::Copy(PhysicalPortTable *table,
     if (dev != device_.get()) {
         device_.reset(dev);
         ret = true;
+
+        if (device_ && device_->display_name() == table->agent()->host_name()) {
+            //Create a physical interface
+            InterfaceTable *intf_table = table->agent()->interface_table();
+            PhysicalInterface::Create(intf_table, name_
+                                      agent()->fabric_vrf_name(),
+                                      false);
+        }
     }
 
     return ret;

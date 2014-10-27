@@ -854,6 +854,26 @@ void AgentXmppChannel::AddRemoteRoute(string vrf_name, IpAddress prefix_addr,
             AddEcmpRoute(vrf_name, prefix_addr.to_v4(), prefix_len, item);
             break;
             }
+        case NextHop::VRF: {
+            //In case of TOR/vCPE with a logical interface vlan1,
+            //example subnet 1.1.1.0/24 may be reachable on logical
+            //interface vlan1. Path added by local vm peer would point to
+            //resolve NH, so that if any path hits this route, ARP resolution
+            //can begin, and the label exported for this route would point to
+            //table nexthop.
+            //Hence existing logic of picking up nexthop from mpls label to
+            //nexthop, will not work. We have added a special path where we
+            //pick nexthop from local vm path, instead of BGP
+            BgpPeer *bgp_peer = bgp_peer_id();
+            ClonedLocalPath *data =
+                new ClonedLocalPath(unicast_sequence_number(), this,
+                        label, item->entry.virtual_network,
+                        item->entry.security_group_list.security_group);
+            rt_table->AddClonedLocalPathReq(bgp_peer, vrf_name,
+                                            prefix_addr.to_v4(),
+                                            prefix_len, data);
+            break;
+        }
 
         default:
             CONTROLLER_TRACE(Trace, GetBgpPeerName(), vrf_name,

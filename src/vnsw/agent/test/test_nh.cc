@@ -370,7 +370,7 @@ TEST_F(CfgTest, EcmpNH_2) {
         {"vnet5", 5, "1.1.1.1", "00:00:00:02:02:05", 1, 5}
     };
 
-    CreateVmportWithEcmp(input1, 1);
+    CreateVmportWithEcmp(input1, 1, 1);
     client->WaitForIdle();
     //First VM added, route points to composite NH
     Ip4Address ip = Ip4Address::from_string("1.1.1.1");
@@ -378,6 +378,7 @@ TEST_F(CfgTest, EcmpNH_2) {
     EXPECT_TRUE(rt != NULL);
     const NextHop *nh = rt->GetActiveNextHop();
     EXPECT_TRUE(nh->GetType() == NextHop::INTERFACE);
+    EXPECT_TRUE(nh->PolicyEnabled() == true);
 
     //Second VM added, route should point to composite NH
     CreateVmportWithEcmp(input2, 1);
@@ -386,6 +387,7 @@ TEST_F(CfgTest, EcmpNH_2) {
     EXPECT_TRUE(nh->GetType() == NextHop::COMPOSITE);
     const CompositeNH *comp_nh = static_cast<const CompositeNH *>(nh);
     EXPECT_TRUE(comp_nh->ComponentNHCount() == 2);
+    EXPECT_TRUE(comp_nh->Get(0)->nh()->PolicyEnabled() == false);
 
     CreateVmportWithEcmp(input3, 1);
     client->WaitForIdle();
@@ -1914,11 +1916,13 @@ TEST_F(CfgTest, Nexthop_keys) {
     vrf_nh->SetKey(vrf_nh_key);
     DoNextHopSandesh();
 
+    InetInterfaceKey vhost_intf_key(agent_->vhost_interface()->name());
     //Tunnel NH key
     agent_->
         fabric_inet4_unicast_table()->
-        AddResolveRoute(agent_->fabric_vrf_name(),
-                        Ip4Address::from_string("10.1.1.100"), 32);
+        AddResolveRoute(agent_->local_peer(), agent_->fabric_vrf_name(),
+                        Ip4Address::from_string("10.1.1.100"), 32,
+                        vhost_intf_key, 0, false, "", SecurityGroupList());
     client->WaitForIdle();
 
     MacAddress remote_vm_mac("00:00:01:01:01:11");
@@ -2018,14 +2022,16 @@ TEST_F(CfgTest, Nexthop_keys) {
     //ARP NH with vm interface
     DBRequest arp_nh_req;
     arp_nh_req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
-    arp_nh_req.key.reset(new ArpNHKey("vrf10", Ip4Address::from_string("11.11.11.11")));
+    arp_nh_req.key.reset(new ArpNHKey("vrf10", Ip4Address::from_string("11.11.11.11"), 
+                                      false));
     MacAddress intf_vm_mac("00:00:01:01:01:11");
     VmInterfaceKey *intf_key = new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, 
                                               MakeUuid(10), "vrf10");
     arp_nh_req.data.reset(new ArpNHData(intf_vm_mac, intf_key, true));
     agent_->nexthop_table()->Enqueue(&arp_nh_req);
     client->WaitForIdle();
-    ArpNHKey find_arp_nh_key("vrf10", Ip4Address::from_string("11.11.11.11"));
+    ArpNHKey find_arp_nh_key("vrf10", Ip4Address::from_string("11.11.11.11"), 
+                             false);
     ArpNH *arp_nh = static_cast<ArpNH *>
         (agent_->nexthop_table()->FindActiveEntry(&find_arp_nh_key));
     EXPECT_TRUE(arp_nh != NULL);
@@ -2035,11 +2041,13 @@ TEST_F(CfgTest, Nexthop_keys) {
 
     DBRequest del_arp_nh_req;
     del_arp_nh_req.oper = DBRequest::DB_ENTRY_DELETE;
-    del_arp_nh_req.key.reset(new ArpNHKey("vrf10", Ip4Address::from_string("11.11.11.11")));
-    del_arp_nh_req.data.reset(new ArpNHData());
+    del_arp_nh_req.key.reset(new ArpNHKey("vrf10", Ip4Address::from_string("11.11.11.11"),
+                                          false));
+    del_arp_nh_req.data.reset(NULL);
     agent_->nexthop_table()->Enqueue(&del_arp_nh_req);
     client->WaitForIdle();
-    ArpNHKey find_del_arp_nh_key("vrf10", Ip4Address::from_string("11.11.11.11"));
+    ArpNHKey find_del_arp_nh_key("vrf10", Ip4Address::from_string("11.11.11.11"), 
+                                 false);
     EXPECT_TRUE(agent_->nexthop_table()->
                 FindActiveEntry(&find_del_arp_nh_key) == NULL);
 
@@ -2061,14 +2069,17 @@ TEST_F(CfgTest, Nexthop_invalid_vrf) {
     client->WaitForIdle();
     client->Reset();
 
+    InetInterfaceKey vhost_intf_key(agent_->vhost_interface()->name());
     //ARP NH
     DBRequest arp_nh_req;
     arp_nh_req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
-    arp_nh_req.key.reset(new ArpNHKey("vrf11", Ip4Address::from_string("11.11.11.11")));
-    arp_nh_req.data.reset(new ArpNHData());
+    arp_nh_req.key.reset(new ArpNHKey("vrf11", Ip4Address::from_string("11.11.11.11"), 
+                                      false));
+    arp_nh_req.data.reset(new ArpNHData(&vhost_intf_key));
     agent_->nexthop_table()->Enqueue(&arp_nh_req);
     client->WaitForIdle();
-    ArpNHKey find_arp_nh_key("vrf11", Ip4Address::from_string("11.11.11.11"));
+    ArpNHKey find_arp_nh_key("vrf11", Ip4Address::from_string("11.11.11.11"),
+                             false);
     EXPECT_TRUE(agent_->nexthop_table()->
                 FindActiveEntry(&find_arp_nh_key) == NULL);
 

@@ -515,7 +515,7 @@ public:
     virtual void Delete(const DBRequest *req) {};
     virtual void SendObjectLog(AgentLogEvent::type event) const;
     virtual bool CanAdd() const;
-    bool NextHopIsLess(const DBEntry &rhs) const {
+    virtual bool NextHopIsLess(const DBEntry &rhs) const {
         const ReceiveNH &a = static_cast<const ReceiveNH &>(rhs);
         if (interface_.get() != a.interface_.get()) {
             return interface_.get() < a.interface_.get();
@@ -544,12 +544,15 @@ private:
 /////////////////////////////////////////////////////////////////////////////
 class ResolveNHKey : public NextHopKey {
 public:
-    ResolveNHKey() : NextHopKey(NextHop::RESOLVE, false) { };
+    ResolveNHKey(const InterfaceKey *intf_key, bool policy) :
+        NextHopKey(NextHop::RESOLVE, policy),
+        intf_key_(intf_key->Clone()) { };
     virtual ~ResolveNHKey() { };
 
     virtual NextHop *AllocEntry() const;
 private:
     friend class ResolveNH;
+    boost::scoped_ptr<const InterfaceKey> intf_key_;
     DISALLOW_COPY_AND_ASSIGN(ResolveNHKey);
 };
 
@@ -565,7 +568,8 @@ private:
 
 class ResolveNH : public NextHop {
 public:
-    ResolveNH() : NextHop(RESOLVE, true, false) { };
+    ResolveNH(const Interface *intf, bool policy) :
+        NextHop(RESOLVE, true, policy), interface_(intf) { };
     virtual ~ResolveNH() { };
 
     virtual std::string ToString() const { return "Resolve"; };
@@ -575,14 +579,25 @@ public:
     virtual void SetKey(const DBRequestKey *key) { NextHop::SetKey(key); };
     virtual bool CanAdd() const;
     virtual bool NextHopIsLess(const DBEntry &rhs) const {
-        return false;
+        const ResolveNH &a = static_cast<const ResolveNH &>(rhs);
+        if (interface_.get() != a.interface_.get()) {
+            return interface_.get() < a.interface_.get();
+        }
+
+        return policy_ < a.policy_;
     };
     virtual KeyPtr GetDBRequestKey() const {
-        return DBEntryBase::KeyPtr(new ResolveNHKey());
+        boost::scoped_ptr<InterfaceKey> intf_key(
+            static_cast<InterfaceKey *>(interface_->GetDBRequestKey().release()));
+        return DBEntryBase::KeyPtr(new ResolveNHKey(intf_key.get(), policy_));
     };
-
-    static void Create();
+    virtual bool DeleteOnZeroRefCount() const {
+        return true;
+    }
+    static void Create(const InterfaceKey *intf, bool policy);
+    const Interface* interface() const { return interface_.get();}
 private:
+    InterfaceConstRef interface_;
     DISALLOW_COPY_AND_ASSIGN(ResolveNH);
 };
 
@@ -591,8 +606,8 @@ private:
 /////////////////////////////////////////////////////////////////////////////
 class ArpNHKey : public NextHopKey {
 public:
-    ArpNHKey(const string &vrf_name, const Ip4Address &ip) :
-        NextHopKey(NextHop::ARP, false), vrf_key_(vrf_name), dip_(ip) {
+    ArpNHKey(const string &vrf_name, const Ip4Address &ip, bool policy) :
+        NextHopKey(NextHop::ARP, policy), vrf_key_(vrf_name), dip_(ip) {
     }
     virtual ~ArpNHKey() { };
 
@@ -606,8 +621,8 @@ private:
 
 class ArpNHData : public NextHopData {
 public:
-    ArpNHData() :
-        NextHopData(), intf_key_(NULL),
+    ArpNHData(InterfaceKey *intf_key) :
+        NextHopData(), intf_key_(intf_key),
         mac_(), resolved_(false), valid_(false) { };
 
     ArpNHData(const MacAddress &mac, InterfaceKey *intf_key,
