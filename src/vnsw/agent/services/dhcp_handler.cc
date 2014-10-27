@@ -579,10 +579,10 @@ bool DhcpHandler::FindLeaseData() {
             if (IsIp4SubnetMember(ip, ipam[i].ip_prefix.to_v4(), 
                                   ipam[i].plen)) {
                 Ip4Address default_gw = ipam[i].default_gw.to_v4();
-                Ip4Address dns_server = ipam[i].dns_server.to_v4();
-                if (dns_server.is_unspecified())
-                    dns_server = default_gw;
-                FillDhcpInfo(ip, ipam[i].plen, default_gw, dns_server);
+                Ip4Address service_address = ipam[i].dns_server.to_v4();
+                if (service_address.is_unspecified())
+                    service_address = default_gw;
+                FillDhcpInfo(ip, ipam[i].plen, service_address, service_address);
                 return true;
             }
         }
