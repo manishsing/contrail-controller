@@ -74,7 +74,12 @@ void PktHandler::InterfaceNotify(DBEntryBase *entry) {
     if (vmitf->vm_mac().empty())
         return;
 
-    MacAddress address(vmitf->vm_mac().c_str());
+    boost::system::error_code ec;
+    MacAddress address(vmitf->vm_mac(), &ec);
+    if (ec) {
+        return;
+    }
+
     if (entry->IsDeleted()) {
         mac_vm_binding_map_.erase(address);
     } else {
