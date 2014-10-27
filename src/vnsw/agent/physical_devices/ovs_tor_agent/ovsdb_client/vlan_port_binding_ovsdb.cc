@@ -26,7 +26,7 @@ using OVSDB::LogicalSwitchEntry;
 VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
         const AGENT::VlanLogicalPortEntry *entry) : OvsdbDBEntry(table_),
         logical_switch_name_("") {
-    if (entry->vm_interface())
+    if (entry->vm_interface() && entry->vm_interface()->vn())
         logical_switch_name_ =
             UuidToString(entry->vm_interface()->vn()->GetUuid());
     physical_port_name_ = entry->physical_port()->name();
@@ -96,7 +96,7 @@ bool VlanPortBindingEntry::Sync(DBEntry *db_entry) {
     AGENT::VlanLogicalPortEntry *entry =
         static_cast<AGENT::VlanLogicalPortEntry *>(db_entry);
     std::string ls_name("");
-    if (entry->vm_interface()) {
+    if (entry->vm_interface() && entry->vm_interface()->vn()) {
         ls_name = UuidToString(entry->vm_interface()->vn()->GetUuid());
     }
     if (ls_name != logical_switch_name_) {
