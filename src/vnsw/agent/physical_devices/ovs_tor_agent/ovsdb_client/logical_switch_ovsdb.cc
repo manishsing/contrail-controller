@@ -87,7 +87,9 @@ void LogicalSwitchEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
     if (old_mcast_remote_row_ != NULL) {
         ovsdb_wrapper_delete_mcast_mac_remote(old_mcast_remote_row_);
     }
-    ovsdb_wrapper_delete_logical_switch(ovs_entry_);
+    if (ovs_entry_ != NULL) {
+        ovsdb_wrapper_delete_logical_switch(ovs_entry_);
+    }
     SendTrace(LogicalSwitchEntry::DEL_REQ);
 }
 

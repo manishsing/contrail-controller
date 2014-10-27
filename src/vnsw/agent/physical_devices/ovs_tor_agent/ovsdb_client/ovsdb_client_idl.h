@@ -74,6 +74,7 @@ public:
     Ip4Address tsn_ip();
 
     OvsPeer *route_peer();
+    Agent *agent() {return agent_;}
     PhysicalSwitchTable *physical_switch_table();
     LogicalSwitchTable *logical_switch_table();
     PhysicalPortTable *physical_port_table();
@@ -87,6 +88,7 @@ private:
     struct json_parser * parser_;
     const struct vteprec_global *vtep_global_;
     OvsdbClientSession *session_;
+    Agent *agent_;
     NotifyCB callback_[OVSDB_TYPE_COUNT];
     PendingTxnMap pending_txn_;
     std::auto_ptr<OvsPeer> route_peer_;
