@@ -74,10 +74,7 @@ void PktHandler::InterfaceNotify(DBEntryBase *entry) {
     if (vmitf->vm_mac().empty())
         return;
 
-    ether_addr *eth_addr = ether_aton(vmitf->vm_mac().c_str());
-    if (!eth_addr) return;
-    MacAddress address(*eth_addr);
-
+    MacAddress address(vmitf->vm_mac().c_str());
     if (entry->IsDeleted()) {
         mac_vm_binding_map_.erase(address);
     } else {
