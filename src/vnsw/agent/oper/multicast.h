@@ -168,7 +168,7 @@ public:
                                  uint64_t peer_identifier = 0);
     static void ModifyTor(DBTablePartBase *partition, DBEntryBase *e);
     void HandleTor(const VnEntry *vn); 
-    void WalkDone();
+    void WalkDone(const uuid &vn_uuid);
     bool TorWalker(DBTablePartBase *partition, DBEntryBase *entry,
                    const VnEntry *vn);
 
@@ -282,6 +282,7 @@ private:
     DBTable::ListenerId vn_listener_id_;
     DBTable::ListenerId interface_listener_id_;
     DBTable::ListenerId physical_device_vn_listener_id_;;
+    std::map<uuid, DBTableWalker::WalkId> physical_device_vn_walker_id_;
     DISALLOW_COPY_AND_ASSIGN(MulticastHandler);
 };
 

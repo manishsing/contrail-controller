@@ -205,14 +205,25 @@ static const AgentPath *GetMulticastExportablePath(const Agent *agent,
     //in export of route.
     if (active_path == NULL)
         active_path = route->FindPath(agent->multicast_tor_peer());
+    //Subnet discard
+    if (active_path == NULL) {
+        const AgentPath *local_path = route->FindPath(agent->local_peer());
+        if (local_path && local_path->is_subnet_discard()) {
+            return local_path;
+        }
+    }
     return active_path;
 }
 
 static bool RouteCanDissociate(const AgentRoute *route) {
     bool can_dissociate = route->IsDeleted();
+    Agent *agent = static_cast<AgentRouteTable*>(route->get_table())->
+        agent();
+    const AgentPath *local_path = route->FindPath(agent->local_peer());
+    if (local_path && local_path->is_subnet_discard()) {
+        return can_dissociate;
+    }
     if (route->is_multicast()) {
-        Agent *agent = static_cast<AgentRouteTable*>(route->get_table())->
-            agent();
         const AgentPath *active_path = GetMulticastExportablePath(agent, route);
         if (active_path == NULL)
             return true;

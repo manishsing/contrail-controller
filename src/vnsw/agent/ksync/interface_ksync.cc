@@ -386,8 +386,6 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
     case Interface::VM_INTERFACE: {
         if (vm_sub_type_ == VmInterface::TOR)
             return 0;            
-        if (l2_active_ == false)
-            return 0;
         if (dhcp_enable_) {
             flags |= VIF_FLAG_DHCP_ENABLED;
         }

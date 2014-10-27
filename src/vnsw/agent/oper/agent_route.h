@@ -221,9 +221,9 @@ public:
     virtual uint32_t GetActiveLabel() const;
     virtual AgentPath *FindPathUsingKey(const AgentRouteKey *key);
     virtual void DeletePath(const AgentRouteKey *key);
+    virtual bool is_multicast() const {return is_multicast_;}
 
     // Accessor functions
-    bool is_multicast() const {return is_multicast_;}
     VrfEntry *vrf() const {return vrf_.get();}
     uint32_t vrf_id() const;
 

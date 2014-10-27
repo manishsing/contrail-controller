@@ -841,7 +841,8 @@ bool AgentRoute::ReComputeMulticastPaths(AgentPath *path, bool del) {
                                                  false,
                                                  nh);
     }
-    if (local_peer_path) {
+    if (local_peer_path && local_peer_path->nexthop(agent)->GetType() !=
+        NextHop::DISCARD) {
         ret = MulticastRoute::CopyPathParameters(agent,
                                                  multicast_peer_path,
                                                  (local_peer_path ? local_peer_path->
@@ -859,6 +860,21 @@ bool AgentRoute::ReComputeMulticastPaths(AgentPath *path, bool del) {
 
     //Bake all MPLS label
     if (fabric_peer_path) {
+        if (!ret) {
+            ret = MulticastRoute::CopyPathParameters(agent,
+                                                     multicast_peer_path,
+                                                     (fabric_peer_path ? fabric_peer_path->
+                                                      dest_vn_name() : ""),
+                                                     (fabric_peer_path ? fabric_peer_path->
+                                                      unresolved() : false),
+                                                     (fabric_peer_path ? fabric_peer_path->
+                                                      vxlan_id() : 0),
+                                                     (fabric_peer_path ? fabric_peer_path->
+                                                      label() : 0),
+                                                     TunnelType::MplsType(),
+                                                     false,
+                                                     nh);
+        }
         //Add new label
         MplsLabel::CreateMcastLabelReq(fabric_peer_path->label(),
                                        Composite::L2COMP,

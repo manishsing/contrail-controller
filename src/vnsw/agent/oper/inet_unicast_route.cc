@@ -604,6 +604,15 @@ const NextHop* InetUnicastRouteEntry::GetLocalNextHop() const {
     return NULL;
 }
 
+bool InetUnicastRouteEntry::is_multicast() const {
+    Agent *agent =
+        (static_cast<InetUnicastAgentRouteTable *> (get_table()))->agent();
+    const AgentPath *path = FindPath(agent->local_peer());
+    if (AgentRoute::is_multicast() || (path && path->is_subnet_discard()))
+        return true;
+    return false;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // AgentRouteData virtual functions
 /////////////////////////////////////////////////////////////////////////////

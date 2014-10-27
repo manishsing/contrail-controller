@@ -84,6 +84,11 @@ void MulticastHandler::AddL2BroadcastRoute(MulticastGroupObject *obj,
                                                    TunnelType::AllType(),
                                                    Composite::L2INTERFACE,
                                                    component_nh_key_list);
+    /*
+    RebakeSubnetRoute(agent_->local_vm_peer(), vrf_name, label,
+                      vxlan_id, vn_name, false,
+                      component_nh_key_list, Composite::L2INTERFACE);
+                      */
 }
 
 /*
@@ -233,7 +238,11 @@ void MulticastHandler::ModifyTor(DBTablePartBase *partition, DBEntryBase *e)
     HandleTorRoute(device_vn, vn);
 }
 
-void MulticastHandler::WalkDone() {
+void MulticastHandler::WalkDone(const uuid &vn_uuid) {
+    std::map<uuid, DBTableWalker::WalkId>::iterator it =
+        physical_device_vn_walker_id_.find(vn_uuid);
+    if (it->second != DBTableWalker::kInvalidWalkerId)
+        physical_device_vn_walker_id_.erase(it);
 }
 
 bool MulticastHandler::TorWalker(DBTablePartBase *partition,
@@ -254,14 +263,22 @@ void MulticastHandler::HandleTor(const VnEntry *vn)
          == NULL)) {
         return;
     }
+    //std::map<uuid, DBTableWalker::WalkId>::iterator it =
+    //    physical_device_vn_walker_id_.find(vn->GetUuid());
 
-    //Start a walk on VN table
     DBTableWalker *walker = Agent::GetInstance()->db()->GetWalker();
-    walker->WalkTable(Agent::GetInstance()->device_manager()->
+    /// TODO cancel walk
+    //if (it->second != DBTableWalker::kInvalidWalkerId)
+    //    walker->WalkCancel(it->second);
+    DBTableWalker::WalkId walk_id = DBTableWalker::kInvalidWalkerId;
+    //Start a walk on VN table
+    walk_id = walker->WalkTable(Agent::GetInstance()->device_manager()->
                       physical_device_vn_table(), NULL,
                       boost::bind(&MulticastHandler::TorWalker, this, _1,
                                   _2, vn),
-                      boost::bind(&MulticastHandler::WalkDone, this));
+                      boost::bind(&MulticastHandler::WalkDone, this,
+                                  vn->GetUuid()));
+    physical_device_vn_walker_id_[vn->GetUuid()] = walk_id;
 }
 
 MulticastGroupObject *MulticastHandler::CreateMulticastGroupObject
@@ -512,10 +529,12 @@ void MulticastHandler::TriggerRemoteRouteChange(MulticastGroupObject *obj,
         Layer2AgentRouteTable::DeleteBroadcastReq(peer, vrf_name,
                                                   ethernet_tag);
         ComponentNHKeyList component_nh_key_list; //dummy list
+        /*
         RebakeSubnetRoute(peer, vrf_name, 0, ethernet_tag,
                           obj ? obj->GetVnName() : "",
                           true, component_nh_key_list,
                           comp_type);
+                          */
         return;
     }
 
@@ -577,9 +596,11 @@ void MulticastHandler::TriggerRemoteRouteChange(MulticastGroupObject *obj,
     //if ((comp_type == Composite::EVPN) || (comp_type == Composite::TOR)) {
         MCTRACE(Log, "rebake subnet peer for subnet", vrf_name,
                 "255.255.255.255", 0);
+        /*
         RebakeSubnetRoute(peer, obj->vrf_name(), label, obj->vxlan_id(),
                           obj->GetVnName(), false, component_nh_key_list,
                           comp_type);
+                          */
     //}
 }
 
@@ -592,11 +613,6 @@ void MulticastHandler::RebakeSubnetRoute(const Peer *peer,
                                          const ComponentNHKeyList &comp_nh_list,
                                          COMPOSITETYPE comp_type)
 {
-    //Expect only to handle EVPN information.
-    if ((peer->GetType() != Peer::BGP_PEER) && 
-        (peer->GetType() != Peer::MULTICAST_TOR_PEER))
-        return;
-
     std::vector<VnIpam> &vrf_ipam =
         (vrf_ipam_mapping_.find(vrf_name))->second;
     for (std::vector<VnIpam>::iterator it = vrf_ipam.begin();
