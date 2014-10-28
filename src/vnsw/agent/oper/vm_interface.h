@@ -402,6 +402,7 @@ public:
     bool GetIpamDhcpOptions(
             std::vector<autogen::DhcpOptionType> *options, bool ipv6) const;
     const Peer *peer() const;
+    Ip4Address GetGateway() const;
 private:
     bool IsActive() const;
     bool IsIpv4Active() const;
