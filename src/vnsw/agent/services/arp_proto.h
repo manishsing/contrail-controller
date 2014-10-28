@@ -137,6 +137,15 @@ public:
     const ArpStats &GetStats() const { return arp_stats_; }
     void ClearStats() { arp_stats_.Reset(); }
 
+    void IncrementStatsArpRequest(uint32_t idx);
+    void IncrementStatsArpReply(uint32_t idx);
+    void IncrementStatsResolved(uint32_t idx);
+    InterfaceArpInfo& ArpMapIndexToEntry(uint32_t idx);
+    uint32_t ArpRequestStatsCounter(uint32_t idx);
+    uint32_t ArpReplyStatsCounter(uint32_t idx);
+    uint32_t ArpResolvedStatsCounter(uint32_t idx);
+    void ClearInterfaceArpStats(uint32_t idx);
+
     uint16_t max_retries() const { return max_retries_; }
     uint32_t retry_timeout() const { return retry_timeout_; }
     uint32_t aging_timeout() const { return aging_timeout_; }

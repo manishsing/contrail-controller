@@ -344,16 +344,6 @@ void ArpProto::InterfaceNotify(DBEntryBase *entry) {
         }
         if (itf->type() == Interface::PHYSICAL &&
             itf->name() == agent_->fabric_interface_name()) {
-#if 0
-            for (ArpProto::ArpIterator it = arp_cache_.begin();
-                 it != arp_cache_.end();) {
-                ArpEntry *arp_entry = it->second;
-                if (arp_entry->DeleteArpRoute()) {
-                    it = DeleteArpEntry(it);
-                } else
-                    it++;
-            }
-#endif
             set_ip_fabric_interface(NULL);
             set_ip_fabric_interface_index(-1);
         }
@@ -369,6 +359,53 @@ void ArpProto::InterfaceNotify(DBEntryBase *entry) {
             }
         }
     }
+}
+
+ArpProto::InterfaceArpInfo& ArpProto::ArpMapIndexToEntry(uint32_t idx) {
+    InterfaceArpMap::iterator it = interface_arp_map_.find(idx);
+    if (it == interface_arp_map_.end()) {
+        InterfaceArpInfo entry;
+        std::pair<InterfaceArpMap::iterator, bool> ret;
+        ret = interface_arp_map_.insert(InterfaceArpPair(idx, entry));
+        return ret.first->second;
+    } else {
+        return it->second;
+    }
+}
+
+void ArpProto::IncrementStatsArpRequest(uint32_t idx) {
+    InterfaceArpInfo &entry = ArpMapIndexToEntry(idx);
+    entry.stats.arp_req++;
+}
+
+void ArpProto::IncrementStatsArpReply(uint32_t idx) {
+    InterfaceArpInfo &entry = ArpMapIndexToEntry(idx);
+    entry.stats.arp_replies++;
+}
+
+void ArpProto::IncrementStatsResolved(uint32_t idx) {
+    InterfaceArpInfo &entry = ArpMapIndexToEntry(idx);
+    entry.stats.resolved++;
+}
+
+uint32_t ArpProto::ArpRequestStatsCounter(uint32_t idx) {
+    InterfaceArpInfo &entry = ArpMapIndexToEntry(idx);
+    return entry.stats.arp_req;
+}
+
+uint32_t ArpProto::ArpReplyStatsCounter(uint32_t idx) {
+    InterfaceArpInfo &entry = ArpMapIndexToEntry(idx);
+    return entry.stats.arp_replies;
+}
+
+uint32_t ArpProto::ArpResolvedStatsCounter(uint32_t idx) {
+    InterfaceArpInfo &entry = ArpMapIndexToEntry(idx);
+    return entry.stats.resolved;
+}
+
+void ArpProto::ClearInterfaceArpStats(uint32_t idx) {
+    InterfaceArpInfo &entry = ArpMapIndexToEntry(idx);
+    entry.stats.Reset();
 }
 
 void ArpProto::NextHopNotify(DBEntryBase *entry) {

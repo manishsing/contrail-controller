@@ -872,6 +872,61 @@ TEST_F(ArpTest, SubnetResolveWithSg) {
                 == NULL));
     client->Reset();
 }
+
+TEST_F(ArpTest, IntfArpReqTest_1) {
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
+    };
+
+    //Create VM, VN, VRF and Vmport
+    CreateVmportEnv(input, 1);
+    client->WaitForIdle();
+    EXPECT_TRUE(VmPortActive(input, 0));
+    Interface *itf = VmPortGet(1);
+    VmInterface *vmi = static_cast<VmInterface *>(itf);
+    VrfEntry *vrf = VrfGet("vrf1");
+
+    Agent::GetInstance()->GetArpProto()->ClearInterfaceArpStats(vmi->id());
+    Ip4Address arp_tip = Ip4Address::from_string("1.1.1.2");
+    EXPECT_EQ(1U, Agent::GetInstance()->GetArpProto()->GetArpCacheSize()); // For GW
+    SendArpReq(vmi->id(), vrf->vrf_id(), vmi->ip_addr().to_ulong(), arp_tip.to_ulong());
+    WaitForCompletion(2);
+    EXPECT_TRUE(FindArpNHEntry(arp_tip.to_ulong(), "vrf1"));
+    WAIT_FOR(500, 1000, (Agent::GetInstance()->GetArpProto()->ArpRequestStatsCounter(vmi->id()) >= 1U));
+
+    DeleteVmportEnv(input, 1, true);
+    client->WaitForIdle();
+}
+
+TEST_F(ArpTest, IntfArpReqTest_2) {
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
+    };
+
+    //Create VM, VN, VRF and Vmport
+    CreateVmportEnv(input, 1);
+    client->WaitForIdle();
+    EXPECT_TRUE(VmPortActive(input, 0));
+    Interface *itf = VmPortGet(1);
+    VmInterface *vmi = static_cast<VmInterface *>(itf);
+    VrfEntry *vrf = VrfGet("vrf1");
+
+    Agent::GetInstance()->GetArpProto()->ClearInterfaceArpStats(vmi->id());
+    Ip4Address arp_tip = Ip4Address::from_string("1.1.1.2");
+    EXPECT_EQ(1U, Agent::GetInstance()->GetArpProto()->GetArpCacheSize()); // For GW
+    SendArpReq(vmi->id(), vrf->vrf_id(), vmi->ip_addr().to_ulong(), arp_tip.to_ulong());
+    WaitForCompletion(2);
+    EXPECT_TRUE(FindArpNHEntry(arp_tip.to_ulong(), "vrf1"));
+    EXPECT_TRUE(FindArpRoute(arp_tip.to_ulong(), "vrf1"));
+    WAIT_FOR(500, 1000, (Agent::GetInstance()->GetArpProto()->ArpRequestStatsCounter(vmi->id()) >= 1U));
+    SendArpReply(vmi->id(), vrf->vrf_id(), vmi->ip_addr().to_ulong(), arp_tip.to_ulong());
+    client->WaitForIdle();
+    WAIT_FOR(500, 1000, (1U == Agent::GetInstance()->GetArpProto()->ArpReplyStatsCounter(vmi->id())));
+    WAIT_FOR(500, 1000, (1U == Agent::GetInstance()->GetArpProto()->ArpResolvedStatsCounter(vmi->id())));
+
+    DeleteVmportEnv(input, 1, true);
+    client->WaitForIdle();
+}
 void RouterIdDepInit(Agent *agent) {
 }
 

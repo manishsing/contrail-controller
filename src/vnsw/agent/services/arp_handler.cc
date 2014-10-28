@@ -130,12 +130,12 @@ bool ArpHandler::HandlePacket() {
                       arp_addr.to_string());
             return true;
         }
-    }
-    if (route->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
-        const ResolveNH *nh = 
-            static_cast<const ResolveNH *>(route->GetActiveNextHop());
-        itf = nh->interface();
-        nh_vrf = itf->vrf();
+        if (route->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
+            const ResolveNH *nh =
+                static_cast<const ResolveNH *>(route->GetActiveNextHop());
+            itf = nh->interface();
+            nh_vrf = itf->vrf();
+        }
     }
 
     ArpKey key(arp_tpa_, vrf);
@@ -144,6 +144,7 @@ bool ArpHandler::HandlePacket() {
     switch (arp_cmd) {
         case ARPOP_REQUEST: {
             arp_proto->IncrementStatsArpReq();
+            arp_proto->IncrementStatsArpRequest(itf->id());
             if (entry) {
                 entry->HandleArpRequest();
                 return true;
@@ -158,6 +159,7 @@ bool ArpHandler::HandlePacket() {
 
         case ARPOP_REPLY:  {
             arp_proto->IncrementStatsArpReplies();
+            arp_proto->IncrementStatsArpReply(itf->id());
             if (itf->type() == Interface::VM_INTERFACE) {
                 uint32_t ip;
                 memcpy(&ip, arp_->arp_spa, sizeof(ip));
@@ -235,6 +237,7 @@ bool ArpHandler::HandleMessage() {
                 ret = false;
             }
             arp_proto->IncrementStatsArpReq();
+            arp_proto->IncrementStatsArpRequest(ipc->interface->id());
             entry->HandleArpRequest();
             break;
         }
