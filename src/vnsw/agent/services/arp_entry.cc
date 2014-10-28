@@ -72,8 +72,10 @@ void ArpEntry::HandleArpReply(const MacAddress &mac) {
         arp_timer_->Cancel();
         retry_count_ = 0;
         mac_address_ = mac;
-        if (state_ == ArpEntry::RESOLVING)
+        if (state_ == ArpEntry::RESOLVING) {
             arp_proto->IncrementStatsResolved();
+            arp_proto->IncrementStatsResolved(interface_->id());
+        }
         state_ = ArpEntry::ACTIVE;
         StartTimer(arp_proto->aging_timeout(), ArpProto::AGING_TIMER_EXPIRED);
         AddArpRoute(true);
@@ -168,10 +170,12 @@ void ArpEntry::SendArpRequest() {
     MacAddress smac;
     if (interface_->type() == Interface::VM_INTERFACE) {
         const VmInterface *vmi = static_cast<const VmInterface *>(interface_);
-        ip = vmi->ip_addr();
+        ip = vmi->GetGateway();
         vrf_id = nh_vrf_->vrf_id();
-        intf_id = vmi->parent()->id();
-        smac = vmi->parent()->mac();
+        if (vmi->parent()) {
+            intf_id = vmi->parent()->id();
+            smac = vmi->parent()->mac();
+        }
     } else {
         ip = agent->router_id();
         VrfEntry *vrf =

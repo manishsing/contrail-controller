@@ -1678,16 +1678,24 @@ void VmInterface::DeleteMulticastNextHop() {
     InterfaceNH::DeleteMulticastVmInterfaceNH(GetUuid());
 }
 
+Ip4Address VmInterface::GetGateway() const {
+    Ip4Address ip(0);
+    if (vn_.get() == NULL) {
+        return ip;
+    }
+    const VnIpam *ipam = vn_->GetIpam(ip_addr_);
+    if (ipam) {
+        ip = ipam->default_gw.to_v4();
+    }
+    return ip;
+}
+
 // Add/Update route. Delete old route if VRF or address changed
 void VmInterface::UpdateIpv4InterfaceRoute(bool old_ipv4_active, bool force_update,
                                          bool policy_change,
                                          VrfEntry * old_vrf,
                                          const Ip4Address &old_addr) {
-    const VnIpam *ipam = vn_->GetIpam(ip_addr_);
-    Ip4Address ip(0);
-    if (ipam) {
-        ip = ipam->default_gw.to_v4();
-    }
+    Ip4Address ip = GetGateway();
 
     // If interface was already active earlier and there is no force_update or
     // policy_change, return
