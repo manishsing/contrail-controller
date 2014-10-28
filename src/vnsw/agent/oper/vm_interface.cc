@@ -267,10 +267,14 @@ static void BuildStaticRouteList(VmInterfaceConfigData *data, IFMapNode *node) {
                 LOG(DEBUG, "Error decoding v4 Static Route address " << it->prefix);
             }
         }
+
+        IpAddress gw = IpAddress::from_string(it->next_hop, ec);
+        if (ec) {
+            gw = IpAddress::from_string("0.0.0.0", ec);
+        }
         if (add) {
             data->static_route_list_.list_.insert
-                (VmInterface::StaticRoute(data->vrf_name_, ip, plen));
-
+                (VmInterface::StaticRoute(data->vrf_name_, ip, plen, gw));
         }
     }
 }
@@ -686,12 +690,6 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
                         physical_node->GetObject());
             data->parent_interface_ = physical_interface->display_name();
         }
-    }
-
-    if (data->addr_.to_string() == "1.1.1.2") {
-        boost::system::error_code ec;
-        data->subnet_ = Ip4Address::from_string("1.1.1.0", ec);
-        data->subnet_plen_ = 24;
     }
 
     // Get DHCP enable flag from subnet
@@ -2407,18 +2405,18 @@ void VmInterface::FloatingIpList::Remove(FloatingIpSet::iterator &it) {
 // StaticRoute routines
 /////////////////////////////////////////////////////////////////////////////
 VmInterface::StaticRoute::StaticRoute() :
-    ListEntry(), vrf_(""), addr_(), plen_(0) {
+    ListEntry(), vrf_(""), addr_(), plen_(0), gw_() {
 }
 
 VmInterface::StaticRoute::StaticRoute(const StaticRoute &rhs) :
     ListEntry(rhs.installed_, rhs.del_pending_), vrf_(rhs.vrf_),
-    addr_(rhs.addr_), plen_(rhs.plen_) {
+    addr_(rhs.addr_), plen_(rhs.plen_), gw_(rhs.gw_) {
 }
 
 VmInterface::StaticRoute::StaticRoute(const std::string &vrf,
                                       const IpAddress &addr,
-                                      uint32_t plen) :
-    ListEntry(), vrf_(vrf), addr_(addr), plen_(plen) {
+                                      uint32_t plen, const IpAddress &gw) :
+    ListEntry(), vrf_(vrf), addr_(addr), plen_(plen), gw_(gw) {
 }
 
 VmInterface::StaticRoute::~StaticRoute() {
@@ -2459,10 +2457,21 @@ void VmInterface::StaticRoute::Activate(VmInterface *interface,
         if (addr_.is_v4()) {
             ecmp = interface->ecmp();
         }
-        interface->AddRoute(vrf_, addr_, plen_,
-                            interface->vn_->GetName(),
-                            interface->policy_enabled(),
-                            ecmp, IpAddress());
+        Ip4Address gw_ip(0);
+        if (gw_.is_v4() && addr_.is_v4() && gw_.to_v4() != gw_ip) {
+            SecurityGroupList sg_id_list;
+            interface->CopySgIdList(&sg_id_list);
+            InetUnicastAgentRouteTable::AddGatewayRoute(interface->peer_.get(),
+                    vrf_, addr_.to_v4(),
+                    plen_, gw_.to_v4(), interface->vn_->GetName(),
+                    interface->vn_->table_label(),
+                    sg_id_list);
+        } else {
+            interface->AddRoute(vrf_, addr_, plen_,
+                                interface->vn_->GetName(),
+                                interface->policy_enabled(),
+                                ecmp, IpAddress());
+        }
     }
 
     installed_ = true;

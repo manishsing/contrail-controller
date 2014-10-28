@@ -1218,19 +1218,21 @@ void InetUnicastAgentRouteTable::DelVHostSubnetRecvRoute(const string &vm_vrf,
               GetIp4SubnetAddress(addr, plen), 32, NULL);
 }
 
-static void AddGatewayRouteInternal(DBRequest *req, const string &vrf_name,
+static void AddGatewayRouteInternal(const Peer *peer,
+                                    DBRequest *req, const string &vrf_name,
                                     const Ip4Address &dst_addr, uint8_t plen,
                                     const Ip4Address &gw_ip,
                                     const string &vn_name, uint32_t label,
                                     const SecurityGroupList &sg_list) {
     req->oper = DBRequest::DB_ENTRY_ADD_CHANGE;
-    req->key.reset(new InetUnicastRouteKey(Agent::GetInstance()->local_peer(),
-                                            vrf_name, dst_addr, plen));
+    req->key.reset(new InetUnicastRouteKey(peer,
+                                           vrf_name, dst_addr, plen));
     req->data.reset(new Inet4UnicastGatewayRoute(gw_ip, vrf_name,
                                                  vn_name, label, sg_list));
 }
 
-void InetUnicastAgentRouteTable::AddGatewayRoute(const string &vrf_name,
+void InetUnicastAgentRouteTable::AddGatewayRoute(const Peer *peer,
+                                                 const string &vrf_name,
                                                  const Ip4Address &dst_addr,
                                                  uint8_t plen,
                                                  const Ip4Address &gw_ip,
@@ -1239,13 +1241,14 @@ void InetUnicastAgentRouteTable::AddGatewayRoute(const string &vrf_name,
                                                  const SecurityGroupList
                                                  &sg_list) {
     DBRequest req;
-    AddGatewayRouteInternal(&req, vrf_name, dst_addr, plen, gw_ip, vn_name,
+    AddGatewayRouteInternal(peer, &req, vrf_name, dst_addr, plen, gw_ip, vn_name,
                             label, sg_list);
     Inet4UnicastTableProcess(Agent::GetInstance(), vrf_name, req);
 }
 
 void
-InetUnicastAgentRouteTable::AddGatewayRouteReq(const string &vrf_name,
+InetUnicastAgentRouteTable::AddGatewayRouteReq(const Peer *peer,
+                                               const string &vrf_name,
                                                const Ip4Address &dst_addr,
                                                uint8_t plen,
                                                const Ip4Address &gw_ip,
@@ -1254,8 +1257,8 @@ InetUnicastAgentRouteTable::AddGatewayRouteReq(const string &vrf_name,
                                                const SecurityGroupList
                                                &sg_list) {
     DBRequest req;
-    AddGatewayRouteInternal(&req, vrf_name, dst_addr, plen, gw_ip, vn_name,
-                            label, sg_list);
+    AddGatewayRouteInternal(peer, &req, vrf_name, dst_addr, plen, gw_ip,
+                            vn_name, label, sg_list);
     Inet4UnicastTableEnqueue(Agent::GetInstance(), &req);
 }
 

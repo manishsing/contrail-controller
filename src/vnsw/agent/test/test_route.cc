@@ -174,7 +174,8 @@ protected:
                          const Ip4Address &ip, int plen,
                          const Ip4Address &server) {
         Agent::GetInstance()->fabric_inet4_unicast_table()->AddGatewayRouteReq
-            (vrf_name, ip, plen, server, "", MplsTable::kInvalidLabel,
+            (Agent::GetInstance()->local_peer(),
+             vrf_name, ip, plen, server, "", MplsTable::kInvalidLabel,
              SecurityGroupList());
 
         client->WaitForIdle();

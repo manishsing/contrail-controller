@@ -116,7 +116,7 @@ public:
         StaticRoute();
         StaticRoute(const StaticRoute &rhs);
         StaticRoute(const std::string &vrf, const IpAddress &addr,
-                    uint32_t plen);
+                    uint32_t plen, const IpAddress &gw);
         virtual ~StaticRoute();
 
         bool operator() (const StaticRoute &lhs, const StaticRoute &rhs) const;
@@ -128,6 +128,7 @@ public:
         mutable std::string vrf_;
         IpAddress  addr_;
         uint32_t    plen_;
+        IpAddress  gw_;
     };
     typedef std::set<StaticRoute, StaticRoute> StaticRouteSet;
 
