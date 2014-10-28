@@ -91,6 +91,7 @@ public:
     ArpEntry *FindArpEntry(const ArpKey &key);
     std::size_t GetArpCacheSize() { return arp_cache_.size(); }
     const ArpCache& arp_cache() { return arp_cache_; }
+    const InterfaceArpMap& interface_arp_map() { return interface_arp_map_; }
 
     Interface *ip_fabric_interface() const { return ip_fabric_interface_; }
     uint16_t ip_fabric_interface_index() const {

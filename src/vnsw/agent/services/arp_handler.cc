@@ -102,13 +102,6 @@ bool ArpHandler::HandlePacket() {
                          " has no / inactive VRF");
         return true;
     }
-    if (itf->type() == Interface::PHYSICAL &&
-        itf->name() != agent()->fabric_interface_name()) {
-        /* If it is physical interface, it should come only from fabric
-         * interface. ARP request coming on other physical interface should
-         * be trapped with logical interface index */
-        assert(0);
-    }
 
     // if broadcast ip, return
     Ip4Address arp_addr(arp_tpa_);
