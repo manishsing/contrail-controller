@@ -197,6 +197,7 @@ bool PhysicalDeviceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
     req.key.reset(BuildKey(router));
     if (node->IsDeleted()) {
         req.oper = DBRequest::DB_ENTRY_DELETE;
+        agent()->device_manager()->physical_device_vn_table()->ConfigUpdate(node);
         return true;
     }
 
