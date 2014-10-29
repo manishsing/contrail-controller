@@ -5,6 +5,7 @@
 extern "C" {
 #include <ovsdb_wrapper.h>
 };
+#include <physical_switch_ovsdb.h>
 #include <logical_switch_ovsdb.h>
 #include <physical_port_ovsdb.h>
 #include <vlan_port_binding_ovsdb.h>
@@ -20,6 +21,7 @@ extern "C" {
 using OVSDB::OvsdbDBEntry;
 using OVSDB::VlanPortBindingEntry;
 using OVSDB::VlanPortBindingTable;
+using OVSDB::PhysicalSwitchEntry;
 using OVSDB::PhysicalPortEntry;
 using OVSDB::LogicalSwitchEntry;
 
@@ -30,6 +32,7 @@ VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
         logical_switch_name_ =
             UuidToString(entry->vm_interface()->vn()->GetUuid());
     physical_port_name_ = entry->physical_port()->name();
+    physical_device_name_ = entry->physical_port()->device()->name();
     vlan_ = entry->vlan();
 }
 
@@ -37,6 +40,7 @@ VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
         const VlanPortBindingEntry *key) : OvsdbDBEntry(table) {
     logical_switch_name_ = key->logical_switch_name_;
     physical_port_name_ = key->physical_port_name_;
+    physical_device_name_ = key->physical_device_name_;
     vlan_ = key->vlan_;
 }
 
@@ -111,6 +115,8 @@ bool VlanPortBindingEntry::IsLess(const KSyncEntry &entry) const {
         static_cast<const VlanPortBindingEntry&>(entry);
     if (vlan_ != vps_entry.vlan_)
         return vlan_ < vps_entry.vlan_;
+    if (physical_device_name_ != vps_entry.physical_device_name_)
+        return physical_device_name_ < vps_entry.physical_device_name_;
     return physical_port_name_ < vps_entry.physical_port_name_;
 }
 
@@ -121,6 +127,14 @@ KSyncEntry *VlanPortBindingEntry::UnresolvedReference() {
         static_cast<PhysicalPortEntry *>(p_table->GetReference(&key));
     if (!p_port->IsResolved()) {
         return p_port;
+    }
+    PhysicalSwitchTable *ps_table =
+        table_->client_idl()->physical_switch_table();
+    PhysicalSwitchEntry ps_key(ps_table, physical_device_name_.c_str());
+    PhysicalSwitchEntry *p_switch =
+        static_cast<PhysicalSwitchEntry *>(ps_table->GetReference(&ps_key));
+    if (!p_switch->IsResolved()) {
+        return p_switch;
     }
     if (logical_switch_name_.empty()) {
         return NULL;
@@ -168,9 +182,10 @@ KSyncDBObject::DBFilterResp VlanPortBindingTable::DBEntryFilter(
         const DBEntry *entry) {
     const AGENT::VlanLogicalPortEntry *l_port =
         static_cast<const AGENT::VlanLogicalPortEntry *>(entry);
-    if (l_port->physical_port() == NULL) {
-        // Since we need physical port name as key, ignore entry if physical
-        // port is not yet present.
+    if (l_port->physical_port() == NULL ||
+        l_port->physical_port()->device() == NULL) {
+        // Since we need physical port name and device name as key, ignore entry
+        // if physical port or device is not yet present.
         return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.
     }
     return DBFilterAccept;

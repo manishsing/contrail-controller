@@ -48,6 +48,7 @@ private:
     KSyncEntryPtr physical_port_;
     std::string logical_switch_name_;
     std::string physical_port_name_;
+    std::string physical_device_name_;
     uint16_t vlan_;
     DISALLOW_COPY_AND_ASSIGN(VlanPortBindingEntry);
 };
