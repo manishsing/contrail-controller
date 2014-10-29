@@ -69,6 +69,7 @@ struct ItfSandeshData {
    37: i16 tx_vlan_id;
    38: i16 rx_vlan_id;
    39: string parent_interface;
+   40: optional string subnet;
 }
 
 struct VnIpamData {
@@ -97,6 +98,7 @@ struct VnSandeshData {
     9: bool layer2_forwarding;
     10: bool ipv4_forwarding;
     11: bool admin_state;
+    12: i32 table_label;
 }
 
 struct SgSandeshData {

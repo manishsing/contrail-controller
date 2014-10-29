@@ -615,7 +615,6 @@ bool PktHandler::IsValidInterface(uint16_t ifindex, Interface **interface) {
         if (!vm_itf->layer3_forwarding()) {
             PKT_TRACE(Err, "layer3 not enabled for interface index <" <<
                       ifindex << ">");
-            agent_->stats()->incr_pkt_dropped();
             return false;
         }
     }

@@ -161,8 +161,12 @@ protected:
     }
 
     void AddResolveRoute(const Ip4Address &server_ip, uint32_t plen) {
+        InetInterfaceKey vhost_intf_key(
+                Agent::GetInstance()->vhost_interface()->name());
         Agent::GetInstance()->fabric_inet4_unicast_table()->AddResolveRoute(
-                Agent::GetInstance()->fabric_vrf_name(), server_ip, plen);
+                Agent::GetInstance()->local_peer(),
+                Agent::GetInstance()->fabric_vrf_name(), server_ip, plen,
+                vhost_intf_key, 0, false, "", SecurityGroupList());
         client->WaitForIdle();
     }
 
@@ -170,7 +174,9 @@ protected:
                          const Ip4Address &ip, int plen,
                          const Ip4Address &server) {
         Agent::GetInstance()->fabric_inet4_unicast_table()->AddGatewayRouteReq
-            (vrf_name, ip, plen, server, "");
+            (Agent::GetInstance()->local_peer(),
+             vrf_name, ip, plen, server, "", MplsTable::kInvalidLabel,
+             SecurityGroupList());
 
         client->WaitForIdle();
     }

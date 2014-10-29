@@ -305,10 +305,12 @@ void ArpNH::SetKey(const DBRequestKey *k) {
 
 bool ArpNH::Change(const DBRequest *req) {
     bool ret= false;
+    const ArpNHKey *key = static_cast<const ArpNHKey *>(req->key.get());
     const ArpNHData *data = static_cast<const ArpNHData *>(req->data.get());
 
-    if (!data->valid_) {
-        return ret;
+    if (policy_ != key->policy_) {
+        policy_ = key->policy_;
+        ret = true;
     }
 
     if (valid_ != data->resolved_) {
@@ -316,16 +318,20 @@ bool ArpNH::Change(const DBRequest *req) {
         ret =  true;
     }
 
-    if (data->resolved_ != true) {
-        // If ARP is not resolved, interface and mac will be invalid
-        interface_ = NULL;
-        return ret;
-    }
-
-    Interface *interface = NextHopTable::GetInstance()->FindInterface(*data->intf_key_.get());
+    Interface *interface = NextHopTable::GetInstance()->FindInterface
+        (*data->intf_key_.get());
     if (interface_.get() != interface) {
         interface_ = interface;
         ret = true;
+    }
+
+    if (!data->valid_) {
+        return ret;
+    }
+
+    if (data->resolved_ != true) {
+        // If ARP is not resolved mac will be invalid
+        return ret;
     }
 
     if (mac_.CompareTo(data->mac_) != 0) {
@@ -341,7 +347,7 @@ const uint32_t ArpNH::vrf_id() const {
 }
 
 ArpNH::KeyPtr ArpNH::GetDBRequestKey() const {
-    NextHopKey *key = new ArpNHKey(vrf_->GetName(), ip_);
+    NextHopKey *key = new ArpNHKey(vrf_->GetName(), ip_, policy_);
     return DBEntryBase::KeyPtr(key);
 }
 
@@ -718,7 +724,23 @@ bool TunnelNH::Change(const DBRequest *req) {
         //Trigger ARP resolution
         valid = false;
         rt_table->AddUnresolvedNH(this);
-        InetUnicastAgentRouteTable::AddArpReq(GetVrf()->GetName(), dip_);
+        const ResolveNH *nh =
+            static_cast<const ResolveNH *>(rt->GetActiveNextHop());
+        SecurityGroupList sg_list;
+        std::string vn = "";
+        if (nh->interface()->type() == Interface::VM_INTERFACE) {
+            const VmInterface *vm_intf =
+                static_cast<const VmInterface *>(nh->interface());
+            vm_intf->CopySgIdList(&sg_list);
+            if (vm_intf->vn()) {
+                vn = vm_intf->vn()->GetName();
+            }
+        }
+        InetUnicastAgentRouteTable::AddArpReq(GetVrf()->GetName(), dip_,
+                                              nh->interface()->vrf()->GetName(),
+                                              nh->interface(),
+                                              nh->PolicyEnabled(),
+                                              vn, sg_list);
         rt = NULL;
     } else {
         valid = rt->GetActiveNextHop()->IsValid();
@@ -824,7 +846,23 @@ bool MirrorNH::Change(const DBRequest *req) {
         //Trigger ARP resolution
         valid = false;
         rt_table->AddUnresolvedNH(this);
-        InetUnicastAgentRouteTable::AddArpReq(GetVrf()->GetName(), dip_);
+        const ResolveNH *nh =
+            static_cast<const ResolveNH *>(rt->GetActiveNextHop());
+        SecurityGroupList sg_list;
+        std::string vn = "";
+        if (nh->interface()->type() == Interface::VM_INTERFACE) {
+            const VmInterface *vm_intf =
+                static_cast<const VmInterface *>(nh->interface());
+            vm_intf->CopySgIdList(&sg_list);
+            if (vm_intf->vn()) {
+                vn = vm_intf->vn()->GetName();
+            }
+        }
+        InetUnicastAgentRouteTable::AddArpReq(GetVrf()->GetName(), dip_,
+                                              nh->interface()->vrf()->GetName(),
+                                              nh->interface(),
+                                              nh->PolicyEnabled(),
+                                              vn, sg_list);
         rt = NULL;
     } else {
         valid = rt->GetActiveNextHop()->IsValid();
@@ -940,16 +978,18 @@ void ReceiveNH::SendObjectLog(AgentLogEvent::type event) const {
 // ResolveNH routines
 /////////////////////////////////////////////////////////////////////////////
 NextHop *ResolveNHKey::AllocEntry() const {
-    return new ResolveNH();
+    Interface *intf = static_cast<Interface *>
+        (Agent::GetInstance()->interface_table()->Find(intf_key_.get(), true));
+    return new ResolveNH(intf, policy_);
 }
 
 bool ResolveNH::CanAdd() const {
     return true;
 }
 
-void ResolveNH::Create( ) {
+void ResolveNH::Create(const InterfaceKey *intf, bool policy) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    req.key.reset(new ResolveNHKey());
+    req.key.reset(new ResolveNHKey(intf, policy));
     req.data.reset(new ResolveNHData());
     NextHopTable::GetInstance()->Process(req);
 }

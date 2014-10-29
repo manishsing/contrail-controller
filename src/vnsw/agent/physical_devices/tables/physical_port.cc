@@ -11,6 +11,7 @@
 #include <cfg/cfg_listener.h>
 #include <oper/agent_sandesh.h>
 #include <oper/ifmap_dependency_manager.h>
+#include <oper/interface_common.h>
 
 #include <physical_devices/tables/physical_devices_types.h>
 #include <physical_devices/tables/device_manager.h>
@@ -67,6 +68,14 @@ bool PhysicalPortEntry::Copy(PhysicalPortTable *table,
     if (dev != device_.get()) {
         device_.reset(dev);
         ret = true;
+
+        if (device_ && device_->name() == table->agent()->host_name()) {
+            //Create a physical interface
+            InterfaceTable *intf_table = table->agent()->interface_table();
+            PhysicalInterface::Create(intf_table, name_,
+                                      table->agent()->fabric_vrf_name(),
+                                      false);
+        }
     }
 
     return ret;

@@ -193,7 +193,29 @@ void MplsLabel::CreateEcmpLabel(uint32_t label, COMPOSITETYPE type,
     MplsTable::GetInstance()->Process(req);
     return;
 }
-                                   
+
+void MplsLabel::CreateTableLabel(uint32_t label, const std::string &vrf_name,
+                                 bool policy) {
+    DBRequest nh_req;
+    nh_req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
+    VrfNHKey *vrf_nh_key = new VrfNHKey(vrf_name, false);
+    nh_req.key.reset(vrf_nh_key);
+    nh_req.data.reset(NULL);
+    Agent::GetInstance()->nexthop_table()->Process(nh_req);
+
+    DBRequest req;
+    req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
+
+    MplsLabelKey *key = new MplsLabelKey(MplsLabel::VPORT_NH, label);
+    req.key.reset(key);
+
+    MplsLabelData *data = new MplsLabelData(vrf_name, policy);
+    req.data.reset(data);
+
+    MplsTable::GetInstance()->Process(req);
+    return;
+}
+
 void MplsLabel::DeleteMcastLabelReq(uint32_t src_label) {
     DBRequest req;
     req.oper = DBRequest::DB_ENTRY_DELETE;

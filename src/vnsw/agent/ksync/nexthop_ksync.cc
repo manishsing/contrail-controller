@@ -106,6 +106,12 @@ NHKSyncEntry::NHKSyncEntry(NHKSyncObject *obj, const NextHop *nh) :
     }
 
     case NextHop::RESOLVE: {
+        InterfaceKSyncObject *interface_object =
+            ksync_obj_->ksync()->interface_ksync_obj();
+        const ResolveNH *rsl_nh = static_cast<const ResolveNH *>(nh);
+        InterfaceKSyncEntry if_ksync(interface_object, rsl_nh->interface());
+        interface_ = interface_object->GetReference(&if_ksync);
+        vrf_id_ = rsl_nh->interface()->vrf_id();
         break;
     }
 
@@ -185,9 +191,10 @@ bool NHKSyncEntry::IsLess(const KSyncEntry &rhs) const {
         return type_ < entry.type_;
     }
 
-    if (type_ == NextHop::DISCARD || type_ == NextHop::RESOLVE) {
+    if (type_ == NextHop::DISCARD) {
         return false;
     }
+
 
     if (policy_ != entry.policy_) {
         return policy_ < entry.policy_;
@@ -214,9 +221,10 @@ bool NHKSyncEntry::IsLess(const KSyncEntry &rhs) const {
         return interface() < entry.interface();
     }
 
-    if (type_ == NextHop::RECEIVE) {
+    if (type_ == NextHop::RECEIVE || type_ == NextHop::RESOLVE) {
         return interface() < entry.interface();
     }
+
 
     if (type_ == NextHop::TUNNEL) {
         if (vrf_id_ != entry.vrf_id_) {

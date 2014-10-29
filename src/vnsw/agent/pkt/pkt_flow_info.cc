@@ -201,6 +201,12 @@ static bool NhDecode(const NextHop *nh, const PktInfo *pkt, PktFlowInfo *info,
         break;
     }
 
+    case NextHop::VRF: {
+        const VrfNH *vrf_nh = static_cast<const VrfNH *>(nh);
+        out->vrf_ = vrf_nh->GetVrf();
+        break;
+    }
+
     case NextHop::TUNNEL: {
         if (pkt->family == Address::INET) {
             const InetUnicastRouteEntry *rt =
@@ -221,6 +227,20 @@ static bool NhDecode(const NextHop *nh, const PktInfo *pkt, PktFlowInfo *info,
         out->nh_ = nh->id();
         out->intf_ = NULL;
         break;
+    }
+
+    case NextHop::ARP: {
+        const ArpNH *arp_nh = static_cast<const ArpNH *>(nh);
+        out->nh_ = arp_nh->GetInterface()->flow_key_nh()->id();
+        out->intf_ = arp_nh->GetInterface();
+        break;
+    }
+
+    case NextHop::RESOLVE: {
+         const ResolveNH *rsl_nh = static_cast<const ResolveNH *>(nh);
+         out->nh_ = rsl_nh->interface()->flow_key_nh()->id();
+         out->intf_ = rsl_nh->interface();
+         break;
     }
 
     default:
@@ -277,7 +297,7 @@ static const VnEntry *InterfaceToVn(const Interface *intf) {
 }
 
 static bool IntfHasFloatingIp(const Interface *intf, Address::Family family) {
-    if (intf->type() != Interface::VM_INTERFACE)
+    if (!intf || intf->type() != Interface::VM_INTERFACE)
         return NULL;
     return static_cast<const VmInterface *>(intf)->HasFloatingIp(family);
 }
@@ -934,6 +954,7 @@ void PktFlowInfo::EgressProcess(const PktInfo *pkt, PktControlInfo *in,
 
     UpdateRoute(&out->rt_, out->vrf_,pkt->ip_daddr, flow_dest_plen_map);
     UpdateRoute(&in->rt_, out->vrf_,pkt->ip_saddr, flow_source_plen_map);
+
     if (out->intf_) {
         out->vn_ = InterfaceToVn(out->intf_);
     }
@@ -946,6 +967,21 @@ void PktFlowInfo::EgressProcess(const PktInfo *pkt, PktControlInfo *in,
         // configured floating IP.
         if (IntfHasFloatingIp(out->intf_, pkt->family)) {
             FloatingIpDNat(pkt, in, out);
+        }
+    }
+
+    if (out->rt_) {
+        if (out->rt_->GetActiveNextHop()->GetType() == NextHop::ARP ||
+            out->rt_->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
+            //If a packet came with mpls label pointing to
+            //vrf NH, then we need to do a route lookup
+            //and set the nexthop for reverse flow properly
+            //as mpls pointed NH would not be used for reverse flow
+            if (RouteToOutInfo(out->rt_, pkt, this, in, out)) {
+                if (out->intf_) {
+                    out->vn_ = InterfaceToVn(out->intf_);
+                }
+            }
         }
     }
 
@@ -1011,7 +1047,6 @@ bool PktFlowInfo::Process(const PktInfo *pkt, PktControlInfo *in,
         short_flow_reason = FlowEntry::SHORT_NO_DST_ROUTE;
         return false;
     }
-
     flow_source_vrf = static_cast<const AgentRoute *>(in->rt_)->vrf_id();
     flow_dest_vrf = out->rt_->vrf_id();
 

@@ -349,9 +349,6 @@ KSyncEntry *InterfaceKSyncEntry::UnresolvedReference() {
         return NULL;
     }
 
-    if (rx_vlan_id_ == VmInterface::kInvalidVlanId)
-        return NULL;
-
     if (parent_.get() && !parent_->IsResolved()) {
         return parent_.get();
     }
@@ -393,18 +390,25 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             flags |= VIF_FLAG_L2_ENABLED;
         }
         MacAddress mac;
-        if (rx_vlan_id_ == VmInterface::kInvalidVlanId) {
-            mac = ksync_obj_->ksync()->agent()->vrrp_mac();
-            encoder.set_vifr_type(VIF_TYPE_VIRTUAL);
-        } else {
+        if (parent_.get() != NULL) {
             encoder.set_vifr_type(VIF_TYPE_VIRTUAL_VLAN);
-            encoder.set_vifr_vlan_id(rx_vlan_id_);
-            encoder.set_vifr_ovlan_id(tx_vlan_id_);
+            if (rx_vlan_id_ != VmInterface::kInvalidVlanId) {
+                encoder.set_vifr_vlan_id(rx_vlan_id_);
+            } else {
+                encoder.set_vifr_vlan_id(0);
+            }
+            if (tx_vlan_id_ != VmInterface::kInvalidVlanId) {
+                encoder.set_vifr_ovlan_id(tx_vlan_id_);
+            } else {
+                encoder.set_vifr_ovlan_id(0);
+            }
             InterfaceKSyncEntry *parent =
                 (static_cast<InterfaceKSyncEntry *> (parent_.get()));
             encoder.set_vifr_parent_vif_idx(parent->interface_id());
             mac = parent->mac();
-
+        } else {
+            mac = ksync_obj_->ksync()->agent()->vrrp_mac();
+            encoder.set_vifr_type(VIF_TYPE_VIRTUAL);
         }
         std::vector<int8_t> intf_mac((int8_t *)mac,
                                      (int8_t *)mac + mac.size());

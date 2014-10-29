@@ -777,6 +777,12 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
         if (vintf->parent()) {
             data.set_parent_interface(vintf->parent()->name());
         }
+        if (vintf->subnet().to_ulong() != 0) {
+            std::ostringstream str;
+            str << vintf->subnet().to_string() << "/"
+                << (int)vintf->subnet_plen();
+            data.set_subnet(str.str());
+        }
         break;
     }
     case Interface::INET:

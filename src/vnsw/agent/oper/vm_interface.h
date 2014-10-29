@@ -128,7 +128,7 @@ public:
         StaticRoute();
         StaticRoute(const StaticRoute &rhs);
         StaticRoute(const std::string &vrf, const IpAddress &addr,
-                    uint32_t plen);
+                    uint32_t plen, const IpAddress &gw);
         virtual ~StaticRoute();
 
         bool operator() (const StaticRoute &lhs, const StaticRoute &rhs) const;
@@ -140,6 +140,7 @@ public:
         mutable std::string vrf_;
         IpAddress  addr_;
         uint32_t    plen_;
+        IpAddress  gw_;
     };
     typedef std::set<StaticRoute, StaticRoute> StaticRouteSet;
 
@@ -321,6 +322,8 @@ public:
     void SetConfigurer(VmInterface::Configurer type);
     void ResetConfigurer(VmInterface::Configurer type);
     bool CanBeDeleted() const {return (configurer_ == 0);}
+    const Ip4Address& subnet() const { return subnet_;}
+    const uint8_t subnet_plen() const { return subnet_plen_;}
 
     Interface::MirrorDirection mirror_direction() const {
         return mirror_direction_;
@@ -404,6 +407,7 @@ public:
     static void FloatingIpSync(InterfaceTable *table, IFMapNode *node);
     static void FloatingIpVrfSync(InterfaceTable *table, IFMapNode *node);
     static void VnSync(InterfaceTable *table, IFMapNode *node);
+    static void SubnetSync(InterfaceTable *table, IFMapNode *node);
     static void VmSync(InterfaceTable *table, IFMapNode *node);
 
     void AllocL2MplsLabel(bool force_update, bool policy_change);
@@ -419,6 +423,7 @@ public:
     bool GetIpamDhcpOptions(
             std::vector<autogen::DhcpOptionType> *options, bool ipv6) const;
     const Peer *peer() const;
+    Ip4Address GetGateway() const;
 private:
     friend struct VmInterfaceConfigData;
     friend struct VmInterfaceNovaData;
@@ -437,6 +442,8 @@ private:
                   bool ecmp, const IpAddress &gw_ip);
     void DeleteRoute(const std::string &vrf_name, const IpAddress &ip,
                      uint32_t plen);
+    void ResolveRoute(const std::string &vrf_name, const Ip4Address &addr,
+                      uint32_t plen, const std::string &dest_vn, bool policy);
     void ServiceVlanAdd(ServiceVlan &entry);
     void ServiceVlanDel(ServiceVlan &entry);
     void ServiceVlanRouteAdd(const ServiceVlan &entry);
@@ -459,15 +466,17 @@ private:
                      int old_vxlan_id, bool old_need_linklocal_ip,
                      bool sg_changed, bool old_ipv6_active,
                      const Ip6Address &old_v6_addr, bool ecmp_changed,
-                     bool local_pref_changed);
-
+                     bool local_pref_changed, const Ip4Address &old_subnet,
+                     const uint8_t old_subnet_plen);
     void UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
                   const Ip4Address &old_addr, int old_vxlan_id,
                   bool force_update, bool policy_change, bool old_ipv6_active,
-                  const Ip6Address &old_v6_addr);
+                  const Ip6Address &old_v6_addr, const Ip4Address &subnet,
+                  const uint8_t old_subnet_plen);
     void DeleteL3(bool old_ipv4_active, VrfEntry *old_vrf,
                   const Ip4Address &old_addr, bool old_need_linklocal_ip,
-                  bool old_ipv6_active, const Ip6Address &old_v6_addr);
+                  bool old_ipv6_active, const Ip6Address &old_v6_addr,
+                  const Ip4Address &old_subnet, const uint8_t old_subnet_plen);
     void UpdateL2(bool old_l2_active, VrfEntry *old_vrf, int old_vxlan_id,
                   bool force_update, bool policy_change);
     void DeleteL2(bool old_l2_active, VrfEntry *old_vrf);
@@ -500,6 +509,11 @@ private:
                                   const Ip6Address &old_addr);
     void DeleteIpv6InterfaceRoute(VrfEntry *old_vrf, 
                                   const Ip6Address &old_addr);
+    void UpdateResolveRoute(bool old_ipv4_active, bool force_update,
+                            bool policy_change, VrfEntry * old_vrf,
+                            const Ip4Address &old_addr, uint8_t old_plen);
+    void DeleteResolveRoute(VrfEntry *old_vrf,
+                            const Ip4Address &old_addr, const uint8_t old_plen);
     void DeleteInterfaceNH();
     void UpdateMetadataRoute(bool old_ipv4_active, VrfEntry *old_vrf);
     void DeleteMetadataRoute(bool old_ipv4_active, VrfEntry *old_vrf,
@@ -576,6 +590,8 @@ private:
     Ip6Address vm_ip6_gw_addr_;
     VmInterface::SubType sub_type_;
     uint8_t configurer_;
+    Ip4Address subnet_;
+    uint8_t subnet_plen_;
     DISALLOW_COPY_AND_ASSIGN(VmInterface);
 };
 
@@ -682,7 +698,7 @@ struct VmInterfaceConfigData : public VmInterfaceData {
         mirror_direction_(Interface::UNKNOWN), sg_list_(),
         floating_ip_list_(), service_vlan_list_(), static_route_list_(),
         allowed_address_pair_list_(), sub_type_(VmInterface::NONE),
-        parent_("") {
+        parent_(""), subnet_(0), subnet_plen_(0) {
     }
 
     virtual ~VmInterfaceConfigData() { }
@@ -726,6 +742,8 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     VmInterface::AllowedAddressPairList allowed_address_pair_list_;
     VmInterface::SubType sub_type_;
     std::string parent_;
+    Ip4Address subnet_;
+    uint8_t subnet_plen_;
 };
 
 // Definition for structures when request queued from Nova

@@ -85,7 +85,8 @@ public:
     ControllerVmRoute(const Peer *peer) : ControllerPeerPath(peer) { }
     virtual ~ControllerVmRoute() { }
 
-    virtual bool AddChangePath(Agent *agent, AgentPath *path);
+    virtual bool AddChangePath(Agent *agent, AgentPath *path,
+                               const AgentRoute *rt);
     virtual string ToString() const {return "remote VM";}
     virtual bool IsPeerValid() const;
     const SecurityGroupList &sg_list() const {return sg_list_;}
@@ -127,7 +128,8 @@ public:
         {nh_req_.Swap(&nh_req);}
 
     virtual ~ControllerEcmpRoute() { }
-    virtual bool AddChangePath(Agent *agent, AgentPath *path);
+    virtual bool AddChangePath(Agent *agent, AgentPath *path,
+                               const AgentRoute *);
     virtual string ToString() const {return "inet4 ecmp";}
     virtual bool IsPeerValid() const;
 
@@ -209,4 +211,26 @@ private:
     DISALLOW_COPY_AND_ASSIGN(ControllerVlanNhRoute);
 };
 
+class ClonedLocalPath : public AgentRouteData {
+public:
+    ClonedLocalPath(uint64_t seq, const AgentXmppChannel *channel,
+                    uint32_t label, const std::string &vn,
+                    const SecurityGroupList &sg_list):
+        AgentRouteData(false), sequence_number_(seq),
+        channel_(channel), mpls_label_(label), vn_(vn), sg_list_(sg_list) {}
+    virtual ~ClonedLocalPath() {}
+    virtual bool IsPeerValid() const;
+    virtual bool AddChangePath(Agent *agent, AgentPath *path,
+                               const AgentRoute *rt);
+    virtual std::string ToString() const {
+        return "Nexthop cloned from local path";
+    }
+private:
+    uint64_t sequence_number_;
+    const AgentXmppChannel *channel_;
+    uint32_t mpls_label_;
+    const std::string vn_;
+    const SecurityGroupList sg_list_;
+    DISALLOW_COPY_AND_ASSIGN(ClonedLocalPath);
+};
 #endif //controller_route_path_hpp
