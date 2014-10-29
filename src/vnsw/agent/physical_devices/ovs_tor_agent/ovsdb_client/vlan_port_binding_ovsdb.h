@@ -24,6 +24,7 @@ public:
     KSyncEntry *DBToKSyncEntry(const DBEntry*);
     OvsdbDBEntry* AllocOvsEntry(struct ovsdb_idl_row*);
     DBFilterResp DBEntryFilter(const DBEntry *entry);
+
 private:
     DISALLOW_COPY_AND_ASSIGN(VlanPortBindingTable);
 };
@@ -35,6 +36,8 @@ public:
     VlanPortBindingEntry(VlanPortBindingTable *table,
             const AGENT::VlanLogicalPortEntry *entry);
 
+    void PreAddChange();
+    void PostDelete();
     void AddMsg(struct ovsdb_idl_txn *);
     void ChangeMsg(struct ovsdb_idl_txn *);
     void DeleteMsg(struct ovsdb_idl_txn *);
@@ -42,6 +45,7 @@ public:
     bool IsLess(const KSyncEntry&) const;
     std::string ToString() const {return "Vlan Port Binding";}
     KSyncEntry* UnresolvedReference();
+
 private:
     friend class VlanPortBindingTable;
     KSyncEntryPtr logical_switch_;

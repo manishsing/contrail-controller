@@ -47,6 +47,10 @@ public:
     OvsdbDBEntry(OvsdbDBObject *table, struct ovsdb_idl_row *ovs_entry);
     virtual ~OvsdbDBEntry();
 
+    // pre processing callback for add/change msg to take object reference
+    virtual void PreAddChange() {}
+    // post processing callback for delete msg to release object reference
+    virtual void PostDelete() {}
     // Encode add message for entry
     virtual void AddMsg(struct ovsdb_idl_txn *) = 0;
     // Encode change message for entry

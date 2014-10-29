@@ -44,6 +44,21 @@ VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
     vlan_ = key->vlan_;
 }
 
+void VlanPortBindingEntry::PreAddChange() {
+    if (!logical_switch_name_.empty()) {
+        LogicalSwitchTable *l_table =
+            table_->client_idl()->logical_switch_table();
+        LogicalSwitchEntry ls_key(l_table, logical_switch_name_.c_str());
+        logical_switch_ = l_table->GetReference(&ls_key);
+    } else {
+        logical_switch_ = NULL;
+    }
+}
+
+void VlanPortBindingEntry::PostDelete() {
+    logical_switch_ = NULL;
+}
+
 void VlanPortBindingEntry::AddMsg(struct ovsdb_idl_txn *txn) {
     PhysicalPortTable *p_table = table_->client_idl()->physical_port_table();
     PhysicalPortEntry key(p_table, physical_port_name_.c_str());
@@ -52,10 +67,6 @@ void VlanPortBindingEntry::AddMsg(struct ovsdb_idl_txn *txn) {
         static_cast<PhysicalPortEntry *>(physical_port_.get());
 
     if (!logical_switch_name_.empty()) {
-        LogicalSwitchTable *l_table =
-            table_->client_idl()->logical_switch_table();
-        LogicalSwitchEntry ls_key(l_table, logical_switch_name_.c_str());
-        logical_switch_ = l_table->GetReference(&ls_key);
         port->AddBinding(vlan_,
                 static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
         OVSDB_TRACE(Trace, "Adding port vlan binding port " +
@@ -74,9 +85,7 @@ void VlanPortBindingEntry::ChangeMsg(struct ovsdb_idl_txn *txn) {
         static_cast<PhysicalPortEntry *>(physical_port_.get());
     OVSDB_TRACE(Trace, "Deleting port vlan binding port " +
             physical_port_name_ + " vlan " + integerToString(vlan_));
-    port->DeleteBinding(vlan_,
-            static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
-    logical_switch_ = NULL;
+    port->DeleteBinding(vlan_, NULL);
 
     AddMsg(txn);
 }
@@ -91,8 +100,6 @@ void VlanPortBindingEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
             physical_port_name_ + " vlan " + integerToString(vlan_));
     port->DeleteBinding(vlan_,
             static_cast<LogicalSwitchEntry *>(logical_switch_.get()));
-    physical_port_ = NULL;
-    logical_switch_ = NULL;
     port->Encode(txn);
 }
 

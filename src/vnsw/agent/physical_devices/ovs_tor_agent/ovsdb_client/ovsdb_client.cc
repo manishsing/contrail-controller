@@ -2,6 +2,7 @@
  * Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
  */
 
+#include <ovsdb_object.h>
 #include <oper/agent_sandesh.h>
 #include <ovsdb_types.h>
 #include <ovsdb_client.h>
@@ -16,6 +17,7 @@ void OvsdbClient::Init() {
 
 OvsdbClient *OvsdbClient::Allocate(Agent *agent, TorAgentParam *params,
         OvsPeerManager *manager) {
+    KSyncObjectManager::Init();
     return (new OvsdbClientTcp(agent, params, manager));
 }
 

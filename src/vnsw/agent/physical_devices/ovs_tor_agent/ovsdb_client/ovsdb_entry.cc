@@ -54,6 +54,7 @@ OvsdbDBEntry::~OvsdbDBEntry() {
 }
 
 bool OvsdbDBEntry::Add() {
+    PreAddChange();
     OvsdbDBObject *object = static_cast<OvsdbDBObject*>(GetObject());
     struct ovsdb_idl_txn *txn = object->client_idl_->CreateTxn(this);
     AddMsg(txn);
@@ -67,6 +68,7 @@ bool OvsdbDBEntry::Add() {
 }
 
 bool OvsdbDBEntry::Change() {
+    PreAddChange();
     OvsdbDBObject *object = static_cast<OvsdbDBObject*>(GetObject());
     struct ovsdb_idl_txn *txn = object->client_idl_->CreateTxn(this);
     ChangeMsg(txn);
@@ -80,6 +82,7 @@ bool OvsdbDBEntry::Change() {
 }
 
 bool OvsdbDBEntry::Delete() {
+    PostDelete();
     OvsdbDBObject *object = static_cast<OvsdbDBObject*>(GetObject());
     struct ovsdb_idl_txn *txn = object->client_idl_->CreateTxn(this);
     DeleteMsg(txn);
