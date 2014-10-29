@@ -1858,12 +1858,14 @@ Ip4Address VmInterface::GetGateway() const {
     if (vn_.get() == NULL) {
         return ip;
     }
+
     const VnIpam *ipam = NULL;
     if (subnet_.is_unspecified()) {
         ipam = vn_->GetIpam(ip_addr_);
     } else {
         ipam = vn_->GetIpam(subnet_);
     }
+
     if (ipam) {
         ip = ipam->default_gw.to_v4();
     }
