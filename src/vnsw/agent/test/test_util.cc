@@ -639,10 +639,10 @@ bool VrfStatsMatch(int vrf_id, std::string vrf_name, bool stats_match,
         st->udp_mpls_tunnels == udp_mpls_tunnels &&
         st->gre_mpls_tunnels == gre_mpls_tunnels &&
         st->ecmp_composites == ecmp_composites &&
-        st->l3_mcast_composites == l3_mcast_composites &&
+        //st->l3_mcast_composites == l3_mcast_composites &&
         st->l2_mcast_composites == l2_mcast_composites &&
         st->fabric_composites == fabric_composites &&
-        st->multi_proto_composites == multi_proto_composites &&
+        //st->multi_proto_composites == multi_proto_composites &&
         st->l2_encaps == l2_encaps && st->encaps == encaps) {
         return true;
     }
@@ -677,10 +677,10 @@ bool VrfStatsMatchPrev(int vrf_id, uint64_t discards, uint64_t resolves,
         st->prev_udp_mpls_tunnels == udp_mpls_tunnels &&
         st->prev_gre_mpls_tunnels == gre_mpls_tunnels &&
         st->prev_ecmp_composites == ecmp_composites &&
-        st->prev_l3_mcast_composites == l3_mcast_composites &&
+        //st->prev_l3_mcast_composites == l3_mcast_composites &&
         st->prev_l2_mcast_composites == l2_mcast_composites &&
         st->prev_fabric_composites == fabric_composites &&
-        st->prev_multi_proto_composites == multi_proto_composites &&
+        //st->prev_multi_proto_composites == multi_proto_composites &&
         st->prev_l2_encaps == l2_encaps && st->prev_encaps == encaps) {
         return true;
     }
@@ -1448,10 +1448,17 @@ void DelVn(const char *name) {
 }
 
 void AddPort(const char *name, int id, const char *attr) {
-    if (attr)
-        AddNode("virtual-machine-interface", name, id, attr);
-    else
-        AddNode("virtual-machine-interface", name, id);
+    std::stringstream str;
+    str << "<virtual-machine-interface-mac-addresses>" << endl;
+    str << "    <mac-address>00:00:00:00:00:" << id << "</mac-address>"
+        << endl;
+    str << "</virtual-machine-interface-mac-addresses>" << endl;
+
+    char buff[1028];
+    strcpy(buff, str.str().c_str());
+    if (attr != NULL)
+        strcat(buff, attr);
+    AddNode("virtual-machine-interface", name, id, buff);
 }
 
 void AddPortByStatus(const char *name, int id, bool admin_status) {

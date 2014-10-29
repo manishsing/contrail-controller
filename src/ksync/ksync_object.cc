@@ -1132,3 +1132,32 @@ void KSyncObjectManager::Shutdown() {
     delete singleton_;
     singleton_ = NULL;
 }
+
+// Create a dummy KSync Entry. This entry will all ways be in deferred state
+// Any back-ref added to it will never get resolved.
+// Can be used to defer an incomplete entry
+
+class KSyncDummyEntry : public KSyncEntry {
+public:
+    KSyncDummyEntry() : KSyncEntry() { }
+    virtual ~KSyncDummyEntry() { }
+    virtual bool IsLess(const KSyncEntry &rhs) const {
+        return false;
+    }
+    std::string ToString() const { return "Dummy"; }
+    bool Add() { return false;}
+    bool Change() { return false; }
+    bool Delete() { return false; }
+    KSyncObject *GetObject() { return NULL; }
+    KSyncEntry *UnresolvedReference() { return NULL; }
+    bool IsDataResolved() {return false;}
+private:
+    DISALLOW_COPY_AND_ASSIGN(KSyncDummyEntry);
+};
+
+KSyncEntry *KSyncObjectManager::default_defer_entry() {
+    if (default_defer_entry_.get() == NULL) {
+        default_defer_entry_.reset(new KSyncDummyEntry());
+    }
+    return default_defer_entry_.get();
+}

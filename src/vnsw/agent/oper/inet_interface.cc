@@ -301,8 +301,9 @@ void InetInterface::DeActivate() {
     }
 }
 
-void InetInterface::Delete() {
+bool InetInterface::Delete(const DBRequest *req) {
     DeActivate();
+    return true;
 }
 
 // Interface Activate cannot be done in AllocEntry. It must be done in PostAdd 

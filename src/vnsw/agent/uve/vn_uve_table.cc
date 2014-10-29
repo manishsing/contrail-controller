@@ -225,10 +225,12 @@ void VnUveTable::InterfaceNotify(DBTablePartBase *partition, DBEntryBase *e) {
         return;
     }
 
+    const VmEntry *vm = vm_port->vm();
     VnUveInterfaceState *state = static_cast<VnUveInterfaceState *>
                       (e->GetState(partition->parent(), intf_listener_id_));
-    if (e->IsDeleted() || ((vm_port->ipv4_active() == false) &&
-                           (vm_port->l2_active() == false))) {
+    if (e->IsDeleted() || (vm == NULL) ||
+        ((vm_port->ipv4_active() == false) &&
+         (vm_port->l2_active() == false))) {
         if (state) {
             if (e->IsDeleted() || ((state->ipv4_active_ == true) ||
                                     (state->l2_active_ == true))) {

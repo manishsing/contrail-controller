@@ -145,7 +145,7 @@ AgentDBTable* CfgListener::GetOperDBTable(IFMapNode *node) {
     }
     const CfgTableListenerInfo *info = &loc->second;
     // Check for presence of ID_PERMS if configured
-    if (info->need_property_id_ > 0) {
+    if (info->need_property_id_ >= 0) {
         const IFMapObject *obj = node->GetObject();
         const IFMapIdentifier *id = static_cast<const IFMapIdentifier *>(obj);
         if (id->IsPropertySet(info->need_property_id_) == false) {
@@ -170,7 +170,7 @@ CfgListener::NodeListenerCb CfgListener::GetCallback(IFMapNode *node) {
 
     const CfgListenerInfo *info = &it->second;
     // Check for presence of ID_PERMS if configured
-    if (info->need_property_id_ > 0) {
+    if (info->need_property_id_ >= 0) {
         const IFMapObject *obj = node->GetObject();
         const IFMapIdentifier *id = static_cast<const IFMapIdentifier *>(obj);
         if (id->IsPropertySet(info->need_property_id_) == false) {

@@ -599,7 +599,7 @@ TEST_F(KStateSandeshTest, NhTest_flags) {
 
     //verify the response
     EXPECT_EQ(1U, type_specific_response_count_);
-    EXPECT_EQ((18U + num_nexthops), num_entries_);
+    EXPECT_EQ((14U + num_nexthops), num_entries_);
 
     //cleanup
     KSyncSockTypeMap::NHDelete(18);
@@ -1025,11 +1025,7 @@ TEST_F(KStateSandeshTest, VrfStatsTest_MultiResponse) {
     ClearCount();
     VrfStatsGet(-1);
     client->WaitForIdle();
-    WAIT_FOR(1000, 1000, (response_count_ == 7));
-
-    //verify the response
-    EXPECT_EQ(7U, type_specific_response_count_);
-    EXPECT_EQ(100U, num_entries_);
+    WAIT_FOR(1000, 1000, (num_entries_ == 100U));
 
     //cleanup
     for(int i = 1; i <= 100; i++) {

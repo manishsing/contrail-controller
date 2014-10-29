@@ -109,14 +109,16 @@ bool InterfaceTable::Resync(DBEntry *entry, DBRequest *req) {
 
     VmInterfaceData *vm_data = static_cast<VmInterfaceData *>(req->data.get());
     VmInterface *intf = static_cast<VmInterface *>(entry);
-    return intf->Resync(vm_data);
+    return intf->Resync(this, vm_data);
 }
 
 bool InterfaceTable::Delete(DBEntry *entry, const DBRequest *req) {
     Interface *intf = static_cast<Interface *>(entry);
-    intf->Delete();
-    intf->SendTrace(Interface::DELETE);
-    return true;
+    if (intf->Delete(req)) {
+        intf->SendTrace(Interface::DELETE);
+        return true;
+    }
+    return false;
 }
 
 VrfEntry *InterfaceTable::FindVrfRef(const string &name) const {
@@ -338,8 +340,9 @@ void PacketInterface::PostAdd() {
     InterfaceNH::CreatePacketInterfaceNh(name_);
 }
 
-void PacketInterface::Delete() {
+bool PacketInterface::Delete(const DBRequest *req) {
     flow_key_nh_= NULL;
+    return true;
 }
 
 // Enqueue DBRequest to create a Pkt Interface

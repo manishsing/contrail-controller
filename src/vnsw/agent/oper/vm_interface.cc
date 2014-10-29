@@ -60,7 +60,6 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid) :
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
-    configurer_ = (1 << VmInterface::CONFIG);
 }
 
 VmInterface::VmInterface(const boost::uuids::uuid &uuid,
@@ -86,7 +85,6 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
-    configurer_ = (1 << VmInterface::CONFIG);
 }
 
 VmInterface::~VmInterface() {
@@ -511,8 +509,9 @@ VmInterface::SubType GetInterfaceSubTypeFromVm(IFMapNode *node) {
 */
 
 //TBD Use link instead of device_owner
-VmInterface::SubType GetInterfaceSubType(const std::string &device_owner) {
-    if (device_owner.compare("compute:nova") == 0)
+VmInterface::SubType GetVmInterfaceSubType(Agent *agent,
+                                           const std::string &device_owner) {
+    if (device_owner.compare("compute:nova") == 0 || agent->test_mode())
         return VmInterface::NOVA;
     else
         return VmInterface::TOR;
@@ -526,6 +525,10 @@ void VmInterface::ResetConfigurer(VmInterface::Configurer type) {
     configurer_ &= ~(1 << type);
 }
 
+bool VmInterface::IsConfigurerSet(VmInterface::Configurer type) {
+    return ((configurer_ & (1 << type)) != 0);
+}
+
 // Virtual Machine Interface is added or deleted into oper DB from Nova 
 // messages. The Config notify is used only to change interface.
 bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
@@ -537,33 +540,38 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
     boost::uuids::uuid u;
     CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong, u);
 
-    CfgIntTable *cfg_table = agent_->interface_config_table();
     VmInterface::SubType interface_sub_type =
-        GetInterfaceSubType(cfg->device_owner());
-    std::string vn_name;
+        GetVmInterfaceSubType(agent_, cfg->device_owner());
 
+    // Skip config interface delete notification
+    if (node->IsDeleted()) {
+        if (interface_sub_type == VmInterface::NOVA) {
+            req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
+            req.key.reset(new VmInterfaceKey(AgentKey::RESYNC, u, ""));
+            req.data.reset(new VmInterfaceConfigData());
+            return true;
+        } else {
+            VmInterface::Delete(this, u, VmInterface::CONFIG);
+            return false;
+        }
+    }
+
+    CfgIntTable *cfg_table = agent_->interface_config_table();
     CfgIntKey cfg_key(u);
     CfgIntEntry *cfg_entry =
         static_cast <CfgIntEntry *>(cfg_table->Find(&cfg_key));
-    // Skip config interface delete notification
-    if (node->IsDeleted()) {
-        VmInterface::Delete(this, u, VmInterface::CONFIG);
-        return false;
-    }
 
     // Update interface configuration
     req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
     InterfaceKey *key = NULL; 
-    if (interface_sub_type != VmInterface::NOVA) {
+    if (interface_sub_type == VmInterface::NOVA) {
+        key = new VmInterfaceKey(AgentKey::RESYNC, u, "");
+    } else {
         key = new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, u,
                                  cfg->display_name());
-    } else {
-        key = new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, u, "");
     }
 
-    VmInterfaceConfigData *data;
-    data = new VmInterfaceConfigData();
-
+    VmInterfaceConfigData *data = new VmInterfaceConfigData();
     //Extract the local preference
     if (cfg->IsPropertySet(VirtualMachineInterface::PROPERTIES)) {
         autogen::VirtualMachineInterfacePropertiesType prop = cfg->properties();
@@ -620,7 +628,6 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
             VirtualNetwork *vn = static_cast<VirtualNetwork *>
                 (adj_node->GetObject());
             assert(vn);
-            vn_name = vn->display_name();
             autogen::IdPermsType id_perms = vn->id_perms();
             CfgUuidSet(id_perms.uuid.uuid_mslong,
                        id_perms.uuid.uuid_lslong, data->vn_uuid_);
@@ -746,28 +753,10 @@ Interface *VmInterfaceKey::AllocEntry(const InterfaceTable *table) const {
 
 Interface *VmInterfaceKey::AllocEntry(const InterfaceTable *table,
                                       const InterfaceData *data) const {
-    const VmInterfaceConfigData *vm_data =
-        static_cast<const VmInterfaceConfigData *>(data);
-    // Add is only supported with ADD_DEL_CHANGE key and data
-    assert(vm_data->type_ == VmInterfaceData::ADD_DEL_CHANGE);
+    const VmInterfaceData *vm_data =
+        static_cast<const VmInterfaceData *>(data);
 
-    Interface *parent = NULL;
-    if (vm_data->tx_vlan_id_ != VmInterface::kInvalidVlanId &&
-        vm_data->rx_vlan_id_ != VmInterface::kInvalidVlanId &&
-        vm_data->parent_ != Agent::NullString()) {
-        PhysicalInterfaceKey key(vm_data->parent_);
-        parent = static_cast<Interface *>
-            (table->agent()->interface_table()->FindActiveEntry(&key));
-        assert(parent != NULL);
-    }
-
-    VmInterface *vmi =
-        new VmInterface(uuid_, name_, vm_data->addr_, vm_data->vm_mac_,
-                        vm_data->vm_name_, vm_data->vm_uuid_,
-                        vm_data->tx_vlan_id_, vm_data->rx_vlan_id_,
-                        parent, vm_data->ip6_addr_);
-    vmi->SetConfigurer(vm_data->configurer_);
-    vmi->Resync(vm_data);
+    VmInterface *vmi = vm_data->OnAdd(table, this);
     return vmi;
 }
 
@@ -793,19 +782,16 @@ const Peer *VmInterface::peer() const {
 }
 
 bool VmInterface::OnChange(VmInterfaceData *data) {
-    if (data->type_ == VmInterfaceData::ADD_DEL_CHANGE) {
-        const VmInterfaceConfigData *cfg = static_cast<const VmInterfaceConfigData *>
-            (data);
-        SetConfigurer(cfg->configurer_);
-    }
-    return Resync(data);
+    InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
+    return Resync(table, data);
 }
 
 // Handle RESYNC DB Request. Handles multiple sub-types,
 // - CONFIG : RESYNC from config message
 // - IP_ADDR: RESYNC due to learning IP from DHCP
 // - MIRROR : RESYNC due to change in mirror config
-bool VmInterface::Resync(const VmInterfaceData *data) {
+bool VmInterface::Resync(const InterfaceTable *table,
+                         const VmInterfaceData *data) {
     bool ret = false;
 
     // Copy old values used to update config below
@@ -823,26 +809,8 @@ bool VmInterface::Resync(const VmInterfaceData *data) {
     bool local_pref_changed = false;
 
     if (data) {
-        if (data->type_ == VmInterfaceData::ADD_DEL_CHANGE) {
-            const VmInterfaceConfigData *cfg = static_cast<const VmInterfaceConfigData *>
-                (data);
-            ret = CopyConfig(cfg, &sg_changed, &ecmp_changed,
-                    &local_pref_changed);
-        } else if (data->type_ == VmInterfaceData::IP_ADDR) {
-            const VmInterfaceIpAddressData *addr =
-                static_cast<const VmInterfaceIpAddressData *> (data);
-            ret = ResyncIpAddress(addr);
-        } else if (data->type_ == VmInterfaceData::MIRROR) {
-            const VmInterfaceMirrorData *mirror = static_cast<const VmInterfaceMirrorData *>
-                (data);
-            ret = ResyncMirror(mirror);
-        } else if (data->type_ == VmInterfaceData::OS_OPER_STATE) {
-            const VmInterfaceOsOperStateData *oper_state =
-                static_cast<const VmInterfaceOsOperStateData *> (data);
-            ret = ResyncOsOperState(oper_state);
-        } else {
-            assert(0);
-        }
+        ret = data->OnResync(table, this, &sg_changed, &ecmp_changed,
+                             &local_pref_changed);
     }
 
     ipv4_active_ = IsIpv4Active();
@@ -878,11 +846,164 @@ void VmInterface::Add() {
     peer_.reset(new LocalVmPortPeer(LOCAL_VM_PORT_PEER_NAME, id_));
 }
 
-void VmInterface::Delete() {
-    VmInterfaceConfigData data;
-    Resync(&data);
+bool VmInterface::Delete(const DBRequest *req) {
     InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
+    const VmInterfaceData *vm_data = static_cast<const VmInterfaceData *>
+        (req->data.get());
+    vm_data->OnDelete(table, this);
+    if (configurer_) {
+        return false;
+    }
     table->DeleteDhcpSnoopEntry(name_);
+    return true;
+}
+
+void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
+                           const Ip4Address &old_addr, int old_vxlan_id,
+                           bool force_update, bool policy_change,
+                           bool old_ipv6_active,
+                           const Ip6Address &old_v6_addr) {
+    UpdateSecurityGroup();
+    UpdateL3NextHop(old_ipv4_active, old_ipv6_active);
+    UpdateL3TunnelId(force_update, policy_change);
+    if (ipv4_active_) {
+        UpdateIpv4InterfaceRoute(old_ipv4_active, force_update, policy_change,
+                                 old_vrf, old_addr);
+        UpdateMetadataRoute(old_ipv4_active, old_vrf);
+        UpdateFloatingIp(force_update, policy_change);
+        UpdateServiceVlan(force_update, policy_change);
+        UpdateAllowedAddressPair(force_update, policy_change);
+        UpdateVrfAssignRule();
+    }
+    if (ipv6_active_) {
+        UpdateIpv6InterfaceRoute(old_ipv6_active, force_update, policy_change,
+                                 old_vrf, old_v6_addr);
+    }
+    UpdateStaticRoute(force_update, policy_change);
+}
+
+void VmInterface::DeleteL3(bool old_ipv4_active, VrfEntry *old_vrf,
+                           const Ip4Address &old_addr,
+                           bool old_need_linklocal_ip, bool old_ipv6_active,
+                           const Ip6Address &old_v6_addr) {
+    if (old_ipv4_active) {
+        DeleteIpv4InterfaceRoute(old_vrf, old_addr);
+    }
+    if (old_ipv6_active) {
+        DeleteIpv6InterfaceRoute(old_vrf, old_v6_addr);
+    }
+    DeleteMetadataRoute(old_ipv4_active, old_vrf, old_need_linklocal_ip);
+    DeleteFloatingIp();
+    DeleteServiceVlan();
+    DeleteStaticRoute();
+    DeleteAllowedAddressPair();
+    DeleteSecurityGroup();
+    DeleteL3TunnelId();
+    DeleteVrfAssignRule();
+    DeleteL3NextHop(old_ipv4_active, old_ipv6_active);
+}
+
+void VmInterface::UpdateVxLan() {
+    int new_vxlan_id = vn_.get() ? vn_->GetVxLanId() : 0;
+    if (l2_active_ && ((vxlan_id_ == 0) ||
+                       (vxlan_id_ != new_vxlan_id))) {
+        vxlan_id_ = new_vxlan_id;
+    }
+}
+
+void VmInterface::UpdateL2(bool old_l2_active, VrfEntry *old_vrf, int old_vxlan_id,
+                           bool force_update, bool policy_change) {
+    UpdateVxLan();
+    UpdateL2NextHop(old_l2_active);
+    //Update label only if new entry is to be created, so
+    //no force update on same.
+    UpdateL2TunnelId(false, policy_change);
+    UpdateL2InterfaceRoute(old_l2_active, force_update);
+}
+
+void VmInterface::UpdateL2(bool force_update) {
+    UpdateL2(l2_active_, vrf_.get(), vxlan_id_, force_update, false);
+}
+
+void VmInterface::DeleteL2(bool old_l2_active, VrfEntry *old_vrf) {
+    DeleteL2TunnelId();
+    DeleteL2InterfaceRoute(old_l2_active, old_vrf);
+    DeleteL2NextHop(old_l2_active);
+}
+
+// Apply the latest configuration
+void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old_policy,
+                              VrfEntry *old_vrf, const Ip4Address &old_addr,
+                              int old_vxlan_id, bool old_need_linklocal_ip,
+                              bool sg_changed, bool old_ipv6_active,
+                              const Ip6Address &old_v6_addr, bool ecmp_mode_changed,
+                              bool local_pref_changed) {
+    //Need not apply config for TOR VMI as it is more of an inidicative
+    //interface. No route addition or NH addition happens for this interface.
+    if (sub_type_ == VmInterface::TOR)
+        return;
+
+    bool force_update = false;
+    if (sg_changed || ecmp_mode_changed | local_pref_changed) {
+        force_update = true;
+    }
+
+    bool policy_change = (policy_enabled_ != old_policy);
+
+    if (ipv4_active_ == true || l2_active_ == true) {
+        UpdateMulticastNextHop(old_ipv4_active, old_l2_active);
+    } else {
+        DeleteMulticastNextHop();
+    }
+
+    //Irrespective of interface state, if ipv4 forwarding mode is enabled
+    //enable L3 services on this interface
+    if (layer3_forwarding_) {
+        UpdateL3Services(dhcp_enable_, true);
+    } else {
+        UpdateL3Services(false, false);
+    }
+
+    // Add/Del/Update L3 
+    if ((ipv4_active_ || ipv6_active_) && layer3_forwarding_) {
+        UpdateL3(old_ipv4_active, old_vrf, old_addr, old_vxlan_id, force_update,
+                 policy_change, old_ipv6_active, old_v6_addr);
+    } else if ((old_ipv4_active || old_ipv6_active)) {
+        DeleteL3(old_ipv4_active, old_vrf, old_addr, old_need_linklocal_ip, 
+                 old_ipv6_active, old_v6_addr);
+    }
+
+    // Add/Del/Update L2 
+    if (l2_active_ && layer2_forwarding_) {
+        UpdateL2(old_l2_active, old_vrf, old_vxlan_id, 
+                 force_update, policy_change);
+    } else if (old_l2_active) {
+        DeleteL2(old_l2_active, old_vrf);
+    }
+
+    if (old_l2_active != l2_active_) {
+        if (l2_active_) {
+            SendTrace(ACTIVATED_L2);
+        } else {
+            SendTrace(DEACTIVATED_L2);
+        }
+    }
+
+    if (old_ipv4_active != ipv4_active_) {
+        if (ipv4_active_) {
+            SendTrace(ACTIVATED_IPV4);
+        } else {
+            SendTrace(DEACTIVATED_IPV4);
+        }
+    }
+
+    if (old_ipv6_active != ipv6_active_) {
+        if (ipv6_active_) {
+            SendTrace(ACTIVATED_IPV6);
+        } else {
+            SendTrace(DEACTIVATED_IPV6);
+        }
+    }
 }
 
 bool VmInterface::CopyIpAddress(Ip4Address &addr) {
@@ -914,13 +1035,45 @@ bool VmInterface::CopyIpAddress(Ip4Address &addr) {
     return ret;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// VmInterfaceConfigData routines
+/////////////////////////////////////////////////////////////////////////////
+VmInterface *VmInterfaceConfigData::OnAdd(const InterfaceTable *table,
+                                          const VmInterfaceKey *key) const {
+    VmInterface *vmi =
+        new VmInterface(key->uuid_, key->name_, addr_, vm_mac_, vm_name_,
+                        vm_uuid_, VmInterface::kInvalidVlanId,
+                        VmInterface::kInvalidVlanId, NULL, ip6_addr_);
+    vmi->SetConfigurer(VmInterface::CONFIG);
+    return vmi;
+}
+
+bool VmInterfaceConfigData::OnDelete(const InterfaceTable *table,
+                                     VmInterface *vmi) const {
+    if (vmi->IsConfigurerSet(VmInterface::CONFIG) == false)
+        return true;
+
+    vmi->ResetConfigurer(VmInterface::CONFIG);
+    VmInterfaceConfigData data;
+    vmi->Resync(table, &data);
+    return true;
+}
+
+bool VmInterfaceConfigData::OnResync(const InterfaceTable *table,
+                                     VmInterface *vmi, bool *sg_changed,
+                                     bool *ecmp_changed,
+                                     bool *local_pref_changed) const {
+    return vmi->CopyConfig(table, this, sg_changed, ecmp_changed,
+                           local_pref_changed);
+}
+
 // Copies configuration from DB-Request data. The actual applying of 
 // configuration, like adding/deleting routes must be done with ApplyConfig()
-bool VmInterface::CopyConfig(const VmInterfaceConfigData *data, bool *sg_changed,
+bool VmInterface::CopyConfig(const InterfaceTable *table,
+                             const VmInterfaceConfigData *data,
+                             bool *sg_changed,
                              bool *ecmp_changed, bool *local_pref_changed) {
     bool ret = false;
-    InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
-
     if (table) {
         VmEntry *vm = table->FindVmRef(data->vm_uuid_);
         if (vm_.get() != vm) {
@@ -1098,237 +1251,178 @@ bool VmInterface::CopyConfig(const VmInterfaceConfigData *data, bool *sg_changed
     return ret;
 }
 
-void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
-                           const Ip4Address &old_addr, int old_vxlan_id,
-                           bool force_update, bool policy_change,
-                           bool old_ipv6_active, 
-                           const Ip6Address &old_v6_addr) {
-    UpdateSecurityGroup();
-    UpdateL3NextHop(old_ipv4_active, old_ipv6_active);
-    UpdateL3TunnelId(force_update, policy_change);
-    if (ipv4_active_) {
-        UpdateIpv4InterfaceRoute(old_ipv4_active, force_update, policy_change,
-                                 old_vrf, old_addr);
-        UpdateMetadataRoute(old_ipv4_active, old_vrf);
-        UpdateFloatingIp(force_update, policy_change);
-        UpdateServiceVlan(force_update, policy_change);
-        UpdateAllowedAddressPair(force_update, policy_change);
-        UpdateVrfAssignRule();
-    }
-    if (ipv6_active_) {
-        UpdateIpv6InterfaceRoute(old_ipv6_active, force_update, policy_change,
-                                 old_vrf, old_v6_addr);
-    }
-    UpdateStaticRoute(force_update, policy_change);
+/////////////////////////////////////////////////////////////////////////////
+// VmInterfaceNovaData routines
+/////////////////////////////////////////////////////////////////////////////
+VmInterfaceNovaData::VmInterfaceNovaData() :
+    VmInterfaceData(NOVA),
+    ipv4_addr_(),
+    ipv6_addr_(),
+    mac_addr_(),
+    vm_name_(),
+    vm_uuid_(),
+    parent_(),
+    tx_vlan_id_(),
+    rx_vlan_id_() {
 }
 
-void VmInterface::DeleteL3(bool old_ipv4_active, VrfEntry *old_vrf,
-                           const Ip4Address &old_addr,
-                           bool old_need_linklocal_ip, bool old_ipv6_active,
-                           const Ip6Address &old_v6_addr) {
-    if (old_ipv4_active) {
-        DeleteIpv4InterfaceRoute(old_vrf, old_addr);
-    }
-    if (old_ipv6_active) {
-        DeleteIpv6InterfaceRoute(old_vrf, old_v6_addr);
-    }
-    DeleteMetadataRoute(old_ipv4_active, old_vrf, old_need_linklocal_ip);
-    DeleteFloatingIp();
-    DeleteServiceVlan();
-    DeleteStaticRoute();
-    DeleteAllowedAddressPair();
-    DeleteSecurityGroup();
-    DeleteL3TunnelId();
-    DeleteVrfAssignRule();
-    DeleteL3NextHop(old_ipv4_active, old_ipv6_active);
+VmInterfaceNovaData::VmInterfaceNovaData(const Ip4Address &ipv4_addr,
+                                         const Ip6Address &ipv6_addr,
+                                         const std::string &mac_addr,
+                                         const std::string vm_name,
+                                         boost::uuids::uuid vm_uuid,
+                                         const std::string &parent,
+                                         uint16_t tx_vlan_id,
+                                         uint16_t rx_vlan_id) :
+    VmInterfaceData(NOVA),
+    ipv4_addr_(ipv4_addr),
+    ipv6_addr_(ipv6_addr),
+    mac_addr_(mac_addr),
+    vm_name_(vm_name),
+    vm_uuid_(vm_uuid),
+    parent_(parent),
+    tx_vlan_id_(tx_vlan_id),
+    rx_vlan_id_(rx_vlan_id) {
 }
 
-void VmInterface::UpdateVxLan() {
-    int new_vxlan_id = vn_.get() ? vn_->GetVxLanId() : 0;
-    if (l2_active_ && ((vxlan_id_ == 0) ||
-                       (vxlan_id_ != new_vxlan_id))) {
-        vxlan_id_ = new_vxlan_id;
-    }
+VmInterfaceNovaData::~VmInterfaceNovaData() {
 }
 
-void VmInterface::UpdateL2(bool old_l2_active, VrfEntry *old_vrf, int old_vxlan_id,
-                           bool force_update, bool policy_change) {
-    UpdateVxLan();
-    UpdateL2NextHop(old_l2_active);
-    //Update label only if new entry is to be created, so
-    //no force update on same.
-    UpdateL2TunnelId(false, policy_change);
-    UpdateL2InterfaceRoute(old_l2_active, force_update);
+VmInterface *VmInterfaceNovaData::OnAdd(const InterfaceTable *table,
+                                        const VmInterfaceKey *key) const {
+    Interface *parent = NULL;
+    if (tx_vlan_id_ != VmInterface::kInvalidVlanId &&
+        rx_vlan_id_ != VmInterface::kInvalidVlanId &&
+        parent_ != Agent::NullString()) {
+        PhysicalInterfaceKey key_1(parent_);
+        parent = static_cast<Interface *>
+            (table->agent()->interface_table()->FindActiveEntry(&key_1));
+        assert(parent != NULL);
+    }
+    VmInterface *vmi =
+        new VmInterface(key->uuid_, key->name_, ipv4_addr_, mac_addr_, vm_name_,
+                        vm_uuid_, tx_vlan_id_, rx_vlan_id_, parent, ipv6_addr_);
+    vmi->SetConfigurer(VmInterface::EXTERNAL);
+    return vmi;
 }
 
-void VmInterface::UpdateL2(bool force_update) {
-    UpdateL2(l2_active_, vrf_.get(), vxlan_id_, force_update, false);
+bool VmInterfaceNovaData::OnDelete(const InterfaceTable *table,
+                                   VmInterface *vmi) const {
+    if (vmi->IsConfigurerSet(VmInterface::EXTERNAL) == false)
+        return true;
+
+    vmi->ResetConfigurer(VmInterface::CONFIG);
+    VmInterfaceConfigData data;
+    vmi->Resync(table, &data);
+    vmi->ResetConfigurer(VmInterface::EXTERNAL);
+    return true;
 }
 
-void VmInterface::DeleteL2(bool old_l2_active, VrfEntry *old_vrf) {
-    DeleteL2TunnelId();
-    DeleteL2InterfaceRoute(old_l2_active, old_vrf);
-    DeleteL2NextHop(old_l2_active);
-}
-
-// Apply the latest configuration
-void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old_policy, 
-                              VrfEntry *old_vrf, const Ip4Address &old_addr, 
-                              int old_vxlan_id, bool old_need_linklocal_ip,
-                              bool sg_changed, bool old_ipv6_active, 
-                              const Ip6Address &old_v6_addr, bool ecmp_mode_changed,
-                              bool local_pref_changed) {
-    //Need not apply config for TOR VMI as it is more of an inidicative
-    //interface. No route addition or NH addition happens for this interface.
-    if (sub_type_ == VmInterface::TOR)
-        return;
-
-    bool force_update = false;
-    if (sg_changed || ecmp_mode_changed | local_pref_changed) {
-        force_update = true;
-    }
-
-    bool policy_change = (policy_enabled_ != old_policy);
-
-    if (ipv4_active_ == true || l2_active_ == true) {
-        UpdateMulticastNextHop(old_ipv4_active, old_l2_active);
-    } else {
-        DeleteMulticastNextHop();
-    }
-
-    //Irrespective of interface state, if ipv4 forwarding mode is enabled
-    //enable L3 services on this interface
-    if (layer3_forwarding_) {
-        UpdateL3Services(dhcp_enable_, true);
-    } else {
-        UpdateL3Services(false, false);
-    }
-
-    // Add/Del/Update L3 
-    if ((ipv4_active_ || ipv6_active_) && layer3_forwarding_) {
-        UpdateL3(old_ipv4_active, old_vrf, old_addr, old_vxlan_id, force_update,
-                 policy_change, old_ipv6_active, old_v6_addr);
-    } else if ((old_ipv4_active || old_ipv6_active)) {
-        DeleteL3(old_ipv4_active, old_vrf, old_addr, old_need_linklocal_ip, 
-                 old_ipv6_active, old_v6_addr);
-    }
-
-    // Add/Del/Update L2 
-    if (l2_active_ && layer2_forwarding_) {
-        UpdateL2(old_l2_active, old_vrf, old_vxlan_id, 
-                 force_update, policy_change);
-    } else if (old_l2_active) {
-        DeleteL2(old_l2_active, old_vrf);
-    }
-
-    if (old_l2_active != l2_active_) {
-        if (l2_active_) {
-            SendTrace(ACTIVATED_L2);
-        } else {
-            SendTrace(DEACTIVATED_L2);
-        }
-    }
-
-    if (old_ipv4_active != ipv4_active_) {
-        if (ipv4_active_) {
-            SendTrace(ACTIVATED_IPV4);
-        } else {
-            SendTrace(DEACTIVATED_IPV4);
-        }
-    }
-
-    if (old_ipv6_active != ipv6_active_) {
-        if (ipv6_active_) {
-            SendTrace(ACTIVATED_IPV6);
-        } else {
-            SendTrace(DEACTIVATED_IPV6);
-        }
-    }
-}
-
-// Handle RESYNC message from mirror
-bool VmInterface::ResyncMirror(const VmInterfaceMirrorData *data) {
+bool VmInterfaceNovaData::OnResync(const InterfaceTable *table,
+                                   VmInterface *vmi, bool *sg_changed,
+                                   bool *ecmp_changed,
+                                   bool *local_pref_changed) const {
     bool ret = false;
 
-    InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
-    MirrorEntry *mirror_entry = NULL;
-
-    if (data->mirror_enable_ == true) {
-        mirror_entry = table->FindMirrorRef(data->analyzer_name_);
+    if (vmi->tx_vlan_id_ != tx_vlan_id_) {
+        vmi->tx_vlan_id_ = tx_vlan_id_;
+        ret = true;
     }
 
-    if (mirror_entry_ != mirror_entry) {
-        mirror_entry_ = mirror_entry;
+    if (vmi->rx_vlan_id_ != rx_vlan_id_) {
+        vmi->rx_vlan_id_ = rx_vlan_id_;
+        ret = true;
+    }
+    vmi->SetConfigurer(VmInterface::EXTERNAL);
+
+    return ret;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// VmInterfaceMirrorData routines
+/////////////////////////////////////////////////////////////////////////////
+bool VmInterfaceMirrorData::OnResync(const InterfaceTable *table,
+                                     VmInterface *vmi, bool *sg_changed,
+                                     bool *ecmp_changed,
+                                     bool *local_pref_changed) const {
+    bool ret = false;
+
+    MirrorEntry *mirror_entry = NULL;
+    if (mirror_enable_ == true) {
+        mirror_entry = table->FindMirrorRef(analyzer_name_);
+    }
+
+    if (vmi->mirror_entry_ != mirror_entry) {
+        vmi->mirror_entry_ = mirror_entry;
         ret = true;
     }
 
     return ret;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// VmInterfaceIpAddressData routines
+/////////////////////////////////////////////////////////////////////////////
 // Update for VM IP address only
 // For interfaces in IP Fabric VRF, we send DHCP requests to external servers
 // if config doesnt provide an address. This address is updated here.
-bool VmInterface::ResyncIpAddress(const VmInterfaceIpAddressData *data) {
+bool VmInterfaceIpAddressData::OnResync(const InterfaceTable *table,
+                                        VmInterface *vmi, bool *sg_changed,
+                                        bool *ecmp_changed,
+                                        bool *local_pref_changed) const {
     bool ret = false;
 
-    if (os_index_ == kInvalidIndex) {
-        InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
-        GetOsParams(table->agent());
-        if (os_index_ != kInvalidIndex)
+    if (vmi->os_index_ == VmInterface::kInvalidIndex) {
+        vmi->GetOsParams(table->agent());
+        if (vmi->os_index_ != VmInterface::kInvalidIndex)
             ret = true;
     }
 
-    if (!layer3_forwarding_) {
+    // Ignore IP address change if L3 Forwarding not enabled
+    if (!vmi->layer3_forwarding_) {
         return ret;
     }
 
-    bool old_ipv4_active = ipv4_active_;
-    Ip4Address old_addr = ip_addr_;
-
     Ip4Address addr = Ip4Address(0);
-    if (CopyIpAddress(addr)) {
+    if (vmi->CopyIpAddress(addr)) {
         ret = true;
     }
 
-    ipv4_active_ = IsIpv4Active();
-    ApplyConfig(old_ipv4_active, l2_active_, policy_enabled_, vrf_.get(), old_addr,
-                vxlan_id_, need_linklocal_ip_, false, ipv6_active_,
-                ip6_addr_, false, false);
     return ret;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// VmInterfaceOsOperStateData routines
+/////////////////////////////////////////////////////////////////////////////
 // Resync oper-state for the interface
-bool VmInterface::ResyncOsOperState(const VmInterfaceOsOperStateData *data) {
+bool VmInterfaceOsOperStateData::OnResync(const InterfaceTable *table,
+                                          VmInterface *vmi, bool *sg_changed,
+                                          bool *ecmp_changed,
+                                          bool *local_pref_changed) const {
     bool ret = false;
 
-    InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
+    uint32_t old_os_index = vmi->os_index_;
+    bool old_ipv4_active = vmi->ipv4_active_;
+    bool old_ipv6_active = vmi->ipv6_active_;
 
-    uint32_t old_os_index = os_index_;
-    bool old_ipv4_active = ipv4_active_;
-    bool old_ipv6_active = ipv6_active_;
-
-    GetOsParams(table->agent());
-    if (os_index_ != old_os_index)
+    vmi->GetOsParams(table->agent());
+    if (vmi->os_index_ != old_os_index)
         ret = true;
 
-    ipv4_active_ = IsIpv4Active();
-    if (ipv4_active_ != old_ipv4_active)
+    vmi->ipv4_active_ = vmi->IsIpv4Active();
+    if (vmi->ipv4_active_ != old_ipv4_active)
         ret = true;
 
-    ipv6_active_ = IsIpv6Active();
-    if (ipv6_active_ != old_ipv6_active)
+    vmi->ipv6_active_ = vmi->IsIpv6Active();
+    if (vmi->ipv6_active_ != old_ipv6_active)
         ret = true;
 
-    ApplyConfig(old_ipv4_active, l2_active_, policy_enabled_, vrf_.get(),
-                ip_addr_, vxlan_id_, need_linklocal_ip_, false, 
-                old_ipv6_active, ip6_addr_, false, false);
     return ret;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // VM Port Entry utility routines
 /////////////////////////////////////////////////////////////////////////////
-
 void VmInterface::GetOsParams(Agent *agent) {
     if (rx_vlan_id_ == VmInterface::kInvalidVlanId) {
         assert(tx_vlan_id_ == VmInterface::kInvalidVlanId);
@@ -3028,36 +3122,34 @@ void VmInterface::SendTrace(Trace event) {
 // VM Interface DB Table utility functions
 /////////////////////////////////////////////////////////////////////////////
 // Add a VM-Interface
-void VmInterface::Add(InterfaceTable *table, const uuid &intf_uuid,
-                      const string &os_name, const Ip4Address &addr,
-                      const string &mac, const string &vm_name,
-                      const uuid &vm_project_uuid, uint16_t tx_vlan_id,
-                      uint16_t rx_vlan_id, const std::string &parent,
-                      const Ip6Address &ip6, VmInterface::Configurer configurer) {
+void VmInterface::NovaAdd(InterfaceTable *table, const uuid &intf_uuid,
+                          const string &os_name, const Ip4Address &addr,
+                          const string &mac, const string &vm_name,
+                          const uuid &vm_project_uuid, uint16_t tx_vlan_id,
+                          uint16_t rx_vlan_id, const std::string &parent,
+                          const Ip6Address &ip6) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, intf_uuid,
                                      os_name));
-    req.data.reset(new VmInterfaceConfigData(addr, mac, vm_name, vm_project_uuid,
-                                          tx_vlan_id, rx_vlan_id, parent, ip6,
-                                          configurer));
+
+    req.data.reset(new VmInterfaceNovaData(addr, ip6, mac, vm_name, nil_uuid(),
+                                           parent, tx_vlan_id, rx_vlan_id));
     table->Enqueue(&req);
 }
 
 // Delete a VM-Interface
 void VmInterface::Delete(InterfaceTable *table, const uuid &intf_uuid,
                          VmInterface::Configurer configurer) {
-    VmInterfaceKey vmi_key(AgentKey::ADD_DEL_CHANGE, intf_uuid, "");
-    VmInterface *vmi = static_cast<VmInterface *>(table->
-                                                  FindActiveEntry(&vmi_key));
-    if (vmi) {
-        vmi->ResetConfigurer(configurer);
-        if (vmi->CanBeDeleted() == false)
-            return;
-    }
-
     DBRequest req(DBRequest::DB_ENTRY_DELETE);
     req.key.reset(new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, intf_uuid, ""));
-    req.data.reset(NULL);
+
+    if (configurer == VmInterface::CONFIG) {
+        req.data.reset(new VmInterfaceConfigData());
+    } else if (configurer == VmInterface::EXTERNAL) {
+        req.data.reset(new VmInterfaceNovaData());
+    } else {
+        assert(0);
+    }
     table->Enqueue(&req);
 }
 

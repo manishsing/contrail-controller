@@ -101,9 +101,8 @@ public:
         client->Reset();
         DeleteVmportEnv(input, 2, true, 1);
         client->WaitForIdle(3);
-        client->PortDelNotifyWait(2);
-        EXPECT_FALSE(VmPortFind(input, 0));
-        EXPECT_FALSE(VmPortFind(input, 1));
+        WAIT_FOR(1000, 1000, (VmPortFind(input, 0) == false));
+        WAIT_FOR(1000, 1000, (VmPortFind(input, 1) == false));
         EXPECT_EQ(0U, Agent::GetInstance()->pkt()->flow_table()->Size());
     }
 
@@ -479,7 +478,7 @@ TEST_F(UveVnUveTest, FlowCount_1) {
     EXPECT_EQ(4U, uve1->get_egress_flow_count());
 
     DeleteFlow(flow, 1);
-    EXPECT_EQ(2U, Agent::GetInstance()->pkt()->flow_table()->Size());
+    WAIT_FOR(1000, 1000, (Agent::GetInstance()->pkt()->flow_table()->Size() == 2U));
     Agent::GetInstance()->uve()->vn_uve_table()->SendVnStats(false);
     EXPECT_EQ(2U, uve1->get_ingress_flow_count());
     EXPECT_EQ(2U, uve1->get_egress_flow_count());
@@ -549,7 +548,8 @@ TEST_F(UveVnUveTest, FlowCount_2) {
 
     //Delete a flow
     DeleteFlow(flow, 1);
-    EXPECT_EQ(2U, Agent::GetInstance()->pkt()->flow_table()->Size());
+    WAIT_FOR(1000, 1000,
+             (2U == Agent::GetInstance()->pkt()->flow_table()->Size()));
 
     //Trigger VN UVE send
     Agent::GetInstance()->uve()->vn_uve_table()->SendVnStats(false);
