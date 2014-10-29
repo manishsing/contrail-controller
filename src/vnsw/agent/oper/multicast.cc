@@ -84,11 +84,9 @@ void MulticastHandler::AddL2BroadcastRoute(MulticastGroupObject *obj,
                                                    TunnelType::AllType(),
                                                    Composite::L2INTERFACE,
                                                    component_nh_key_list);
-    /*
     RebakeSubnetRoute(agent_->local_vm_peer(), vrf_name, label,
                       vxlan_id, vn_name, false,
                       component_nh_key_list, Composite::L2INTERFACE);
-                      */
 }
 
 /*
@@ -528,12 +526,10 @@ void MulticastHandler::TriggerRemoteRouteChange(MulticastGroupObject *obj,
         Layer2AgentRouteTable::DeleteBroadcastReq(peer, vrf_name,
                                                   ethernet_tag);
         ComponentNHKeyList component_nh_key_list; //dummy list
-        /*
         RebakeSubnetRoute(peer, vrf_name, 0, ethernet_tag,
                           obj ? obj->GetVnName() : "",
                           true, component_nh_key_list,
                           comp_type);
-                          */
         return;
     }
 
@@ -583,23 +579,24 @@ void MulticastHandler::TriggerRemoteRouteChange(MulticastGroupObject *obj,
             component_nh_key_list.size());
 
     //Add Layer2 FF:FF:FF:FF:FF:FF$
+    uint32_t route_tunnel_bmap = TunnelType::AllType();
+    if (comp_type == Composite::TOR)
+        route_tunnel_bmap = TunnelType::VxlanType();
     Layer2AgentRouteTable::AddLayer2BroadcastRoute(peer,
                                                    obj->vrf_name(),
                                                    obj->GetVnName(),
                                                    label,
                                                    obj->vxlan_id(),
                                                    ethernet_tag,
-                                                   TunnelType::AllType(),
+                                                   route_tunnel_bmap,
                                                    comp_type,
                                                    component_nh_key_list);
     //if ((comp_type == Composite::EVPN) || (comp_type == Composite::TOR)) {
         MCTRACE(Log, "rebake subnet peer for subnet", vrf_name,
-                "255.255.255.255", 0);
-        /*
+                "255.255.255.255", comp_type);
         RebakeSubnetRoute(peer, obj->vrf_name(), label, obj->vxlan_id(),
                           obj->GetVnName(), false, component_nh_key_list,
                           comp_type);
-                          */
     //}
 }
 
