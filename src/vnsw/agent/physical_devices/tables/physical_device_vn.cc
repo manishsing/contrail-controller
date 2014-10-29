@@ -153,39 +153,47 @@ void PhysicalDeviceVnTable::ConfigUpdate(IFMapNode *node) {
 
     // Go thru virtual-networks linked and add/update them in the config tree
     IFMapAgentTable *table = static_cast<IFMapAgentTable *>(node->table());
-    for (DBGraphVertex::adjacency_iterator iter =
-         node->begin(table->GetGraph());
-         iter != node->end(table->GetGraph()); ++iter) {
-        IFMapNode *adj_node = static_cast<IFMapNode *>(iter.operator->());
-        if (agent()->cfg_listener()->SkipNode(adj_node)) {
-            continue;
-        }
+    if (!node->IsDeleted()) {
+        for (DBGraphVertex::adjacency_iterator iter =
+                node->begin(table->GetGraph());
+                iter != node->end(table->GetGraph()); ++iter) {
+            IFMapNode *adj_node = static_cast<IFMapNode *>(iter.operator->());
+            if (agent()->cfg_listener()->SkipNode(adj_node)) {
+                continue;
+            }
 
-        if (strcmp(adj_node->table()->Typename(), "virtual-network") != 0) {
-            continue;
-        }
-        autogen::VirtualNetwork *vn = static_cast <autogen::VirtualNetwork *>
-            (adj_node->GetObject());
-        assert(vn);
-        autogen::IdPermsType id_perms = vn->id_perms();
-        boost::uuids::uuid vn_uuid;
-        CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong,
-                   vn_uuid);
+            if (strcmp(adj_node->table()->Typename(), "virtual-network") != 0) {
+                continue;
+            }
+            autogen::VirtualNetwork *vn = static_cast<autogen::VirtualNetwork *>
+                (adj_node->GetObject());
+            assert(vn);
+            autogen::IdPermsType id_perms = vn->id_perms();
+            boost::uuids::uuid vn_uuid;
+            CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong,
+                    vn_uuid);
 
-        PhysicalDeviceVnKey key(router_uuid, vn_uuid);
-        if (config_tree_.find(key) == config_tree_.end()) {
-            DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
-            req.key.reset(new PhysicalDeviceVnKey(router_uuid, vn_uuid));
-            req.data.reset(new PhysicalDeviceVnData());
-            Enqueue(&req);
+            PhysicalDeviceVnKey key(router_uuid, vn_uuid);
+            if (config_tree_.find(key) == config_tree_.end()) {
+                DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+                req.key.reset(new PhysicalDeviceVnKey(router_uuid, vn_uuid));
+                req.data.reset(new PhysicalDeviceVnData());
+                Enqueue(&req);
+            }
+            config_tree_[key] = config_version_;
         }
-        config_tree_[key] = config_version_;
     }
 
     // Audit and delete entries with old version-number in config-tree
     ConfigIterator it = config_tree_.begin();
     while (it != config_tree_.end()){
         ConfigIterator del_it = it++;
+        if (del_it->first.device_uuid_ != router_uuid) {
+            // update version number and skip entry if it belongs to different
+            // physical router/device
+            del_it->second = config_version_;
+            continue;
+        }
         if (del_it->second < config_version_) {
             DBRequest req(DBRequest::DB_ENTRY_DELETE);
             req.key.reset(new PhysicalDeviceVnKey(del_it->first.device_uuid_,
