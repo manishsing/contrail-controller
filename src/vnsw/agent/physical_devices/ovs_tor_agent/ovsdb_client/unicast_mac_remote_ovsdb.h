@@ -5,6 +5,7 @@
 #ifndef SRC_VNSW_AGENT_PHYSICAL_DEVICES_OVS_TOR_AGENT_OVSDB_CLIENT_UNICAST_MAC_REMOTE_OVSDB_H_
 #define SRC_VNSW_AGENT_PHYSICAL_DEVICES_OVS_TOR_AGENT_OVSDB_CLIENT_UNICAST_MAC_REMOTE_OVSDB_H_
 
+#include <base/lifetime.h>
 #include <ovsdb_entry.h>
 #include <ovsdb_object.h>
 #include <ovsdb_client_idl.h>
@@ -16,7 +17,7 @@ class VrfOvsdbObject;
 
 class UnicastMacRemoteTable : public OvsdbDBObject {
 public:
-    UnicastMacRemoteTable(OvsdbClientIdl *idl, DBTable *table);
+    UnicastMacRemoteTable(OvsdbClientIdl *idl, AgentRouteTable *table);
     virtual ~UnicastMacRemoteTable();
 
     void OvsdbNotify(OvsdbClientIdl::Op, struct ovsdb_idl_row *);
@@ -24,7 +25,16 @@ public:
     KSyncEntry *Alloc(const KSyncEntry *key, uint32_t index);
     KSyncEntry *DBToKSyncEntry(const DBEntry*);
     OvsdbDBEntry *AllocOvsEntry(struct ovsdb_idl_row *row);
+    void ManagedDelete();
+    void Unregister();
+    virtual void EmptyTable();
+
+    void set_deleted(bool deleted);
+    bool deleted();
+
 private:
+    bool deleted_;
+    LifetimeRef<UnicastMacRemoteTable> table_delete_ref_;
     DISALLOW_COPY_AND_ASSIGN(UnicastMacRemoteTable);
 };
 
@@ -43,6 +53,8 @@ public:
     UnicastMacRemoteEntry(OvsdbDBObject *table,
             struct ovsdb_idl_row *entry);
 
+    void PreAddChange();
+    void PostDelete();
     void AddMsg(struct ovsdb_idl_txn *);
     void ChangeMsg(struct ovsdb_idl_txn *);
     void DeleteMsg(struct ovsdb_idl_txn *);
@@ -70,7 +82,7 @@ class VrfOvsdbObject {
 public:
     struct VrfState : DBState {
         std::string logical_switch_name_;
-        std::auto_ptr<UnicastMacRemoteTable> l2_table;
+        UnicastMacRemoteTable *l2_table;
     };
     typedef std::map<std::string, VrfState *> LogicalSwitchMap;
 

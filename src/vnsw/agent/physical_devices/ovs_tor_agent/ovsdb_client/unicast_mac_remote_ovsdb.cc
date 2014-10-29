@@ -53,7 +53,7 @@ UnicastMacRemoteEntry::UnicastMacRemoteEntry(OvsdbDBObject *table,
     }
 };
 
-void UnicastMacRemoteEntry::AddMsg(struct ovsdb_idl_txn *txn) {
+void UnicastMacRemoteEntry::PreAddChange() {
     if (self_exported_route_) {
         return;
     }
@@ -62,6 +62,16 @@ void UnicastMacRemoteEntry::AddMsg(struct ovsdb_idl_txn *txn) {
     LogicalSwitchEntry *logical_switch =
         static_cast<LogicalSwitchEntry *>(l_table->GetReference(&key));
     logical_switch_ = logical_switch;
+}
+
+void UnicastMacRemoteEntry::PostDelete() {
+    logical_switch_ = NULL;
+}
+
+void UnicastMacRemoteEntry::AddMsg(struct ovsdb_idl_txn *txn) {
+    if (self_exported_route_) {
+        return;
+    }
     if (ovs_entry_ == NULL && !dest_ip_.empty()) {
         PhysicalLocatorTable *pl_table =
             table_->client_idl()->physical_locator_table();
@@ -75,6 +85,8 @@ void UnicastMacRemoteEntry::AddMsg(struct ovsdb_idl_txn *txn) {
         struct ovsdb_idl_row *pl_row = NULL;
         if (pl_entry)
             pl_row = pl_entry->ovs_entry();
+        LogicalSwitchEntry *logical_switch =
+            static_cast<LogicalSwitchEntry *>(logical_switch_.get());
         obvsdb_wrapper_add_ucast_mac_remote(txn, mac_.c_str(),
                 logical_switch->ovs_entry(), pl_row, dest_ip_.c_str());
         SendTrace(UnicastMacRemoteEntry::ADD_REQ);
@@ -86,7 +98,6 @@ void UnicastMacRemoteEntry::ChangeMsg(struct ovsdb_idl_txn *txn) {
 }
 
 void UnicastMacRemoteEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
-    logical_switch_ = NULL;
     if (ovs_entry_) {
         ovsdb_wrapper_delete_ucast_mac_remote(ovs_entry_);
         SendTrace(UnicastMacRemoteEntry::DEL_REQ);
@@ -173,14 +184,16 @@ void UnicastMacRemoteEntry::SendTrace(Trace event) const {
     OVSDB_TRACE(UnicastMacRemote, info);
 }
 
-UnicastMacRemoteTable::UnicastMacRemoteTable(OvsdbClientIdl *idl, DBTable *table) :
-    OvsdbDBObject(idl, table) {
-    //idl->Register(OvsdbClientIdl::OVSDB_UCAST_MAC_REMOTE,
-    //              boost::bind(&UnicastMacRemoteTable::OvsdbNotify, this, _1, _2));
+UnicastMacRemoteTable::UnicastMacRemoteTable(OvsdbClientIdl *idl,
+        AgentRouteTable *table) : OvsdbDBObject(idl, table),
+        table_delete_ref_(this, table->deleter()) {
 }
 
 UnicastMacRemoteTable::~UnicastMacRemoteTable() {
-    //client_idl_->UnRegister(OvsdbClientIdl::OVSDB_UCAST_MAC_REMOTE);
+    // explicit unregister required before removing the reference, to assure
+    // pointer sanity.
+    UnregisterDb(GetDBTable());
+    table_delete_ref_.Reset(NULL);
 }
 
 void UnicastMacRemoteTable::OvsdbNotify(OvsdbClientIdl::Op op,
@@ -227,6 +240,31 @@ OvsdbDBEntry *UnicastMacRemoteTable::AllocOvsEntry(struct ovsdb_idl_row *row) {
     return static_cast<OvsdbDBEntry *>(Create(&key));
 }
 
+void UnicastMacRemoteTable::ManagedDelete() {
+    deleted_ = true;
+    Unregister();
+}
+
+void UnicastMacRemoteTable::Unregister() {
+    if (IsEmpty() == true && deleted_ == true) {
+        KSyncObjectManager::Unregister(this);
+    }
+}
+
+void UnicastMacRemoteTable::EmptyTable() {
+    if (deleted_ == true) {
+        Unregister();
+    }
+}
+
+void UnicastMacRemoteTable::set_deleted(bool deleted) {
+    deleted_ = deleted;
+}
+
+bool UnicastMacRemoteTable::deleted() {
+    return deleted_;
+}
+
 VrfOvsdbObject::VrfOvsdbObject(OvsdbClientIdl *idl, DBTable *table) :
     client_idl_(idl), table_(table) {
     vrf_listener_id_ = table->Register(boost::bind(&VrfOvsdbObject::VrfNotify,
@@ -262,7 +300,7 @@ void VrfOvsdbObject::OvsdbRouteNotify(OvsdbClientIdl::Op op,
         return;
     }
     const char *dest_ip = ovsdb_wrapper_ucast_mac_remote_dst_ip(row);
-    UnicastMacRemoteTable *table= it->second->l2_table.get();
+    UnicastMacRemoteTable *table= it->second->l2_table;
     UnicastMacRemoteEntry key(table, mac, logical_switch);
     if (op == OvsdbClientIdl::OVSDB_DEL) {
         table->NotifyDeleteOvsdb((OvsdbDBEntry*)&key);
@@ -304,8 +342,8 @@ void VrfOvsdbObject::VrfNotify(DBTablePartBase *partition, DBEntryBase *e) {
         vrf->SetState(partition->parent(), vrf_listener_id_, state);
 
         /* We are interested only in L2 Routes */
-        state->l2_table.reset(new UnicastMacRemoteTable(client_idl_,
-                    vrf->GetLayer2RouteTable()));
+        state->l2_table = new UnicastMacRemoteTable(client_idl_,
+                vrf->GetLayer2RouteTable());
     }
 }
 
