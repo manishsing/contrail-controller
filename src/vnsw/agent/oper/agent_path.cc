@@ -43,7 +43,7 @@ AgentPath::~AgentPath() {
 }
 
 uint32_t AgentPath::GetTunnelBmap() const {
-    TunnelType::Type type = TunnelType::ComputeType(TunnelType::AllType());
+    TunnelType::Type type = TunnelType::ComputeType(tunnel_bmap_);
     if ((type == (1 << TunnelType::VXLAN)) && (vxlan_id_ != 0)) {
         return (1 << TunnelType::VXLAN);
     } else {
