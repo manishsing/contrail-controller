@@ -324,7 +324,7 @@ void AgentRouteTable::Input(DBTablePartition *part, DBClient *client,
                     //wait for traffic flag for a path
                     path = rt->FindPath(key->peer());
                     if (path) {
-                        notify = data->AddChangePath(agent_, path);
+                        notify = data->AddChangePath(agent_, path, rt);
                     }
                 } else {
                     //Ignore RESYNC if received on non-existing
@@ -369,7 +369,7 @@ void AgentRouteTable::Input(DBTablePartition *part, DBClient *client,
             if (path == NULL) {
                 path = new AgentPath(key->peer(), rt);
                 rt->InsertPath(path);
-                data->AddChangePath(agent_, path);
+                data->AddChangePath(agent_, path, rt);
                 notify = true;
 
                 RouteInfo rt_info;
@@ -379,7 +379,7 @@ void AgentRouteTable::Input(DBTablePartition *part, DBClient *client,
                 // Let path know of route change and update itself
                 path->set_is_stale(false);
                 bool ecmp = path->path_preference().ecmp();
-                notify = data->AddChangePath(agent_, path);
+                notify = data->AddChangePath(agent_, path, rt);
                 //If a path transition from ECMP to non ECMP
                 //remote the path from ecmp peer
                 if (ecmp && ecmp != path->path_preference().ecmp()) {

@@ -150,7 +150,9 @@ static void AddDefaultRoute(Agent *agent, InetUnicastAgentRouteTable *table,
                             const VrfEntry *vrf, const Ip4Address &gw,
                             const string &vn_name) {
 
-    table->AddGatewayRoute(vrf->GetName(), Ip4Address(0), 0, gw, vn_name);
+    table->AddGatewayRoute(agent->local_peer(),
+                           vrf->GetName(), Ip4Address(0), 0, gw, vn_name,
+                           MplsTable::kInvalidLabel, SecurityGroupList());
 }
 
 static void DeleteDefaultRoute(Agent *agent, InetUnicastAgentRouteTable *table,
@@ -175,8 +177,11 @@ static void AddHostRoutes(Agent *agent, InetUnicastAgentRouteTable *table,
                                    GetIp4SubnetBroadcastAddress(addr, plen),
                                    32, vn_name, false);
 
-    table->AddResolveRoute(vrf->GetName(),
-                           Address::GetIp4SubnetAddress(addr, plen), plen);
+    InetInterfaceKey intf_key(interface);
+    table->AddResolveRoute(agent->local_peer(), vrf->GetName(),
+                           Address::GetIp4SubnetAddress(addr, plen), plen,
+                           intf_key, MplsTable::kInvalidLabel, false, vn_name,
+                           SecurityGroupList());
 }
 
 static void DeleteHostRoutes(Agent *agent, InetUnicastAgentRouteTable *table,

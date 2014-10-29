@@ -57,7 +57,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid) :
     sg_list_(), floating_ip_list_(), service_vlan_list_(), static_route_list_(),
     allowed_address_pair_list_(), vrf_assign_rule_list_(),
     vrf_assign_acl_(NULL), vm_ip_gw_addr_(0), vm_ip6_gw_addr_(),
-    sub_type_(VmInterface::NONE), ifmap_node_(NULL) {
+    sub_type_(VmInterface::NONE), ifmap_node_(NULL), subnet_(0), subnet_plen_(0) {
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
@@ -82,8 +82,8 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     parent_(parent), local_preference_(VmInterface::INVALID), oper_dhcp_options_(),
     sg_list_(), floating_ip_list_(), service_vlan_list_(), static_route_list_(),
     allowed_address_pair_list_(), vrf_assign_rule_list_(),
-    vrf_assign_acl_(NULL), sub_type_(VmInterface::NONE),
-    ifmap_node_(NULL) {
+    vrf_assign_acl_(NULL), sub_type_(VmInterface::NONE), ifmap_node_(NULL),
+    subnet_(0), subnet_plen_(0) {
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
@@ -270,11 +270,28 @@ static void BuildStaticRouteList(VmInterfaceConfigData *data, IFMapNode *node) {
                 LOG(DEBUG, "Error decoding v4 Static Route address " << it->prefix);
             }
         }
+
+        IpAddress gw = IpAddress::from_string(it->next_hop, ec);
+        if (ec) {
+            gw = IpAddress::from_string("0.0.0.0", ec);
+        }
         if (add) {
             data->static_route_list_.list_.insert
-                (VmInterface::StaticRoute(data->vrf_name_, ip, plen));
-
+                (VmInterface::StaticRoute(data->vrf_name_, ip, plen, gw));
         }
+    }
+}
+
+static void BuildResolveRoute(VmInterfaceConfigData *data, IFMapNode *node) {
+    Subnet *entry = 
+        static_cast<Subnet *>(node->GetObject());
+    assert(entry);
+    Ip4Address ip;
+    boost::system::error_code ec;
+    ip = Ip4Address::from_string(entry->ip_prefix().ip_prefix, ec);
+    if (ec.value() == 0) {
+        data->subnet_ = ip;
+        data->subnet_plen_ = entry->ip_prefix().ip_prefix_len;
     }
 }
 
@@ -508,6 +525,32 @@ bool VmInterface::IsConfigurerSet(VmInterface::Configurer type) {
     return ((configurer_ & (1 << type)) != 0);
 }
 
+static bool
+AddPhysicalInterface(Agent *agent, IFMapNode *node) {
+    bool ret = false;
+
+    IFMapNode *physical_node = agent->cfg_listener()->
+        FindAdjacentIFMapNode(agent, node, "physical-router");
+    if (!physical_node) {
+        return ret;
+    }
+
+    autogen::PhysicalRouter *physical_router =
+        static_cast <autogen::PhysicalRouter *>(physical_node->GetObject());
+    if (physical_router->display_name() == agent->host_name()) {
+        autogen::PhysicalInterface *physical_interface =
+            static_cast <autogen::PhysicalInterface *>(node->GetObject());
+        InterfaceTable *intf_table = agent->interface_table();
+        ::PhysicalInterface::Create(intf_table,
+                physical_interface->display_name(),
+                agent->fabric_vrf_name(),
+                true);
+        ret = true;
+    }
+
+    return ret;
+}
+
 // Virtual Machine Interface is added or deleted into oper DB from Nova 
 // messages. The Config notify is used only to change interface.
 bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
@@ -662,7 +705,26 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
         if (adj_node->table() == agent_->cfg()->cfg_route_table()) {
             BuildStaticRouteList(data, adj_node);
         }
-        
+
+        if (adj_node->table() == agent_->cfg()->cfg_subnet_table()) {
+            BuildResolveRoute(data, adj_node);
+        }
+    }
+
+    //Read parent interface name if any
+    IFMapNode *logical_node = agent_->cfg_listener()->
+                              FindAdjacentIFMapNode(agent_, node, 
+                                                     "logical-interface");
+    if (logical_node) {
+        IFMapNode *physical_node = agent_->cfg_listener()->
+            FindAdjacentIFMapNode(agent_, logical_node, "physical-interface");
+        //Add physical interface
+        if (AddPhysicalInterface(agent_, physical_node)) {
+            autogen::PhysicalInterface *physical_interface =
+                static_cast <autogen::PhysicalInterface *>(
+                        physical_node->GetObject());
+            data->parent_ = physical_interface->display_name();
+        }
     }
 
     data->sub_type_ = interface_sub_type;
@@ -787,6 +849,8 @@ bool VmInterface::Resync(const InterfaceTable *table,
     bool sg_changed = false;
     bool ecmp_changed = false;
     bool local_pref_changed = false;
+    Ip4Address old_subnet = subnet_;
+    uint8_t  old_subnet_plen = subnet_plen_;
 
     if (data) {
         ret = data->OnResync(table, this, &sg_changed, &ecmp_changed,
@@ -817,7 +881,7 @@ bool VmInterface::Resync(const InterfaceTable *table,
     ApplyConfig(old_ipv4_active, old_l2_active, old_policy, old_vrf.get(), 
                 old_addr, old_vxlan_id, old_need_linklocal_ip, sg_changed,
                 old_ipv6_active, old_v6_addr, ecmp_changed,
-                local_pref_changed);
+                local_pref_changed, old_subnet, old_subnet_plen);
 
     return ret;
 }
@@ -842,7 +906,9 @@ void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
                            const Ip4Address &old_addr, int old_vxlan_id,
                            bool force_update, bool policy_change,
                            bool old_ipv6_active,
-                           const Ip6Address &old_v6_addr) {
+                           const Ip6Address &old_v6_addr,
+                           const Ip4Address &old_subnet,
+                           const uint8_t old_subnet_plen) {
     UpdateSecurityGroup();
     UpdateL3NextHop(old_ipv4_active, old_ipv6_active);
     UpdateL3TunnelId(force_update, policy_change);
@@ -854,6 +920,8 @@ void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
         UpdateServiceVlan(force_update, policy_change);
         UpdateAllowedAddressPair(force_update, policy_change);
         UpdateVrfAssignRule();
+        UpdateResolveRoute(old_ipv4_active, force_update, policy_change, 
+                           old_vrf, old_subnet, old_subnet_plen);
     }
     if (ipv6_active_) {
         UpdateIpv6InterfaceRoute(old_ipv6_active, force_update, policy_change,
@@ -865,7 +933,9 @@ void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
 void VmInterface::DeleteL3(bool old_ipv4_active, VrfEntry *old_vrf,
                            const Ip4Address &old_addr,
                            bool old_need_linklocal_ip, bool old_ipv6_active,
-                           const Ip6Address &old_v6_addr) {
+                           const Ip6Address &old_v6_addr,
+                           const Ip4Address &old_subnet,
+                           const uint8_t old_subnet_plen) {
     if (old_ipv4_active) {
         DeleteIpv4InterfaceRoute(old_vrf, old_addr);
     }
@@ -881,6 +951,7 @@ void VmInterface::DeleteL3(bool old_ipv4_active, VrfEntry *old_vrf,
     DeleteL3TunnelId();
     DeleteVrfAssignRule();
     DeleteL3NextHop(old_ipv4_active, old_ipv6_active);
+    DeleteResolveRoute(old_vrf, old_subnet, old_subnet_plen);
 }
 
 void VmInterface::UpdateVxLan() {
@@ -917,7 +988,9 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old
                               int old_vxlan_id, bool old_need_linklocal_ip,
                               bool sg_changed, bool old_ipv6_active,
                               const Ip6Address &old_v6_addr, bool ecmp_mode_changed,
-                              bool local_pref_changed) {
+                              bool local_pref_changed,
+                              const Ip4Address &old_subnet,
+                              uint8_t old_subnet_plen) {
     //Need not apply config for TOR VMI as it is more of an inidicative
     //interface. No route addition or NH addition happens for this interface.
     if (sub_type_ == VmInterface::TOR)
@@ -947,10 +1020,12 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old
     // Add/Del/Update L3 
     if ((ipv4_active_ || ipv6_active_) && layer3_forwarding_) {
         UpdateL3(old_ipv4_active, old_vrf, old_addr, old_vxlan_id, force_update,
-                 policy_change, old_ipv6_active, old_v6_addr);
+                 policy_change, old_ipv6_active, old_v6_addr,
+                 old_subnet, old_subnet_plen);
     } else if ((old_ipv4_active || old_ipv6_active)) {
         DeleteL3(old_ipv4_active, old_vrf, old_addr, old_need_linklocal_ip, 
-                 old_ipv6_active, old_v6_addr);
+                 old_ipv6_active, old_v6_addr,
+                 old_subnet, old_subnet_plen);
     }
 
     // Add/Del/Update L2 
@@ -1157,6 +1232,11 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
         ret = true;
     }
 
+    if (subnet_ != data->subnet_ || subnet_plen_ != data->subnet_plen_) {
+        subnet_ = data->subnet_;
+        subnet_plen_ = data->subnet_plen_;
+    }
+
     // Copy DHCP options; ret is not modified as there is no dependent action
     oper_dhcp_options_ = data->oper_dhcp_options_;
 
@@ -1238,6 +1318,12 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
             table->operdb()->dependency_manager()->SetObject(ifmap_node_, this);
     }
 
+    if (data->parent_ != Agent::NullString()) {
+        PhysicalInterfaceKey key(data->parent_);
+        parent_ = static_cast<Interface *>
+            (table->agent()->interface_table()->FindActiveEntry(&key));
+        assert(parent_ != NULL);
+    }
     return ret;
 }
 
@@ -1753,16 +1839,24 @@ void VmInterface::DeleteMulticastNextHop() {
     InterfaceNH::DeleteMulticastVmInterfaceNH(GetUuid());
 }
 
+Ip4Address VmInterface::GetGateway() const {
+    Ip4Address ip(0);
+    if (vn_.get() == NULL) {
+        return ip;
+    }
+    const VnIpam *ipam = vn_->GetIpam(ip_addr_);
+    if (ipam) {
+        ip = ipam->default_gw.to_v4();
+    }
+    return ip;
+}
+
 // Add/Update route. Delete old route if VRF or address changed
 void VmInterface::UpdateIpv4InterfaceRoute(bool old_ipv4_active, bool force_update,
                                          bool policy_change,
                                          VrfEntry * old_vrf,
                                          const Ip4Address &old_addr) {
-    const VnIpam *ipam = vn_->GetIpam(ip_addr_);
-    Ip4Address ip(0);
-    if (ipam) {
-        ip = ipam->default_gw.to_v4();
-    }
+    Ip4Address ip = GetGateway();
 
     // If interface was already active earlier and there is no force_update or
     // policy_change, return
@@ -1838,6 +1932,40 @@ void VmInterface::UpdateIpv6InterfaceRoute(bool old_ipv6_active, bool force_upda
     if (old_vrf != vrf_.get() || ip6_addr_ != old_addr) {
         DeleteIpv6InterfaceRoute(old_vrf, old_addr);
     }
+}
+
+void VmInterface::UpdateResolveRoute(bool old_ipv4_active, bool force_update,
+                                     bool policy_change, VrfEntry * old_vrf,
+                                     const Ip4Address &old_addr,
+                                     uint8_t old_plen) {
+    if (old_ipv4_active == true && force_update == false
+        && policy_change == false && old_addr == subnet_ &&
+        subnet_plen_ == old_plen) {
+        return;
+    }
+
+    if (old_vrf && (old_vrf != vrf_.get() || 
+        old_addr != subnet_ ||
+        subnet_plen_ != old_plen)) {
+        DeleteResolveRoute(old_vrf, old_addr, old_plen);
+    }
+
+    if (subnet_.to_ulong() != 0 && vrf_.get() != NULL && vn_.get() != NULL) {
+        SecurityGroupList sg_id_list;
+        CopySgIdList(&sg_id_list);
+        VmInterfaceKey vm_intf_key(AgentKey::ADD_DEL_CHANGE, GetUuid(), "");
+
+        InetUnicastAgentRouteTable::AddResolveRoute(peer_.get(), vrf_->GetName(),
+                Address::GetIp4SubnetAddress(subnet_, subnet_plen_),
+                subnet_plen_, vm_intf_key, vn_->table_label(),
+                policy_enabled_, vn_->GetName(), sg_id_list);
+    }
+}
+
+void VmInterface::DeleteResolveRoute(VrfEntry *old_vrf,
+                                     const Ip4Address &old_addr,
+                                     const uint8_t plen) {
+    DeleteRoute(old_vrf->GetName(), old_addr, plen);
 }
 
 void VmInterface::DeleteIpv4InterfaceRoute(VrfEntry *old_vrf,
@@ -2249,6 +2377,18 @@ void VmInterface::AddRoute(const std::string &vrf_name, const IpAddress &addr,
     return;
 }
 
+void VmInterface::ResolveRoute(const std::string &vrf_name, const Ip4Address &addr,
+                               uint32_t plen, const std::string &dest_vn, bool policy) {
+    SecurityGroupList sg_id_list;
+    CopySgIdList(&sg_id_list);
+    VmInterfaceKey vm_intf_key(AgentKey::ADD_DEL_CHANGE, GetUuid(), "");
+
+    InetUnicastAgentRouteTable::AddResolveRoute(peer_.get(), vrf_name,
+            Address::GetIp4SubnetAddress(addr, plen),
+            plen, vm_intf_key, vn_->table_label(),
+            policy, dest_vn, sg_id_list);
+}
+
 void VmInterface::DeleteRoute(const std::string &vrf_name,
                               const IpAddress &addr, uint32_t plen) {
     InetUnicastAgentRouteTable::Delete(peer_.get(), vrf_name, addr, plen);
@@ -2434,18 +2574,18 @@ void VmInterface::FloatingIpList::Remove(FloatingIpSet::iterator &it) {
 // StaticRoute routines
 /////////////////////////////////////////////////////////////////////////////
 VmInterface::StaticRoute::StaticRoute() :
-    ListEntry(), vrf_(""), addr_(), plen_(0) {
+    ListEntry(), vrf_(""), addr_(), plen_(0), gw_() {
 }
 
 VmInterface::StaticRoute::StaticRoute(const StaticRoute &rhs) :
     ListEntry(rhs.installed_, rhs.del_pending_), vrf_(rhs.vrf_),
-    addr_(rhs.addr_), plen_(rhs.plen_) {
+    addr_(rhs.addr_), plen_(rhs.plen_), gw_(rhs.gw_) {
 }
 
 VmInterface::StaticRoute::StaticRoute(const std::string &vrf,
                                       const IpAddress &addr,
-                                      uint32_t plen) :
-    ListEntry(), vrf_(vrf), addr_(addr), plen_(plen) {
+                                      uint32_t plen, const IpAddress &gw) :
+    ListEntry(), vrf_(vrf), addr_(addr), plen_(plen), gw_(gw) {
 }
 
 VmInterface::StaticRoute::~StaticRoute() {
@@ -2486,10 +2626,21 @@ void VmInterface::StaticRoute::Activate(VmInterface *interface,
         if (addr_.is_v4()) {
             ecmp = interface->ecmp();
         }
-        interface->AddRoute(vrf_, addr_, plen_,
-                            interface->vn_->GetName(),
-                            interface->policy_enabled(),
-                            ecmp, IpAddress());
+        Ip4Address gw_ip(0);
+        if (gw_.is_v4() && addr_.is_v4() && gw_.to_v4() != gw_ip) {
+            SecurityGroupList sg_id_list;
+            interface->CopySgIdList(&sg_id_list);
+            InetUnicastAgentRouteTable::AddGatewayRoute(interface->peer_.get(),
+                    vrf_, addr_.to_v4(),
+                    plen_, gw_.to_v4(), interface->vn_->GetName(),
+                    interface->vn_->table_label(),
+                    sg_id_list);
+        } else {
+            interface->AddRoute(vrf_, addr_, plen_,
+                                interface->vn_->GetName(),
+                                interface->policy_enabled(),
+                                ecmp, IpAddress());
+        }
     }
 
     installed_ = true;
@@ -2960,6 +3111,31 @@ void VmInterface::InstanceIpSync(InterfaceTable *table, IFMapNode *node) {
         }
     }
 
+}
+
+void VmInterface::SubnetSync(InterfaceTable *table, IFMapNode *node) {
+    CfgListener *cfg_listener = table->agent()->cfg_listener();
+    if (cfg_listener->SkipNode(node)) {
+        return;
+    }
+
+    DBGraph *graph =
+        static_cast<IFMapAgentTable *> (node->table())->GetGraph();;
+    for (DBGraphVertex::adjacency_iterator iter = node->begin(graph);
+         iter != node->end(graph); ++iter) {
+        IFMapNode *adj = static_cast<IFMapNode *>(iter.operator->());
+        if (table->agent()->cfg_listener()->SkipNode(adj)) {
+            continue;
+        }
+
+        if (adj->table() ==
+            table->agent()->cfg()->cfg_vm_interface_table()) {
+            DBRequest req;
+            if (table->IFNodeToReq(adj, req)) {
+                table->Enqueue(&req);
+            }
+        }
+    }
 }
 
 void VmInterface::FloatingIpVnSync(InterfaceTable *table, IFMapNode *node) {

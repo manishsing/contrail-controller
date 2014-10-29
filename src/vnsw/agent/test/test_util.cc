@@ -1268,9 +1268,10 @@ bool AddArp(const char *ip, const char *mac_str, const char *ifname) {
     intf = static_cast<Interface *>(Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
     boost::system::error_code ec;
     InetUnicastAgentRouteTable::ArpRoute(DBRequest::DB_ENTRY_ADD_CHANGE,
+                              Agent::GetInstance()->fabric_vrf_name(),
                               Ip4Address::from_string(ip, ec), mac,
                               Agent::GetInstance()->fabric_vrf_name(),
-                              *intf, true, 32);
+                              *intf, true, 32, false, "", SecurityGroupList());
 
     return true;
 }
@@ -1282,8 +1283,10 @@ bool DelArp(const string &ip, const char *mac_str, const string &ifname) {
     intf = static_cast<Interface *>(Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
     boost::system::error_code ec;
     InetUnicastAgentRouteTable::ArpRoute(DBRequest::DB_ENTRY_DELETE,
+                              Agent::GetInstance()->fabric_vrf_name(),
                               Ip4Address::from_string(ip, ec),
-                              mac, Agent::GetInstance()->fabric_vrf_name(), *intf, false, 32);
+                              mac, Agent::GetInstance()->fabric_vrf_name(), *intf,
+                              false, 32, false, "", SecurityGroupList());
     return true;
 }
 
@@ -1564,6 +1567,16 @@ void AddActiveActiveInstanceIp(const char *name, int id, const char *addr) {
 
 void DelInstanceIp(const char *name) {
     DelNode("instance-ip", name);
+}
+
+void AddSubnetType(const char *name, int id, const char *addr, uint8_t plen) {
+
+    char buf[1024];
+    sprintf(buf, "<subnet-ip-prefix>\n"
+                 "<ip-prefix>%s</ip-prefix>\n"
+                 "<ip-prefix-len>%d</ip-prefix-len>\n"
+                 "</subnet-ip-prefix>", addr, plen);
+    AddNode("subnet", name, id, buf);
 }
 
 void AddVmPortVrf(const char *name, const string &ip, uint16_t tag) {

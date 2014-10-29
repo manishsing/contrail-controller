@@ -261,7 +261,11 @@ bool AgentPath::Sync(AgentRoute *sync_route) {
     if (rt == NULL || rt->plen() == 0) {
         unresolved = true;
     } else if (rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
-        table->AddArpReq(vrf_name_, gw_ip_);
+        const ResolveNH *nh =
+            static_cast<const ResolveNH *>(rt->GetActiveNextHop());
+        table->AddArpReq(vrf_name_, gw_ip_, nh->interface()->vrf()->GetName(),
+                         nh->interface(), nh->PolicyEnabled(), dest_vn_name_,
+                         sg_list_);
         unresolved = true;
     } else {
         unresolved = false;
@@ -295,7 +299,8 @@ bool AgentPath::IsLess(const AgentPath &r_path) const {
     return peer()->IsLess(r_path.peer());
 }
 
-bool HostRoute::AddChangePath(Agent *agent, AgentPath *path) {
+bool HostRoute::AddChangePath(Agent *agent, AgentPath *path,
+                              const AgentRoute *rt) {
     bool ret = false;
     NextHop *nh = NULL;
     InterfaceNHKey key(intf_.Clone(), false, InterfaceNHFlags::INET4);
@@ -317,7 +322,8 @@ bool HostRoute::AddChangePath(Agent *agent, AgentPath *path) {
     return ret;
 } 
 
-bool InetInterfaceRoute::AddChangePath(Agent *agent, AgentPath *path) {
+bool InetInterfaceRoute::AddChangePath(Agent *agent, AgentPath *path,
+                                       const AgentRoute *rt) {
     bool ret = false;
     NextHop *nh = NULL;
     InterfaceNHKey key(intf_.Clone(), false, InterfaceNHFlags::INET4);
@@ -346,7 +352,8 @@ bool InetInterfaceRoute::AddChangePath(Agent *agent, AgentPath *path) {
     return ret;
 }
 
-bool DropRoute::AddChangePath(Agent *agent, AgentPath *path) {
+bool DropRoute::AddChangePath(Agent *agent, AgentPath *path,
+                              const AgentRoute *rt) {
     bool ret = false;
 
     if (path->dest_vn_name() != vn_) {
@@ -363,7 +370,8 @@ bool DropRoute::AddChangePath(Agent *agent, AgentPath *path) {
     return ret;
 }
 
-bool LocalVmRoute::AddChangePath(Agent *agent, AgentPath *path) {
+bool LocalVmRoute::AddChangePath(Agent *agent, AgentPath *path,
+                                 const AgentRoute *rt) {
     bool ret = false;
     NextHop *nh = NULL;
     SecurityGroupList path_sg_list;
@@ -472,7 +480,8 @@ bool LocalVmRoute::AddChangePath(Agent *agent, AgentPath *path) {
     return ret;
 }
 
-bool VlanNhRoute::AddChangePath(Agent *agent, AgentPath *path) { 
+bool VlanNhRoute::AddChangePath(Agent *agent, AgentPath *path,
+                                const AgentRoute *rt) {
     bool ret = false;
     NextHop *nh = NULL;
     SecurityGroupList path_sg_list;
@@ -523,24 +532,38 @@ bool VlanNhRoute::AddChangePath(Agent *agent, AgentPath *path) {
     return ret;
 }
 
-bool ResolveRoute::AddChangePath(Agent *agent, AgentPath *path) {
+bool ResolveRoute::AddChangePath(Agent *agent, AgentPath *path,
+                                 const AgentRoute *rt) {
     bool ret = false;
     NextHop *nh = NULL;
-    ResolveNHKey key;
+    ResolveNHKey key(intf_key_.get(), policy_);
 
     nh = static_cast<NextHop *>(agent->nexthop_table()->FindActiveEntry(&key));
     path->set_unresolved(false);
-    if (path->dest_vn_name() != agent->fabric_vn_name()) {
-        path->set_dest_vn_name(agent->fabric_vn_name());
+
+    if (path->dest_vn_name() != dest_vn_name_) {
+        path->set_dest_vn_name(dest_vn_name_);
         ret = true;
     }
+
+    if (path->label() != label_) {
+        path->set_label(label_);
+        ret = true;
+    }
+
+    if (path->sg_list() != path_sg_list_) {
+        path->set_sg_list(path_sg_list_);
+        ret = true;
+    }
+
     if (path->ChangeNH(agent, nh) == true)
         ret = true;
 
     return ret;
 }
 
-bool ReceiveRoute::AddChangePath(Agent *agent, AgentPath *path) {
+bool ReceiveRoute::AddChangePath(Agent *agent, AgentPath *path,
+                                 const AgentRoute *rt) {
     bool ret = false;
     NextHop *nh = NULL;
 
@@ -570,7 +593,8 @@ bool ReceiveRoute::AddChangePath(Agent *agent, AgentPath *path) {
     return ret;
 }
 
-bool MulticastRoute::AddChangePath(Agent *agent, AgentPath *path) {
+bool MulticastRoute::AddChangePath(Agent *agent, AgentPath *path,
+                                   const AgentRoute *rt) {
     bool ret = false;
     bool is_subnet_discard = false;
     NextHop *nh = NULL;
@@ -634,7 +658,8 @@ bool MulticastRoute::CopyPathParameters(Agent *agent,
     return true;
 }
 
-bool PathPreferenceData::AddChangePath(Agent *agent, AgentPath *path) {
+bool PathPreferenceData::AddChangePath(Agent *agent, AgentPath *path,
+                                       const AgentRoute *rt) {
     bool ret = false;
     //ECMP flag will not be changed by path preference module,
     //hence retain value in path

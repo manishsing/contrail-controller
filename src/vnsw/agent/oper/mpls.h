@@ -53,6 +53,8 @@ public:
     static void CreateEcmpLabel(uint32_t label, COMPOSITETYPE type,
                                 ComponentNHKeyList &component_nh_key_list,
                                 const std::string vrf_name);
+    static void CreateTableLabel(uint32_t label, const std::string &vrf_name,
+                                 bool policy);
     static void DeleteMcastLabelReq(uint32_t src_label);
     // Delete MPLS Label entry
     static void DeleteReq(uint32_t label);
@@ -113,6 +115,9 @@ public:
         component_nh_key_list, vrf_name)) {
     }
 
+    MplsLabelData(const std::string vrf_name, bool policy) :
+        AgentData(), nh_key(new VrfNHKey(vrf_name, policy)) {
+    }
     virtual ~MplsLabelData() { 
         if (nh_key) {
             delete nh_key;
