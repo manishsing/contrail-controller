@@ -29,6 +29,8 @@ public:
     PhysicalSwitchEntry(PhysicalSwitchTable *table, const std::string &name);
     ~PhysicalSwitchEntry();
 
+    Ip4Address &tunnel_ip();
+    void set_tunnel_ip(std::string ip);
     bool IsLess(const KSyncEntry&) const;
     std::string ToString() const {return "Physical Switch";}
     KSyncEntry* UnresolvedReference();
@@ -37,6 +39,7 @@ private:
 
     friend class PhysicalSwitchTable;
     std::string name_;
+    Ip4Address tunnel_ip_;
     DISALLOW_COPY_AND_ASSIGN(PhysicalSwitchEntry);
 };
 };

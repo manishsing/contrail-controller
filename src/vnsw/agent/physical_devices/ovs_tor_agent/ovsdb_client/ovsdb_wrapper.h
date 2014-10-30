@@ -43,7 +43,7 @@ struct jsonrpc_msg *ovsdb_wrapper_idl_txn_encode(struct ovsdb_idl_txn *txn);
 
 /* Physical Switch */
 char *ovsdb_wrapper_physical_switch_name(struct ovsdb_idl_row *row);
-char *ovsdb_wrapper_physical_switch_ip(struct ovsdb_idl_row *row);
+const char *ovsdb_wrapper_physical_switch_tunnel_ip(struct ovsdb_idl_row *row);
 
 /* Logical Switch */
 char *ovsdb_wrapper_logical_switch_name(struct ovsdb_idl_row *row);
