@@ -386,6 +386,7 @@ public:
     void UpdateAllRoutes();
 
     bool IsIpv6Active() const;
+    bool NeedDevice() const;
     VmInterface::SubType sub_type() const {return sub_type_;}
 
     // Add a vm-interface
