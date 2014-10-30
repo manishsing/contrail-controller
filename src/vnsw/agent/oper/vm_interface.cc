@@ -1511,7 +1511,7 @@ bool VmInterface::NeedDevice() const {
         ret = false;
 
     if (subnet_.is_unspecified() == false) {
-        return false;
+        ret = false;
     }
 
     if (rx_vlan_id_ != VmInterface::kInvalidVlanId) {
