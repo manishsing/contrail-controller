@@ -13,10 +13,20 @@ using OVSDB::PhysicalSwitchEntry;
 using OVSDB::PhysicalSwitchTable;
 
 PhysicalSwitchEntry::PhysicalSwitchEntry(PhysicalSwitchTable *table,
-        const std::string &name) : OvsdbEntry(table), name_(name) {
+        const std::string &name) : OvsdbEntry(table), name_(name),
+    tunnel_ip_() {
 }
 
 PhysicalSwitchEntry::~PhysicalSwitchEntry() {
+}
+
+Ip4Address &PhysicalSwitchEntry::tunnel_ip() {
+    return tunnel_ip_;
+}
+
+void PhysicalSwitchEntry::set_tunnel_ip(std::string ip) {
+    boost::system::error_code ec;
+    tunnel_ip_ = Ip4Address::from_string(ip, ec);
 }
 
 bool PhysicalSwitchEntry::IsLess(const KSyncEntry &entry) const {
@@ -69,6 +79,7 @@ void PhysicalSwitchTable::Notify(OvsdbClientIdl::Op op,
             entry = static_cast<PhysicalSwitchEntry *>(Create(&key));
             entry->SendTrace(PhysicalSwitchEntry::ADD);
         }
+        entry->set_tunnel_ip(ovsdb_wrapper_physical_switch_tunnel_ip(row));
     } else {
         assert(0);
     }

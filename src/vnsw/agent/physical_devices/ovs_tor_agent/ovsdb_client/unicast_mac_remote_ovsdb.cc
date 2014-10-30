@@ -69,7 +69,15 @@ void UnicastMacRemoteEntry::PostDelete() {
 }
 
 void UnicastMacRemoteEntry::AddMsg(struct ovsdb_idl_txn *txn) {
-    if (self_exported_route_) {
+    boost::system::error_code ec;
+    Ip4Address dest_ip = Ip4Address::from_string(dest_ip_, ec);
+    LogicalSwitchEntry *logical_switch =
+        static_cast<LogicalSwitchEntry *>(logical_switch_.get());
+    if (self_exported_route_ ||
+            dest_ip == logical_switch->physical_switch_tunnel_ip()) {
+        // if the route is self exported or if dest tunnel end-point points to
+        // the physical switch itself then donot export this route to OVSDB
+        DeleteMsg(txn);
         return;
     }
     if (ovs_entry_ == NULL && !dest_ip_.empty()) {
@@ -85,8 +93,6 @@ void UnicastMacRemoteEntry::AddMsg(struct ovsdb_idl_txn *txn) {
         struct ovsdb_idl_row *pl_row = NULL;
         if (pl_entry)
             pl_row = pl_entry->ovs_entry();
-        LogicalSwitchEntry *logical_switch =
-            static_cast<LogicalSwitchEntry *>(logical_switch_.get());
         obvsdb_wrapper_add_ucast_mac_remote(txn, mac_.c_str(),
                 logical_switch->ovs_entry(), pl_row, dest_ip_.c_str());
         SendTrace(UnicastMacRemoteEntry::ADD_REQ);

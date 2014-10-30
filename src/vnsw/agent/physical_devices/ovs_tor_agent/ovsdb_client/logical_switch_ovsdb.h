@@ -46,6 +46,7 @@ public:
     LogicalSwitchEntry(OvsdbDBObject *table,
             struct ovsdb_idl_row *entry);
 
+    Ip4Address &physical_switch_tunnel_ip();
     void AddMsg(struct ovsdb_idl_txn *);
     void ChangeMsg(struct ovsdb_idl_txn *);
     void DeleteMsg(struct ovsdb_idl_txn *);
@@ -62,6 +63,7 @@ private:
     friend class LogicalSwitchTable;
     std::string name_;
     std::string device_name_;
+    KSyncEntryPtr physical_switch_;
     int64_t vxlan_id_;
     struct ovsdb_idl_row *mcast_local_row_;
     struct ovsdb_idl_row *mcast_remote_row_;

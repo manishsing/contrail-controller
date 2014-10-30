@@ -43,9 +43,18 @@ LogicalSwitchEntry::LogicalSwitchEntry(OvsdbDBObject *table,
         vxlan_id_(ovsdb_wrapper_logical_switch_tunnel_key(entry)),
         mcast_local_row_(NULL), mcast_remote_row_(NULL),
         old_mcast_remote_row_(NULL) {
-};
+}
+
+Ip4Address &LogicalSwitchEntry::physical_switch_tunnel_ip() {
+    PhysicalSwitchEntry *p_switch =
+        static_cast<PhysicalSwitchEntry *>(physical_switch_.get());
+    return p_switch->tunnel_ip();
+}
 
 void LogicalSwitchEntry::AddMsg(struct ovsdb_idl_txn *txn) {
+    PhysicalSwitchTable *p_table = table_->client_idl()->physical_switch_table();
+    PhysicalSwitchEntry key(p_table, device_name_.c_str());
+    physical_switch_ = p_table->GetReference(&key);
     struct ovsdb_idl_row *row =
         ovsdb_wrapper_add_logical_switch(txn, ovs_entry_, name_.c_str(),
                 vxlan_id_);
@@ -78,6 +87,7 @@ void LogicalSwitchEntry::ChangeMsg(struct ovsdb_idl_txn *txn) {
 }
 
 void LogicalSwitchEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
+    physical_switch_ = NULL;
     if (mcast_local_row_ != NULL) {
         ovsdb_wrapper_delete_mcast_mac_local(mcast_local_row_);
     }

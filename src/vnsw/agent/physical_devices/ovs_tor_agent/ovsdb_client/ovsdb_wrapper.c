@@ -183,12 +183,16 @@ ovsdb_wrapper_physical_switch_name(struct ovsdb_idl_row *row)
     return ps->name;
 }
 
-char *
-ovsdb_wrapper_physical_switch_ip(struct ovsdb_idl_row *row)
+const char *
+ovsdb_wrapper_physical_switch_tunnel_ip(struct ovsdb_idl_row *row)
 {
     struct vteprec_physical_switch *ps =
         row ? CONTAINER_OF(row, struct vteprec_physical_switch, header_) : NULL;
-    return ps->management_ips[0];
+    if (ps->n_tunnel_ips == 0) {
+        return "0.0.0.0";
+    }
+    /* return the first tunnel ip. */
+    return ps->tunnel_ips[0];
 }
 
 /* logical switch */
