@@ -671,6 +671,11 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
                 common_reason += "vrf-null ";
             }
 
+            if (vintf->subnet().is_unspecified() &&
+                vintf->os_index() == Interface::kInvalidIndex) {
+                common_reason += "no-dev ";
+            }
+
             if (vintf->NeedDevice()) {
                 if (vintf->os_index() == Interface::kInvalidIndex) {
                     common_reason += "no-dev ";

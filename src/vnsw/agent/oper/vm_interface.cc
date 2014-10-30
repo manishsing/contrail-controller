@@ -727,6 +727,9 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
         }
     }
 
+    if (!data->subnet_.is_unspecified()) {
+        interface_sub_type = VmInterface::VCPE;
+    }
     data->sub_type_ = interface_sub_type;
     if (cfg->mac_addresses().size()) {
         data->vm_mac_ = cfg->mac_addresses().at(0);
@@ -1506,6 +1509,10 @@ bool VmInterface::NeedDevice() const {
     if (sub_type_ == TOR)
         ret = false;
 
+    if (subnet_.is_unspecified() == false) {
+        return false;
+    }
+
     if (rx_vlan_id_ != VmInterface::kInvalidVlanId) {
         ret = false;
     } else {
@@ -1554,14 +1561,18 @@ bool VmInterface::IsActive()  const {
         return true;
     }
 
-    if (os_index_ == kInvalidIndex)
+    if (subnet_.is_unspecified() && os_index_ == kInvalidIndex)
         return false;
 
     return mac_set_;
 }
 
 bool VmInterface::IsIpv4Active() const {
-    if (!layer3_forwarding() || (ip_addr_.to_ulong() == 0)) {
+    if (!layer3_forwarding()) {
+        return false;
+    }
+
+    if (subnet_.is_unspecified() && ip_addr_.to_ulong() == 0) {
         return false;
     }
 
@@ -1844,7 +1855,12 @@ Ip4Address VmInterface::GetGateway() const {
     if (vn_.get() == NULL) {
         return ip;
     }
-    const VnIpam *ipam = vn_->GetIpam(ip_addr_);
+    const VnIpam *ipam = NULL;
+    if (subnet_.is_unspecified()) {
+        ipam = vn_->GetIpam(ip_addr_);
+    } else {
+        ipam = vn_->GetIpam(subnet_);
+    }
     if (ipam) {
         ip = ipam->default_gw.to_v4();
     }

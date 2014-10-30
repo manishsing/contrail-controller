@@ -36,7 +36,8 @@ public:
     enum SubType {
         NONE,
         TOR,
-        NOVA
+        NOVA,
+        VCPE
     };
 
     struct ListEntry {
