@@ -485,29 +485,6 @@ static void ReadDhcpEnable(Agent *agent, VmInterfaceConfigData *data,
     }
 }
 
-/*
-VmInterface::SubType GetInterfaceSubTypeFromVm(IFMapNode *node) {
-    for (DBGraphVertex::adjacency_iterator iter =
-         node->begin(table->GetGraph()); 
-         iter != node->end(table->GetGraph()); ++iter) {
-
-        IFMapNode *adj_node = static_cast<IFMapNode *>(iter.operator->());
-        if (agent_->cfg_listener()->SkipNode(adj_node)) {
-            continue;
-        }
-
-        if (adj_node->table()->display_name().compare("virtual-machine") == 0) {
-            return GetInterfaceSubTypeFromVm(adj_node);
-        }
-
-        if (adj_node->table()->display_name().compare("virtual-router") == 0) {
-            return VmInterface::TOR;
-        }
-    }
-    return VmInterface::NOVA;
-}
-*/
-
 //TBD Use link instead of device_owner
 VmInterface::SubType GetVmInterfaceSubType(Agent *agent,
                                            const std::string &device_owner) {
@@ -1423,9 +1400,25 @@ bool VmInterfaceOsOperStateData::OnResync(const InterfaceTable *table,
 /////////////////////////////////////////////////////////////////////////////
 // VM Port Entry utility routines
 /////////////////////////////////////////////////////////////////////////////
-void VmInterface::GetOsParams(Agent *agent) {
-    if (rx_vlan_id_ == VmInterface::kInvalidVlanId) {
+// Does the VMInterface need a physical device to be present
+bool VmInterface::NeedDevice() const {
+    bool ret = true;
+
+    if (sub_type_ == TOR)
+        ret = false;
+
+    if (rx_vlan_id_ != VmInterface::kInvalidVlanId) {
+        ret = false;
+    } else {
+        // Sanity check. rx_vlan_id is set, make sure tx_vlan_id is also set
         assert(tx_vlan_id_ == VmInterface::kInvalidVlanId);
+    }
+
+    return ret;
+}
+
+void VmInterface::GetOsParams(Agent *agent) {
+    if (NeedDevice()) {
         Interface::GetOsParams(agent);
         return;
     }
@@ -1458,9 +1451,8 @@ bool VmInterface::IsActive()  const {
         return false;
     }
 
-    if (rx_vlan_id_ != VmInterface::kInvalidVlanId) {
-       assert(tx_vlan_id_ != VmInterface::kInvalidVlanId);
-       return true;
+    if (NeedDevice() == false) {
+        return true;
     }
 
     if (os_index_ == kInvalidIndex)

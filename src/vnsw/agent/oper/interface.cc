@@ -634,24 +634,26 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
                 common_reason += "vn-admin-down ";
             }
 
-            if (vintf->vm() == NULL) {
-                common_reason += "vm-null ";
-            }
-
             if (vintf->vrf() == NULL) {
                 common_reason += "vrf-null ";
             }
 
-            if (vintf->os_index() == Interface::kInvalidIndex) {
-                common_reason += "no-dev ";
-            }
+            if (vintf->NeedDevice()) {
+                if (vintf->os_index() == Interface::kInvalidIndex) {
+                    common_reason += "no-dev ";
+                }
 
-            if (vintf->os_oper_state() == false) {
-                common_reason += "os-state-down ";
+                if (vintf->os_oper_state() == false) {
+                    common_reason += "os-state-down ";
+                }
             }
 
             if (!ipv4_active_) {
-                string reason = "Inactive< " + common_reason;
+                if (vintf->layer3_forwarding() == false) {
+                    common_reason += "l3-disabled";
+                }
+
+                string reason = "L3 Inactive < " + common_reason;
                 if (vintf->ip_addr().to_ulong() == 0) {
                     reason += "no-ip-addr ";
                 }
@@ -660,7 +662,10 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
             }
 
             if (!l2_active_) {
-                string reason = "Inactive L2< " + common_reason;
+                if (vintf->layer2_forwarding() == false) {
+                    common_reason += "l2-disabled";
+                }
+                string reason = "L2 Inactive < " + common_reason;
                 reason += " >";
                 data.set_l2_active(reason);
             }
