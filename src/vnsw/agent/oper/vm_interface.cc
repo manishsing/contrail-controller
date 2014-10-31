@@ -996,7 +996,8 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old
                               uint8_t old_subnet_plen) {
     //Need not apply config for TOR VMI as it is more of an inidicative
     //interface. No route addition or NH addition happens for this interface.
-    if (sub_type_ == VmInterface::TOR)
+    if (sub_type_ == VmInterface::TOR &&
+        (old_subnet.is_unspecified() && old_subnet_plen == 0))
         return;
 
     bool force_update = false;
