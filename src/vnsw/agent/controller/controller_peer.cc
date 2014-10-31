@@ -129,7 +129,14 @@ void AgentXmppChannel::ReceiveEvpnUpdate(XmlPugi *pugi) {
 
                 char *mac_str = strtok_r(buff + offset, "-", &saveptr);
                 uint32_t ethernet_tag = 0;
-                if (mac_str) {
+                //retract id expected are:
+                //00:00:00:01:01:01,1.1.1.1 - Mac and IP
+                //10-00:00:00:01:01:01,1.1.1.1 - Ehernet tag, mac, ip.
+                //In case of not finding pattern "-" whole string will be
+                //returned in mac_str. So dont use it for ethernet_tag.
+                //Check for string length of saveptr to know if string was
+                //tokenised.
+                if ((strlen(saveptr) != 0) && mac_str) {
                     ethernet_tag = atoi(mac_str);
                     offset += strlen(mac_str) + 1;
                 }
