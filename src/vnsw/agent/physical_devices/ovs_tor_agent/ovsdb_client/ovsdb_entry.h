@@ -27,9 +27,9 @@ public:
     OvsdbEntry(OvsdbObject *table, uint32_t index);
     virtual ~OvsdbEntry();
 
-    bool Add();
-    bool Change();
-    bool Delete();
+    virtual bool Add();
+    virtual bool Change();
+    virtual bool Delete();
 
     struct ovsdb_idl_row *ovs_entry() {return ovs_entry_;}
     KSyncObject* GetObject();
