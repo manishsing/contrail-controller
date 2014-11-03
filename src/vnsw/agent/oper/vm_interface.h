@@ -592,6 +592,7 @@ private:
     Ip6Address vm_ip6_gw_addr_;
     VmInterface::SubType sub_type_;
     uint8_t configurer_;
+    IFMapNode *ifmap_node_;
     Ip4Address subnet_;
     uint8_t subnet_plen_;
     DISALLOW_COPY_AND_ASSIGN(VmInterface);
@@ -701,7 +702,7 @@ struct VmInterfaceConfigData : public VmInterfaceData {
         mirror_direction_(Interface::UNKNOWN), sg_list_(),
         floating_ip_list_(), service_vlan_list_(), static_route_list_(),
         allowed_address_pair_list_(), sub_type_(VmInterface::NONE),
-        parent_(""), subnet_(0), subnet_plen_(0) {
+        parent_(""), ifmap_node_(NULL), subnet_(0), subnet_plen_(0) {
     }
 
     virtual ~VmInterfaceConfigData() { }
@@ -745,6 +746,7 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     VmInterface::AllowedAddressPairList allowed_address_pair_list_;
     VmInterface::SubType sub_type_;
     std::string parent_;
+    IFMapNode *ifmap_node_;
     Ip4Address subnet_;
     uint8_t subnet_plen_;
 };

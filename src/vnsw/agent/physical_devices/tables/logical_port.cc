@@ -240,9 +240,9 @@ static void SetLogicalPortSandeshData(const LogicalPortEntry *entry,
     }
 
     if (entry->vm_interface()) {
-        data->set_physical_port(entry->vm_interface()->name());
+        data->set_vif(entry->vm_interface()->name());
     } else {
-        data->set_physical_port("INVALID");
+        data->set_vif("INVALID");
     }
     entry->SetSandeshData(data);
 }

@@ -10,6 +10,7 @@
 #include <cmn/agent_cmn.h>
 #include <cfg/cfg_init.h>
 #include <oper/agent_sandesh.h>
+#include <oper/operdb_init.h>
 #include <oper/ifmap_dependency_manager.h>
 
 #include <physical_devices/tables/physical_devices_types.h>
@@ -69,7 +70,8 @@ void PhysicalDeviceEntry::SetKey(const DBRequestKey *key) {
     uuid_ = k->uuid_;
 }
 
-bool PhysicalDeviceEntry::Copy(const PhysicalDeviceData *data) {
+bool PhysicalDeviceEntry::Copy(const PhysicalDeviceTable *table,
+                               const PhysicalDeviceData *data) {
     bool ret = false;
 
     if (fq_name_ != data->fq_name_) {
@@ -108,6 +110,14 @@ bool PhysicalDeviceEntry::Copy(const PhysicalDeviceData *data) {
         ret = true;
     }
 
+    if (ifmap_node_ != data->ifmap_node_) {
+        OperDB *oper = table->agent()->oper_db();
+        oper->dependency_manager()->SetObject(data->ifmap_node_, this);
+        if (ifmap_node_)
+            oper->dependency_manager()->ResetObject(ifmap_node_);
+        ifmap_node_ = data->ifmap_node_;
+    }
+
     return ret;
 }
 
@@ -126,7 +136,7 @@ DBEntry *PhysicalDeviceTable::Add(const DBRequest *req) {
     PhysicalDeviceData *data = static_cast<PhysicalDeviceData *>
         (req->data.get());
     PhysicalDeviceEntry *dev = new PhysicalDeviceEntry(key->uuid_);
-    dev->Copy(data);
+    dev->Copy(this, data);
     dev->SendObjectLog(AgentLogEvent::ADD);
     return dev;
 }
@@ -135,7 +145,7 @@ bool PhysicalDeviceTable::OnChange(DBEntry *entry, const DBRequest *req) {
     PhysicalDeviceEntry *dev = static_cast<PhysicalDeviceEntry *>(entry);
     PhysicalDeviceData *data = static_cast<PhysicalDeviceData *>
         (req->data.get());
-    bool ret = dev->Copy(data);
+    bool ret = dev->Copy(this, data);
     dev->SendObjectLog(AgentLogEvent::CHANGE);
     return ret;
 }
@@ -143,6 +153,8 @@ bool PhysicalDeviceTable::OnChange(DBEntry *entry, const DBRequest *req) {
 bool PhysicalDeviceTable::Delete(DBEntry *entry, const DBRequest *req) {
     PhysicalDeviceEntry *dev = static_cast<PhysicalDeviceEntry *>(entry);
     dev->SendObjectLog(AgentLogEvent::DELETE);
+    if (dev->ifmap_node_)
+        agent()->oper_db()->dependency_manager()->ResetObject(dev->ifmap_node_);
     return true;
 }
 
@@ -161,6 +173,11 @@ DBTableBase *PhysicalDeviceTable::CreateTable(DB *db, const std::string &name) {
 // Config handling
 /////////////////////////////////////////////////////////////////////////////
 void PhysicalDeviceTable::ConfigEventHandler(DBEntry *entry) {
+    PhysicalDeviceEntry *dev = static_cast<PhysicalDeviceEntry *>(entry);
+    DBRequest req;
+    if (IFNodeToReq(dev->ifmap_node_, req) == true) {
+        Enqueue(&req);
+    }
 }
 
 void PhysicalDeviceTable::RegisterDBClients(IFMapDependencyManager *dep) {
@@ -178,7 +195,7 @@ static PhysicalDeviceKey *BuildKey(const autogen::PhysicalRouter *router) {
     return new PhysicalDeviceKey(u);
 }
 
-static PhysicalDeviceData *BuildData(const IFMapNode *node,
+static PhysicalDeviceData *BuildData(IFMapNode *node,
                                      const autogen::PhysicalRouter *router) {
     boost::system::error_code ec;
     IpAddress ip = IpAddress();
@@ -186,7 +203,7 @@ static PhysicalDeviceData *BuildData(const IFMapNode *node,
     ip = IpAddress::from_string(router->dataplane_ip(), ec);
     mip = IpAddress::from_string(router->management_ip(), ec);
     return new PhysicalDeviceData(node->name(), router->display_name(),
-                                  router->vendor_name(), ip, mip, "OVS");
+                                  router->vendor_name(), ip, mip, "OVS", node);
 }
 
 bool PhysicalDeviceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {

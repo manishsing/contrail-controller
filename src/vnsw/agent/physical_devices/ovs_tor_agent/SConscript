@@ -26,6 +26,8 @@ env.Append(LIBS = [
                    'physical_devices'
                   ])
 
+env.Append(LIBS = ['ssl', 'crypto'])
+
 env.GenerateBuildInfoCode(
     target='buildinfo.cc',
     source = ['main.cc'],

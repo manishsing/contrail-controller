@@ -130,16 +130,60 @@ void PhysicalDeviceVnTable::RegisterDBClients(IFMapDependencyManager *dep) {
 // Config handling routines
 //////////////////////////////////////////////////////////////////////////////
 /*
- * There is no IFMapNode for PhysicalDeviceVnEntry. The entries are built from
- * link between physical-router and virtual-network.
+ * There is no IFMapNode for PhysicalDeviceVnEntry. We act on physical-router
+ * notification to build the PhysicalDeviceVnTable.
  *
- * We act on physical-router notification to build the PhysicalDeviceVnTable.
- * From a physical-router run thru all the links to find the virtual-networks.
+ * From a physical-router run iterate thru the links given below,
+ * <physical-router> - <phyiscal-interface> - <logical-interface> -
+ * <virtual-machine-interface> - <virtual-network>
  *
- * We dont get notification of link deletion between physical-router and
- * virtual-network. Instead, we build a config-tree and audit the tree based
- * on version-number to identify deleted entries
+ * Since there is no node for physical-device-vn, we build a config-tree and
+ * audit the tree based on version-number to identify deleted entries
  */
+void PhysicalDeviceVnTable::IterateConfig(const Agent *agent, const char *type,
+                                          IFMapNode *node, AgentKey *key,
+                                          AgentData *data,
+                                          const boost::uuids::uuid &dev_uuid) {
+    CfgListener *cfg = agent->cfg_listener();
+    if (strcmp(type, "physical-interface") == 0) {
+        cfg->ForEachAdjacentIFMapNode
+            (agent, node, "logical-interface", NULL, NULL,
+             boost::bind(&PhysicalDeviceVnTable::IterateConfig, this, _1, _2,
+                         _3, _4, _5, dev_uuid));
+        return;
+    }
+
+    if (strcmp(type, "logical-interface") != 0) {
+        return;
+    }
+
+    IFMapNode *adj_node = NULL;
+    adj_node = cfg->FindAdjacentIFMapNode(agent, node,
+                                          "virtual-machine-interface");
+    if (adj_node == NULL)
+        return;
+
+    adj_node = cfg->FindAdjacentIFMapNode(agent, adj_node, "virtual-network");
+    if (adj_node == NULL)
+        return;
+
+    autogen::VirtualNetwork *vn = static_cast<autogen::VirtualNetwork *>
+        (adj_node->GetObject());
+    assert(vn);
+    autogen::IdPermsType id_perms = vn->id_perms();
+    boost::uuids::uuid vn_uuid;
+    CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong,
+               vn_uuid);
+
+    PhysicalDeviceVnKey vn_key(dev_uuid, vn_uuid);
+    config_tree_[vn_key] = config_version_;
+    DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    req.key.reset(new PhysicalDeviceVnKey(dev_uuid, vn_uuid));
+    req.data.reset(new PhysicalDeviceVnData());
+    Enqueue(&req);
+    return;
+}
+
 void PhysicalDeviceVnTable::ConfigUpdate(IFMapNode *node) {
     config_version_++;
 
@@ -151,37 +195,11 @@ void PhysicalDeviceVnTable::ConfigUpdate(IFMapNode *node) {
     CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong,
                router_uuid);
 
-    // Go thru virtual-networks linked and add/update them in the config tree
-    IFMapAgentTable *table = static_cast<IFMapAgentTable *>(node->table());
     if (!node->IsDeleted()) {
-        for (DBGraphVertex::adjacency_iterator iter =
-                node->begin(table->GetGraph());
-                iter != node->end(table->GetGraph()); ++iter) {
-            IFMapNode *adj_node = static_cast<IFMapNode *>(iter.operator->());
-            if (agent()->cfg_listener()->SkipNode(adj_node)) {
-                continue;
-            }
-
-            if (strcmp(adj_node->table()->Typename(), "virtual-network") != 0) {
-                continue;
-            }
-            autogen::VirtualNetwork *vn = static_cast<autogen::VirtualNetwork *>
-                (adj_node->GetObject());
-            assert(vn);
-            autogen::IdPermsType id_perms = vn->id_perms();
-            boost::uuids::uuid vn_uuid;
-            CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong,
-                    vn_uuid);
-
-            PhysicalDeviceVnKey key(router_uuid, vn_uuid);
-            if (config_tree_.find(key) == config_tree_.end()) {
-                DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
-                req.key.reset(new PhysicalDeviceVnKey(router_uuid, vn_uuid));
-                req.data.reset(new PhysicalDeviceVnData());
-                Enqueue(&req);
-            }
-            config_tree_[key] = config_version_;
-        }
+        agent()->cfg_listener()->ForEachAdjacentIFMapNode
+            (agent(), node, "physical-interface", NULL, NULL,
+             boost::bind(&PhysicalDeviceVnTable::IterateConfig, this, _1, _2,
+                         _3, _4, _5, router_uuid));
     }
 
     // Audit and delete entries with old version-number in config-tree

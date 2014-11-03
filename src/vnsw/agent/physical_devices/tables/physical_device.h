@@ -22,9 +22,10 @@ struct PhysicalDeviceData : public AgentData {
     PhysicalDeviceData(const std::string &fq_name, const std::string &name,
                        const std::string &vendor,
                        const IpAddress &ip, const IpAddress &mgmt_ip,
-                       const std::string &protocol) :
+                       const std::string &protocol, IFMapNode *ifmap_node) :
         AgentData(), fq_name_(fq_name), name_(name), vendor_(vendor), ip_(ip),
-        management_ip_(mgmt_ip), protocol_(protocol) { }
+        management_ip_(mgmt_ip), protocol_(protocol), ifmap_node_(ifmap_node) {
+    }
     virtual ~PhysicalDeviceData() { }
 
     std::string fq_name_;
@@ -33,6 +34,7 @@ struct PhysicalDeviceData : public AgentData {
     IpAddress ip_;
     IpAddress management_ip_;
     std::string protocol_;
+    IFMapNode *ifmap_node_;
 };
 
 class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
@@ -44,7 +46,8 @@ class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
     } ManagementProtocol;
 
     explicit PhysicalDeviceEntry(const boost::uuids::uuid &id) :
-        uuid_(id), name_(""), vendor_(""), ip_(), protocol_(INVALID) { }
+        uuid_(id), name_(""), vendor_(""), ip_(), protocol_(INVALID),
+        ifmap_node_(NULL) { }
     virtual ~PhysicalDeviceEntry() { }
 
     virtual bool IsLess(const DBEntry &rhs) const;
@@ -55,7 +58,7 @@ class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
         return AgentRefCount<PhysicalDeviceEntry>::GetRefCount();
     }
 
-    bool Copy(const PhysicalDeviceData *data);
+    bool Copy(const PhysicalDeviceTable *table, const PhysicalDeviceData *data);
     const boost::uuids::uuid &uuid() const { return uuid_; }
     const std::string &fq_name() const { return fq_name_; }
     const std::string &name() const { return name_; }
@@ -76,6 +79,7 @@ class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
     IpAddress ip_;
     IpAddress management_ip_;
     ManagementProtocol protocol_;
+    IFMapNode *ifmap_node_;
     DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceEntry);
 };
 

@@ -62,18 +62,22 @@ void PhysicalDeviceManager::RegisterDBClients() {
     IFMapDependencyManager *mgr = agent_->oper_db()->dependency_manager();
 
     ReactionMap device_react = map_list_of<std::string, PropagateList>
-        ("virtual-network", list_of("self"))
-        ("self", list_of("self"));
+        ("self", list_of("self"))
+        ("physical-router-physical-interface", list_of("self"));
     mgr->RegisterReactionMap("physical-router", device_react);
 
     ReactionMap physical_port_react = map_list_of<std::string, PropagateList>
-        ("physical-router", list_of("self"))
-        ("self", list_of("self"));
+        ("self", list_of("self") ("physical-router-physical-interface"))
+        ("physical-interface-logical-interface",
+         list_of("physical-router-physical-interface"));
     mgr->RegisterReactionMap("physical-interface", physical_port_react);
 
     ReactionMap logical_port_react = map_list_of<std::string, PropagateList>
-        ("physical-interface", list_of("self"))
-        ("self", list_of("self"));
+        ("self", list_of("physical-interface-logical-interface"))
+        ("physical-interface-logical-interface",
+         list_of("physical-router-physical-interface"))
+        ("logical-interface-virtual-machine-interface",
+         list_of("physical-interface-logical-interface"));
     mgr->RegisterReactionMap("logical-interface", logical_port_react);
 
     device_table_->RegisterDBClients(mgr);
