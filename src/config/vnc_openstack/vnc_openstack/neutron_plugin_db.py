@@ -2334,20 +2334,6 @@ class DBInterface(object):
             net_obj._pending_field_updates.add('network_ipam_refs')
         self._virtual_network_update(net_obj)
 
-        # allocate an IP address from the subnet for
-        # service address (dns_server_address)
-        try:
-            subnet = subnet_q['cidr']
-            service_node_address = \
-               self._vnc_lib.virtual_network_ip_alloc(vnobj=net_obj, count=1,
-                                                      subnet=subnet)
-            subnet_vnc.set_dns_server_address(service_node_address[0])
-            net_obj._pending_field_updates.add('network_ipam_refs')
-            self._virtual_network_update(net_obj)
-        except Exception as e:
-            self._raise_contrail_exception('BadRequest', resource='subnet',
-               msg='Unable to create internal service address in the subnet')
-
         # allocate an id to the subnet and store mapping with
         # api-server
         subnet_id = subnet_vnc.subnet_uuid
@@ -2479,14 +2465,6 @@ class DBInterface(object):
                                net_id) != subnet_key]
                 if len(orig_subnets) != len(new_subnets):
                     # matched subnet to be deleted
-
-                    # Free the IP allocated during subnet create (this IP was
-                    # (used as service node address -> dns_server_address)
-                    deleted_subnets = list(set(orig_subnets) - set(new_subnets))
-                    for subnet_vnc in deleted_subnets:
-                        self._vnc_lib.virtual_network_ip_free(vnobj=net_obj,
-                                                              ip_list=[subnet_vnc.dns_server_address])
-
                     ipam_ref['attr'].set_ipam_subnets(new_subnets)
                     net_obj._pending_field_updates.add('network_ipam_refs')
                     try:
