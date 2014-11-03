@@ -416,3 +416,29 @@ IFMapNode *CfgListener::FindAdjacentIFMapNode(const Agent *agent,
 
     return NULL;
 }
+
+// Invoke callback for each adjacent node of given "type"
+uint32_t CfgListener::ForEachAdjacentIFMapNode(const Agent *agent,
+                                               IFMapNode *node,
+                                               const char *type,
+                                               AgentKey *key,
+                                               AgentData *data,
+                                               IFMapNodeCb cb) {
+    uint32_t count = 0;
+    IFMapAgentTable *table = static_cast<IFMapAgentTable *>(node->table());
+    for (DBGraphVertex::adjacency_iterator iter =
+         node->begin(table->GetGraph());
+         iter != node->end(table->GetGraph()); ++iter) {
+        IFMapNode *adj_node = static_cast<IFMapNode *>(iter.operator->());
+        if (SkipNode(adj_node)) {
+            continue;
+        }
+
+        if (strcmp(adj_node->table()->Typename(), type) == 0) {
+            count++;
+            (cb)(agent, type, adj_node, key, data);
+        }
+    }
+
+    return count;
+}

@@ -17,6 +17,7 @@
 #include <cfg/cfg_listener.h>
 #include <cmn/agent.h>
 #include <oper/operdb_init.h>
+#include <oper/ifmap_dependency_manager.h>
 #include <oper/route_common.h>
 #include <oper/vm.h>
 #include <oper/vn.h>
@@ -56,7 +57,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid) :
     sg_list_(), floating_ip_list_(), service_vlan_list_(), static_route_list_(),
     allowed_address_pair_list_(), vrf_assign_rule_list_(),
     vrf_assign_acl_(NULL), vm_ip_gw_addr_(0), vm_ip6_gw_addr_(),
-    sub_type_(VmInterface::NONE) {
+    sub_type_(VmInterface::NONE), ifmap_node_(NULL) {
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
@@ -81,7 +82,8 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     parent_(parent), oper_dhcp_options_(),
     sg_list_(), floating_ip_list_(), service_vlan_list_(), static_route_list_(),
     allowed_address_pair_list_(), vrf_assign_rule_list_(),
-    vrf_assign_acl_(NULL), sub_type_(VmInterface::NONE) {
+    vrf_assign_acl_(NULL), sub_type_(VmInterface::NONE),
+    ifmap_node_(NULL) {
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
@@ -549,6 +551,7 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
     }
 
     VmInterfaceConfigData *data = new VmInterfaceConfigData();
+    data->ifmap_node_ = node;
     //Extract the local preference
     if (cfg->IsPropertySet(VirtualMachineInterface::PROPERTIES)) {
         autogen::VirtualMachineInterfacePropertiesType prop = cfg->properties();
@@ -1033,6 +1036,8 @@ bool VmInterfaceConfigData::OnDelete(const InterfaceTable *table,
     vmi->ResetConfigurer(VmInterface::CONFIG);
     VmInterfaceConfigData data;
     vmi->Resync(table, &data);
+    if (ifmap_node_ != NULL)
+        table->operdb()->dependency_manager()->ResetObject(ifmap_node_);
     return true;
 }
 
@@ -1223,6 +1228,14 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
     if (sub_type_ != data->sub_type_) {
         sub_type_= data->sub_type_;
         ret = true;
+    }
+
+    if (ifmap_node_ != data->ifmap_node_) {
+        if (ifmap_node_ != NULL)
+            table->operdb()->dependency_manager()->ResetObject(ifmap_node_);
+        ifmap_node_ = data->ifmap_node_;
+        if (ifmap_node_)
+            table->operdb()->dependency_manager()->SetObject(ifmap_node_, this);
     }
 
     return ret;
