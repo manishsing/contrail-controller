@@ -57,7 +57,8 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid) :
     sg_list_(), floating_ip_list_(), service_vlan_list_(), static_route_list_(),
     allowed_address_pair_list_(), vrf_assign_rule_list_(),
     vrf_assign_acl_(NULL), vm_ip_gw_addr_(0), vm_ip6_gw_addr_(),
-    sub_type_(VmInterface::NONE), ifmap_node_(NULL), subnet_(0), subnet_plen_(0) {
+    sub_type_(VmInterface::NONE), ifmap_node_(NULL), subnet_(0),
+    subnet_plen_(0) {
     ipv4_active_ = false;
     ipv6_active_ = false;
     l2_active_ = false;
@@ -1328,6 +1329,15 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
             (table->agent()->interface_table()->FindActiveEntry(&key));
         assert(parent_ != NULL);
     }
+
+    if (ifmap_node_ != data->ifmap_node_) {
+        if (ifmap_node_ != NULL)
+            table->operdb()->dependency_manager()->ResetObject(ifmap_node_);
+        ifmap_node_ = data->ifmap_node_;
+        if (ifmap_node_)
+            table->operdb()->dependency_manager()->SetObject(ifmap_node_, this);
+    }
+
     return ret;
 }
 
