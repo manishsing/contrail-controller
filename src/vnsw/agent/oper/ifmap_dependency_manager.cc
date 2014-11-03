@@ -141,7 +141,9 @@ void IFMapDependencyManager::Initialize() {
             ("instance-ip-virtual-machine-interface",
              list_of("virtual-machine-interface-virtual-machine"))
             ("virtual-machine-interface-virtual-network",
-             list_of("virtual-machine-interface-virtual-machine"));
+             list_of("virtual-machine-interface-virtual-machine")
+                    ("virtual-machine-interface-logical-interface")
+                    ("logical-interface-virtual-machine-interface"));
     policy->insert(make_pair("virtual-machine-interface", react_vmi));
 
     ReactionMap react_ip = map_list_of<string, PropagateList>

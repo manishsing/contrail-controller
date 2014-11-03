@@ -86,6 +86,9 @@ void LinkXmlNode(xml_node *parent, const string &ltype, const string lname,
     n2 = n1.append_child("name");
     n2.append_child(pugi::node_pcdata).set_value(rname.c_str());
 
+    string mdata = ltype + "-" + rtype;
+    xml_node n3 = n.append_child("metadata");
+    n3.append_attribute("type") = mdata.c_str();
     return;
 }
 

@@ -758,9 +758,9 @@ bool AgentRoute::ReComputeMulticastPaths(AgentPath *path, bool del) {
     if ((local_peer_path == NULL) &&
         (tor_peer_path == NULL) &&
         (evpn_peer_path == NULL) &&
-        (fabric_peer_path == NULL) &&
-        (multicast_peer_path != NULL)) {
-        RemovePath(multicast_peer_path);
+        (fabric_peer_path == NULL)) {
+        if (multicast_peer_path != NULL)
+            RemovePath(multicast_peer_path);
         return true;
     }
 

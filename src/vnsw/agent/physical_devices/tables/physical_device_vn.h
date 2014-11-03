@@ -98,6 +98,9 @@ class PhysicalDeviceVnTable : public AgentDBTable {
     virtual bool Delete(DBEntry *entry, const DBRequest *req);
     virtual bool IFNodeToReq(IFMapNode *node, DBRequest &req);
 
+    void IterateConfig(const Agent *agent, const char *type, IFMapNode *node,
+                       AgentKey *key, AgentData *data,
+                       const boost::uuids::uuid &dev_uuid);
     PhysicalDeviceTable *physical_device_table() const {
         return physical_device_table_;
     }
