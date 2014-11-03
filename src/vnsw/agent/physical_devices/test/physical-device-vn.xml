@@ -47,6 +47,8 @@
         <physical-router-vn name="router-vn-1" uuid="1" device="1" vn="1" />
     </validate>
 
+    <link left="virtual-machine-interface" left-name="tap1"
+          right="virtual-network" right-name="vn-1" del="1"/>
     <link left="logical-interface" left-name="l-intf-1"
           right="virtual-machine-interface" right-name="tap-1" del="1"/>
     <link left="physical-router" left-name="router-1"
