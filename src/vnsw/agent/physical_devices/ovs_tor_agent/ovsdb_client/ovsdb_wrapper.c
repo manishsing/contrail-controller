@@ -209,7 +209,10 @@ ovsdb_wrapper_logical_switch_tunnel_key(struct ovsdb_idl_row *row)
 {
     struct vteprec_logical_switch *ls =
         row ? CONTAINER_OF(row, struct vteprec_logical_switch, header_) : NULL;
-    return *ls->tunnel_key;
+    if (ls->n_tunnel_key == 0) {
+        return 0;
+    }
+    return ls->tunnel_key[0];
 }
 
 struct ovsdb_idl_row *
