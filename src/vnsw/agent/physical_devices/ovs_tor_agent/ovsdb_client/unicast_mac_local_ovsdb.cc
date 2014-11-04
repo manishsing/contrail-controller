@@ -29,7 +29,9 @@ UnicastMacLocalEntry::UnicastMacLocalEntry(UnicastMacLocalOvsdb *table,
         struct ovsdb_idl_row *row) : OvsdbEntry(table),
     mac_(ovsdb_wrapper_ucast_mac_local_mac(row)),
     logical_switch_name_(ovsdb_wrapper_ucast_mac_local_logical_switch(row)),
-    dest_ip_(ovsdb_wrapper_ucast_mac_local_dst_ip(row)) {
+    dest_ip_() {
+    if (ovsdb_wrapper_ucast_mac_local_dst_ip(row))
+        dest_ip_ = ovsdb_wrapper_ucast_mac_local_dst_ip(row);
 }
 
 UnicastMacLocalEntry::~UnicastMacLocalEntry() {
