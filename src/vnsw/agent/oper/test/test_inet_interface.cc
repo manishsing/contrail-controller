@@ -284,6 +284,87 @@ TEST_F(InetInterfaceTest, ll_basic_1) {
     client->WaitForIdle();
 }
 
+static void DelInetConfig(Agent *agent, const Ip4Address &addr,
+                          const Ip4Address &gw, uint8_t plen) {
+    InetUnicastAgentRouteTable *table = agent->fabric_inet4_unicast_table();
+
+    table->DeleteReq(agent->local_peer(), agent->fabric_vrf_name(), addr, 32,
+                     NULL);
+    table->DeleteReq(agent->local_peer(), agent->fabric_vrf_name(),
+                     gw, 32, NULL);
+    table->DeleteReq(agent->local_peer(), agent->fabric_vrf_name(),
+                     addr, plen, NULL);
+    WAIT_FOR(1000, 1000,
+             (RouteGet(agent->fabric_vrf_name(), addr, plen) == NULL));
+    client->WaitForIdle();
+}
+
+static void AddInetRoutes(Agent *agent) {
+    AgentParam *agent_param = client->param();
+    AgentRouteTable *table = agent->fabric_inet4_unicast_table();
+    InetInterface::CreateReq(agent->interface_table(), agent_param->vhost_name(),
+                          InetInterface::VHOST, agent->fabric_vrf_name(),
+                          agent_param->vhost_addr(),
+                          agent_param->vhost_plen(),
+                          agent_param->vhost_gw(),
+                          agent_param->eth_port(),
+                          agent->fabric_vrf_name());
+    WAIT_FOR(1000, 1000,
+             (RouteGet(agent->fabric_vrf_name(), agent_param->vhost_addr(),
+                       agent_param->vhost_plen()) != NULL));
+    client->WaitForIdle();
+}
+
+TEST_F(InetInterfaceTest, physical_eth_encap_1) {
+    const NextHop *nh = NULL;
+    const InetUnicastRouteEntry *rt = NULL;
+    AgentParam *param = client->param();
+
+    // Cleanup routes added by old inet-interface
+    DelInetConfig(agent_, param->vhost_addr(), param->vhost_gw(),
+                  param->vhost_plen());
+
+    Ip4Address ip = Ip4Address::from_string("10.10.10.10");
+    Ip4Address gw = Ip4Address::from_string("10.10.10.1");
+    Ip4Address net = Ip4Address::from_string("10.10.10.0");
+
+    PhysicalInterface::CreateReq(interface_table_, "phy-1",
+                                 agent_->fabric_vrf_name(),
+                                 PhysicalInterface::FABRIC,
+                                 PhysicalInterface::ETHERNET, false);
+    client->WaitForIdle();
+
+    InetInterface::CreateReq(interface_table_, "vhost-1", InetInterface::VHOST,
+                             agent_->fabric_vrf_name(), ip, 24, gw, "phy-1",
+                             "TEST");
+    client->WaitForIdle();
+
+    WAIT_FOR(1000, 1000,
+             ((rt = RouteGet(agent_->fabric_vrf_name(), ip, 32)) != NULL));
+    if (rt != NULL) {
+        nh = rt->GetActiveNextHop();
+        EXPECT_TRUE(nh->GetType() == NextHop::RECEIVE);
+    }
+
+    WAIT_FOR(1000, 1000,
+             ((rt = RouteGet(agent_->fabric_vrf_name(), net, 24)) != NULL));
+    if (rt != NULL) {
+        nh = rt->GetActiveNextHop();
+        EXPECT_TRUE(nh->GetType() == NextHop::RESOLVE);
+    }
+
+    DelInetConfig(agent_, Ip4Address::from_string("10.10.10.10"), 
+                  Ip4Address::from_string("10.10.10.1"), 24);
+
+    DelInterface(this, "vhost-1", agent_->fabric_vrf_name().c_str(),
+                 "10.10.10.1");
+    PhysicalInterface::DeleteReq(interface_table_, "phy-1");
+    InetInterface::DeleteReq(interface_table_, "vhost-1");
+
+    AddInetRoutes(agent_);
+    client->WaitForIdle();
+}
+
 int main(int argc, char **argv) {
     GETUSERARGS();
 

@@ -3647,7 +3647,8 @@ int main(int argc, char *argv[]) {
         PhysicalInterface::CreateReq(Agent::GetInstance()->interface_table(),
                                 eth_itf,
                                 Agent::GetInstance()->fabric_vrf_name(),
-                                PhysicalInterface::FABRIC);
+                                PhysicalInterface::FABRIC,
+                                PhysicalInterface::ETHERNET, false);
         client->WaitForIdle();
     }
 

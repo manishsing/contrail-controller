@@ -685,6 +685,33 @@ bool Inet4UnicastGatewayRoute::AddChangePath(Agent *agent, AgentPath *path,
     return true;
 }
 
+Inet4UnicastInterfaceRoute::Inet4UnicastInterfaceRoute
+(const PhysicalInterface *interface, const std::string &vn_name) :
+        AgentRouteData(false),
+        interface_key_(new PhysicalInterfaceKey(interface->name())),
+        vn_name_(vn_name) {
+}
+
+bool Inet4UnicastInterfaceRoute::AddChangePath(Agent *agent, AgentPath *path,
+                                               const AgentRoute *rt) {
+    bool ret = false;
+
+    path->set_unresolved(false);
+    if (path->dest_vn_name() != agent->fabric_vn_name()) {
+        path->set_dest_vn_name(agent->fabric_vn_name());
+        ret = true;
+    }
+
+    InterfaceNHKey key(interface_key_->Clone(), false, InterfaceNHFlags::INET4);
+    NextHop *nh = static_cast<NextHop *>
+        (agent->nexthop_table()->FindActiveEntry(&key));
+    if (path->ChangeNH(agent, nh) == true) {
+        ret = true;
+    }
+
+    return ret;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // Sandesh functions
 /////////////////////////////////////////////////////////////////////////////
@@ -1345,4 +1372,22 @@ InetUnicastAgentRouteTable::AddSubnetRoute(const string &vrf_name,
     if (table) {
         table->Process(req);
     }
+}
+
+void
+InetUnicastAgentRouteTable::AddInterfaceRouteReq(Agent *agent, const Peer *peer,
+                                                 const string &vrf_name,
+                                                 const Ip4Address &ip,
+                                                 uint8_t plen,
+                                                 const Interface *interface,
+                                                 const string &vn_name) {
+
+    assert(interface->type() == Interface::PHYSICAL);
+    DBRequest  rt_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    rt_req.key.reset(new InetUnicastRouteKey(agent->local_peer(),
+                                              vrf_name, ip, plen));
+    const PhysicalInterface *phy_intf = static_cast<const PhysicalInterface *>
+        (interface);
+    rt_req.data.reset(new Inet4UnicastInterfaceRoute(phy_intf, vn_name));
+    Inet4UnicastTableEnqueue(agent, &rt_req);
 }

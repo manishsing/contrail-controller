@@ -77,6 +77,8 @@ public:
 
     const std::string &agent_name() const { return agent_name_; }
     const std::string &eth_port() const { return eth_port_; }
+    const bool &eth_port_no_arp() const { return eth_port_no_arp_; }
+    const std::string &eth_port_encap_type() const { return eth_port_encap_type_; }
     const Ip4Address &tsn_ip_1() const { return tsn_ip_1_; }
     const Ip4Address &tsn_ip_2() const { return tsn_ip_2_; }
     const Ip4Address &xmpp_server_1() const { return xmpp_server_1_; }
@@ -248,6 +250,8 @@ private:
     PortInfo vhost_;
     std::string agent_name_;
     std::string eth_port_;
+    bool eth_port_no_arp_;
+    std::string eth_port_encap_type_;
     uint16_t xmpp_instance_count_;
     Ip4Address xmpp_server_1_;
     Ip4Address xmpp_server_2_;

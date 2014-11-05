@@ -84,7 +84,8 @@ protected:
         PhysicalInterface::CreateReq(agent_->interface_table(),
                                 eth_name_,
                                 agent_->fabric_vrf_name(),
-                                PhysicalInterface::FABRIC);
+                                PhysicalInterface::FABRIC,
+                                PhysicalInterface::ETHERNET, false);
         AddResolveRoute(server1_ip_, 24);
         client->WaitForIdle();
     }

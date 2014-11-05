@@ -65,7 +65,9 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     vrf_id_(entry->vrf_id_),
     persistent_(entry->persistent_),
     subtype_(entry->subtype_),
-    xconnect_(entry->xconnect_) {
+    xconnect_(entry->xconnect_),
+    no_arp_(entry->no_arp_),
+    encap_type_(entry->encap_type_) {
 }
 
 InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
@@ -98,7 +100,9 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     vrf_id_(intf->vrf_id()),
     persistent_(false),
     subtype_(PhysicalInterface::INVALID),
-    xconnect_(NULL) {
+    xconnect_(NULL),
+    no_arp_(false),
+    encap_type_(PhysicalInterface::ETHERNET) {
 
     if (intf->flow_key_nh()) {
         flow_key_nh_id_ = intf->flow_key_nh()->id();
@@ -125,7 +129,16 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
         if (sub_type_ == InetInterface::VHOST) {
             InterfaceKSyncEntry tmp(ksync_obj_, inet_intf->xconnect());
             xconnect_ = ksync_obj_->GetReference(&tmp);
+            InterfaceKSyncEntry *xconnect = static_cast<InterfaceKSyncEntry *>
+                (xconnect_.get());
+            encap_type_ = xconnect->encap_type();
+            no_arp_ = xconnect->no_arp();
         }
+    } else if (type_ == Interface::PHYSICAL) {
+        const PhysicalInterface *physical_intf =
+            static_cast<const PhysicalInterface *>(intf);
+        encap_type_ = physical_intf->encap_type();
+        no_arp_ = physical_intf->no_arp();
     }
 }
 
@@ -296,9 +309,29 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
         subtype_ = phy_intf->subtype();
         break;
     }
-    case Interface::INET:
+    case Interface::INET: {
         dmac = intf->mac();
+
+        bool no_arp = false;
+        PhysicalInterface::EncapType encap = PhysicalInterface::ETHERNET;
+        InterfaceKSyncEntry *xconnect = static_cast<InterfaceKSyncEntry *>
+            (xconnect_.get());
+        if (xconnect) {
+            no_arp = xconnect->no_arp();
+            encap = xconnect->encap_type();
+        }
+
+        if (no_arp_ != no_arp) {
+            no_arp_ = no_arp;
+            ret = true;
+        }
+        if (encap_type_ != encap) {
+            encap_type_ = encap;
+            ret = true;
+        }
+
         break;
+    }
     default:
         assert(0);
     }
