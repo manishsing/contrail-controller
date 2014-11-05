@@ -232,7 +232,17 @@ void KSyncDBObject::Notify(DBTablePartBase *partition, DBEntryBase *e) {
             }
             delete key;
             entry->SetState(table, id_, ksync);
-            assert(ksync->GetDBEntry() == NULL);
+            DBEntry *old_db_entry = ksync->GetDBEntry();
+            if (old_db_entry != NULL) {
+                // cleanup previous state id the old db entry is delete marked.
+                if (old_db_entry->IsDeleted()) {
+                    CleanupOnDel(ksync);
+                } else {
+                    // something wrong! two db entry in oper db points to same
+                    // KSync entry.
+                    assert(false);
+                }
+            }
             ksync->SetDBEntry(entry);
             need_sync = true;
         }
