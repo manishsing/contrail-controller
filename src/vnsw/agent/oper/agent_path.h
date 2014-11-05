@@ -15,6 +15,8 @@
 
 //Forward declaration
 class AgentXmppChannel;
+class InterfaceKey;
+class PhysicalInterface;
 class Peer;
 
 class PathPreference {
@@ -478,4 +480,21 @@ private:
     std::string vn_;
     DISALLOW_COPY_AND_ASSIGN(DropRoute);
 };
+
+class Inet4UnicastInterfaceRoute : public AgentRouteData {
+public:
+    Inet4UnicastInterfaceRoute(const PhysicalInterface *interface,
+                               const std::string &vn_name);
+    virtual ~Inet4UnicastInterfaceRoute() { }
+
+    virtual bool AddChangePath(Agent *agent, AgentPath *path,
+                               const AgentRoute *rt);
+    virtual std::string ToString() const {return "Interface";}
+
+private:
+    std::auto_ptr<InterfaceKey> interface_key_;
+    std::string vn_name_;
+    DISALLOW_COPY_AND_ASSIGN(Inet4UnicastInterfaceRoute);
+};
+
 #endif // vnsw_agent_path_hpp

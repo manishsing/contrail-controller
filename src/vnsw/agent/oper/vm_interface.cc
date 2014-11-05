@@ -545,7 +545,8 @@ AddPhysicalInterface(Agent *agent, IFMapNode *node) {
         ::PhysicalInterface::Create(intf_table,
                 physical_interface->display_name(),
                 agent->fabric_vrf_name(),
-                true);
+                ::PhysicalInterface::FABRIC, ::PhysicalInterface::ETHERNET,
+                false);
         ret = true;
     }
 

@@ -459,18 +459,21 @@ bool NHKSyncEntry::Sync(DBEntry *e) {
 
         const TunnelNH *tun_nh = static_cast<TunnelNH *>(e);
         const NextHop *active_nh = tun_nh->GetRt()->GetActiveNextHop();
-        if (active_nh->GetType() != NextHop::ARP) {
-            valid_ = false;
-            interface_ = NULL;
-            dmac_.Zero();
-            break;
+        if (active_nh->GetType() == NextHop::ARP) {
+            const ArpNH *arp_nh = static_cast<const ArpNH *>(active_nh);
+            InterfaceKSyncObject *interface_object =
+                ksync_obj_->ksync()->interface_ksync_obj();
+            InterfaceKSyncEntry if_ksync(interface_object, arp_nh->GetInterface());
+            interface_ = interface_object->GetReference(&if_ksync);
+            dmac_ = arp_nh->GetMac();
+        } else if (active_nh->GetType() == NextHop::INTERFACE) {
+            const InterfaceNH *intf_nh = 
+                static_cast<const InterfaceNH *>(active_nh);
+            InterfaceKSyncObject *interface_object =
+                ksync_obj_->ksync()->interface_ksync_obj();
+            InterfaceKSyncEntry if_ksync(interface_object, intf_nh->GetInterface());
+            interface_ = interface_object->GetReference(&if_ksync);
         }
-        const ArpNH *arp_nh = static_cast<const ArpNH *>(active_nh);
-        InterfaceKSyncObject *interface_object =
-            ksync_obj_->ksync()->interface_ksync_obj();
-        InterfaceKSyncEntry if_ksync(interface_object, arp_nh->GetInterface());
-        interface_ = interface_object->GetReference(&if_ksync);
-        dmac_ = arp_nh->GetMac();
         break;
     }
 
@@ -630,7 +633,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             }
             encoder.set_nhr_encap_oif_id(intf_id);
 
-            SetEncap(NULL,encap);
+            SetEncap(if_ksync,encap);
             encoder.set_nhr_encap(encap);
             if (tunnel_type_.GetType() == TunnelType::MPLS_UDP) {
                 flags |= NH_FLAG_TUNNEL_UDP_MPLS;
@@ -955,6 +958,10 @@ void NHKSyncEntry::SetEncap(InterfaceKSyncEntry *if_ksync,
                             std::vector<int8_t> &encap) {
 
     if (is_layer2_ == true) {
+        return;
+    }
+
+    if (if_ksync && if_ksync->encap_type() == PhysicalInterface::RAW_IP) {
         return;
     }
 

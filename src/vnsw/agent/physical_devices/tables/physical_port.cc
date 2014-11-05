@@ -74,7 +74,8 @@ bool PhysicalPortEntry::Copy(PhysicalPortTable *table,
             InterfaceTable *intf_table = table->agent()->interface_table();
             PhysicalInterface::Create(intf_table, name_,
                                       table->agent()->fabric_vrf_name(),
-                                      false);
+                                      PhysicalInterface::FABRIC,
+                                      PhysicalInterface::ETHERNET, false);
         }
     }
 

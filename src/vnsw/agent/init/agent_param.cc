@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
+#include <net/if_arp.h>
 #include <unistd.h>
 #include <iostream>
 
@@ -735,7 +736,11 @@ void AgentParam::ComputeFlowLimits() {
     }
 }
 
-static bool ValidateInterface(bool test_mode, const std::string &ifname) {
+static bool ValidateInterface(bool test_mode, const std::string &ifname,
+                              bool *no_arp, string *eth_encap) {
+    *no_arp = false;
+    *eth_encap = "";
+
     if (test_mode) {
         return true;
     }
@@ -745,13 +750,29 @@ static bool ValidateInterface(bool test_mode, const std::string &ifname) {
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, ifname.c_str(), IF_NAMESIZE);
-    int err = ioctl(fd, SIOCGIFHWADDR, (void *)&ifr);
+    int err = ioctl(fd, SIOCGIFFLAGS, (void *)&ifr);
     close (fd);
 
     if (err < 0) {
         LOG(ERROR, "Error reading interface <" << ifname << ">. Error number "
             << errno << " : " << strerror(errno));
         return false;
+    }
+
+    if ((ifr.ifr_flags & IFF_NOARP)) {
+        *no_arp = true;
+    }
+
+    char fname[128];
+    snprintf(fname, 128, "/sys/class/net/%s/type", ifname.c_str());
+    FILE *f = fopen(fname, "r");
+    if (f) {
+        int type;
+        if (fscanf(f, "%d", &type) >= 0) {
+            if (type == ARPHRD_NONE) {
+                *eth_encap = "none";
+            }
+        }
     }
 
     return true;
@@ -764,8 +785,10 @@ int AgentParam::Validate() {
         return (EINVAL);
     }
 
+    bool no_arp;
+    string encap;
     // Check if interface is already present
-    if (ValidateInterface(test_mode_, vhost_.name_) == false) {
+    if (ValidateInterface(test_mode_, vhost_.name_, &no_arp, &encap) == false) {
         return (ENODEV);
     }
 
@@ -776,7 +799,8 @@ int AgentParam::Validate() {
     }
 
     // Check if interface is already present
-    if (ValidateInterface(test_mode_, eth_port_) == false) {
+    if (ValidateInterface(test_mode_, eth_port_, &eth_port_no_arp_,
+                          &eth_port_encap_type_) == false) {
         return (ENODEV);
     }
 
@@ -788,7 +812,8 @@ int AgentParam::Validate() {
             return (EINVAL);
         }
 
-        if (ValidateInterface(test_mode_, vmware_physical_port_) == false) {
+        if (ValidateInterface(test_mode_, vmware_physical_port_, &no_arp,
+                              &encap) == false) {
             return (ENODEV);
         }
     }
@@ -824,6 +849,10 @@ void AgentParam::LogConfig() const {
         << "/" << vhost_.plen_);
     LOG(DEBUG, "vhost gateway               : " << vhost_.gw_.to_string());
     LOG(DEBUG, "Ethernet port               : " << eth_port_);
+    LOG(DEBUG, "Ethernet Encap Type         : " << eth_port_encap_type_);
+    if (eth_port_no_arp_) {
+    LOG(DEBUG, "Ethernet No-ARP             : " << "TRUE");
+    }
     LOG(DEBUG, "XMPP Server-1               : " << xmpp_server_1_);
     LOG(DEBUG, "XMPP Server-2               : " << xmpp_server_2_);
     LOG(DEBUG, "DNS Server-1                : " << dns_server_1_);
@@ -898,7 +927,7 @@ AgentParam::AgentParam(Agent *agent, bool enable_flow_options,
         enable_hypervisor_options_(enable_hypervisor_options),
         enable_service_options_(enable_service_options),
         enable_tsn_(enable_tsn), tsn_ip_1_(), tsn_ip_2_(),
-        vhost_(), eth_port_(),
+        vhost_(), eth_port_(), eth_port_no_arp_(false), eth_port_encap_type_(),
         xmpp_instance_count_(), xmpp_server_1_(),
         xmpp_server_2_(), dns_server_1_(), dns_server_2_(),
         dns_port_1_(ContrailPorts::DnsServerPort()),

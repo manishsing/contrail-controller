@@ -380,9 +380,10 @@ void PacketInterface::Delete(InterfaceTable *table, const std::string &ifname) {
 // Ethernet Interface routines
 /////////////////////////////////////////////////////////////////////////////
 PhysicalInterface::PhysicalInterface(const std::string &name, VrfEntry *vrf,
-                                     SubType subtype) :
+                                     SubType subtype, EncapType encap,
+                                     bool no_arp) :
     Interface(Interface::PHYSICAL, nil_uuid(), name, vrf),
-    persistent_(false), subtype_(subtype) {
+    persistent_(false), subtype_(subtype), encap_type_(encap), no_arp_(no_arp) {
     if (subtype_ == VMWARE)
         persistent_ = true;
 }
@@ -401,20 +402,25 @@ DBEntryBase::KeyPtr PhysicalInterface::GetDBRequestKey() const {
     return DBEntryBase::KeyPtr(key);
 }
 
+void PhysicalInterface::Add() {
+}
+
 // Enqueue DBRequest to create a Host Interface
 void PhysicalInterface::CreateReq(InterfaceTable *table, const string &ifname,
-                                  const string &vrf_name, SubType subtype) {
+                                  const string &vrf_name, SubType subtype,
+                                  EncapType encap, bool no_arp) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new PhysicalInterfaceKey(ifname));
-    req.data.reset(new PhysicalInterfaceData(vrf_name, subtype));
+    req.data.reset(new PhysicalInterfaceData(vrf_name, subtype, encap, no_arp));
     table->Enqueue(&req);
 }
 
 void PhysicalInterface::Create(InterfaceTable *table, const string &ifname,
-                               const string &vrf_name, SubType subtype) {
+                               const string &vrf_name, SubType subtype,
+                               EncapType encap, bool no_arp) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new PhysicalInterfaceKey(ifname));
-    req.data.reset(new PhysicalInterfaceData(vrf_name, subtype));
+    req.data.reset(new PhysicalInterfaceData(vrf_name, subtype, encap, no_arp));
     table->Process(req);
 }
 
@@ -442,7 +448,8 @@ PhysicalInterfaceKey::~PhysicalInterfaceKey() {
 }
 
 Interface *PhysicalInterfaceKey::AllocEntry(const InterfaceTable *table) const {
-    return new PhysicalInterface(name_, NULL, PhysicalInterface::INVALID);
+    return new PhysicalInterface(name_, NULL, PhysicalInterface::INVALID,
+                                 PhysicalInterface::ETHERNET, false);
 }
 
 Interface *PhysicalInterfaceKey::AllocEntry(const InterfaceTable *table,
@@ -456,12 +463,14 @@ Interface *PhysicalInterfaceKey::AllocEntry(const InterfaceTable *table,
     const PhysicalInterfaceData *phy_data =
         static_cast<const PhysicalInterfaceData *>(data);
 
-    return new PhysicalInterface(name_, vrf, phy_data->subtype_);
+    return new PhysicalInterface(name_, vrf, phy_data->subtype_,
+                                 phy_data->encap_type_, phy_data->no_arp_);
 }
 
 void PhysicalInterface::PostAdd() {
-    InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
+    InterfaceNH::CreatePhysicalInterfaceNh(name_, mac_);
 
+    InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
     if (subtype_ != VMWARE || table->agent()->test_mode()) {
         return;
     }
@@ -490,13 +499,19 @@ void PhysicalInterface::PostAdd() {
     close(fd);
 }
 
+void PhysicalInterface::Delete() {
+    InterfaceNH::CreatePhysicalInterfaceNh(name_, mac_);
+}
+
 InterfaceKey *PhysicalInterfaceKey::Clone() const {
     return new PhysicalInterfaceKey(*this);
 }
 
 PhysicalInterfaceData::PhysicalInterfaceData(const std::string &vrf_name,
-                                             PhysicalInterface::SubType subtype)
-    : InterfaceData(), subtype_(subtype) {
+                                             PhysicalInterface::SubType subtype,
+                                             PhysicalInterface::EncapType encap,
+                                             bool no_arp)
+    : InterfaceData(), subtype_(subtype), encap_type_(encap), no_arp_(no_arp) {
     EthInit(vrf_name);
 }
 

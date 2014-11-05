@@ -117,12 +117,23 @@ void ContrailInitCommon::CreateVrf() {
     }
 }
 
+static PhysicalInterface::EncapType ComputeEncapType(const string &encap) {
+    if (encap == "none") {
+        return PhysicalInterface::RAW_IP;
+    }
+    return PhysicalInterface::ETHERNET;
+}
+
 void ContrailInitCommon::CreateInterfaces() {
     InterfaceTable *table = agent()->interface_table();
+    PhysicalInterface::EncapType type;
 
+    type = ComputeEncapType(agent_param()->eth_port_encap_type());
     PhysicalInterface::Create(table, agent_param()->eth_port(),
                               agent()->fabric_vrf_name(),
-                              PhysicalInterface::FABRIC);
+                              PhysicalInterface::FABRIC, type,
+                              agent_param()->eth_port_no_arp());
+
     InetInterface::Create(table, agent_param()->vhost_name(),
                           InetInterface::VHOST, agent()->fabric_vrf_name(),
                           agent_param()->vhost_addr(),
@@ -135,7 +146,8 @@ void ContrailInitCommon::CreateInterfaces() {
         PhysicalInterface::Create(agent()->interface_table(),
                                   agent_param()->vmware_physical_port(),
                                   agent()->fabric_vrf_name(),
-                                  PhysicalInterface::VMWARE);
+                                  PhysicalInterface::VMWARE,
+                                  PhysicalInterface::ETHERNET, false);
     }
 
     InetInterfaceKey key(agent()->vhost_interface_name());
