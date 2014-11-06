@@ -246,6 +246,9 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
     bool route_can_be_dissociated = RouteCanDissociate(route);
     const Agent *agent = bgp_xmpp_peer->agent();
 
+    if (route->GetTableType() != Agent::LAYER2)
+        return;
+
     if (route_can_be_dissociated && (state != NULL)) {
         if ((state->exported_ == true) && !(agent->simulate_evpn_tor())) {
             AgentXmppChannel::ControllerSendMcastRouteDelete(bgp_xmpp_peer,
