@@ -5,6 +5,7 @@
 #include <vr_defs.h>
 #include <cmn/agent_cmn.h>
 #include <pkt/pkt_init.h>
+#include <pkt/control_interface.h>
 #include <oper/interface_common.h>
 #include <services/icmp_proto.h>
 
@@ -66,7 +67,7 @@ void IcmpHandler::SendResponse(VmInterface *vm_intf) {
     memcpy(icmp_payload, icmp_, icmp_len_);
 
     // Retain the agent-header before ethernet header
-    uint16_t len = (char *)pkt_info_->eth - (char *)pkt_info_->pkt;
+    uint16_t len = EncapHeaderLen();
 
     // Form ICMP Packet with following
     // EthHdr - IP Header - ICMP Header

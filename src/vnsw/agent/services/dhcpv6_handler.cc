@@ -481,7 +481,7 @@ bool Dhcpv6Handler::FindLeaseData() {
                 Ip6Address service_address = ipam[i].dns_server.to_v6();
                 if (service_address.is_unspecified())
                     service_address = default_gw;
-                FillDhcpInfo(ip, ipam[i].plen, service_address, service_address);
+                FillDhcpInfo(ip, ipam[i].plen, default_gw, service_address);
                 return true;
             }
         }

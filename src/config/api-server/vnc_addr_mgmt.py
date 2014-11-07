@@ -480,8 +480,6 @@ class AddrMgmt(object):
                     req_subnet['enable_dhcp'] = True
                 if (req_subnet['gw'] != db_subnet['gw']):
                     raise AddrMgmtSubnetInvalid(vn_fq_name_str, key)
-                if (req_subnet['dns_server_address'] != db_subnet['dns_server_address']):
-                    raise AddrMgmtSubnetInvalid(vn_fq_name_str, key)
 
                 req_alloc_list = req_subnet['allocation_pools'] or []
                 db_alloc_list = db_subnet['allocation_pools'] or []

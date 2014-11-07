@@ -125,7 +125,7 @@ void PktHandler::HandleRcvPkt(const AgentHdr &hdr, const PacketBufferPtr &buff){
     if (pkt_info->agent_hdr.cmd == AgentHdr::TRAP_TOR_CONTROL_PKT) {
         // In case of a control packet from a TOR served by us, the ifindex
         // is modified to index of the VM interface; validate this interface.
-        if (!IsValidInterface(hdr.ifindex, &intf)) {
+        if (!IsValidInterface(pkt_info->agent_hdr.ifindex, &intf)) {
             goto drop;
         }
     }
@@ -586,14 +586,16 @@ bool PktHandler::IsGwPacket(const Interface *intf, const IpAddress &dst_ip) {
                 }
                 if (IsIp4SubnetMember(vm_intf->ip_addr(),
                                       ipam[i].ip_prefix.to_v4(), ipam[i].plen))
-                return (ipam[i].default_gw == dst_ip);
+                return (ipam[i].default_gw == dst_ip ||
+                        ipam[i].dns_server == dst_ip);
             } else {
                 if (!ipam[i].IsV6()) {
                     continue;
                 }
                 if (IsIp6SubnetMember(vm_intf->ip6_addr(),
                                       ipam[i].ip_prefix.to_v6(), ipam[i].plen))
-                    return (ipam[i].default_gw == dst_ip);
+                    return (ipam[i].default_gw == dst_ip ||
+                            ipam[i].dns_server == dst_ip);
             }
 
         }
