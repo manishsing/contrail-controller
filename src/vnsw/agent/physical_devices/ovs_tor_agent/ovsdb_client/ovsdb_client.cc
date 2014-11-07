@@ -12,12 +12,22 @@
 
 using OVSDB::OvsdbClient;
 
+OvsdbClient::OvsdbClient(OvsPeerManager *manager) : peer_manager_(manager),
+    ksync_obj_manager_(KSyncObjectManager::Init()){
+}
+
+OvsdbClient::~OvsdbClient() {
+}
+
+KSyncObjectManager *OvsdbClient::ksync_obj_manager() {
+    return ksync_obj_manager_;
+}
+
 void OvsdbClient::Init() {
 }
 
 OvsdbClient *OvsdbClient::Allocate(Agent *agent, TorAgentParam *params,
         OvsPeerManager *manager) {
-    KSyncObjectManager::Init();
     return (new OvsdbClientTcp(agent, params, manager));
 }
 

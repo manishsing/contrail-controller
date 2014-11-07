@@ -9,24 +9,27 @@ class TorAgentParam;
 class SandeshOvsdbClient;
 
 class OvsPeerManager;
+class KSyncObjectManager;
 
 namespace OVSDB {
 class OvsdbClient {
 public:
-    OvsdbClient(OvsPeerManager *manager) : peer_manager_(manager) {}
-    virtual ~OvsdbClient() {}
+    OvsdbClient(OvsPeerManager *manager);
+    virtual ~OvsdbClient();
     virtual void RegisterClients() = 0;
     virtual const std::string protocol() = 0;
     virtual const std::string server() = 0;
     virtual uint16_t port() = 0;
     virtual Ip4Address tsn_ip() = 0;
     virtual void AddSessionInfo(SandeshOvsdbClient &client) = 0;
+    KSyncObjectManager *ksync_obj_manager();
     void Init();
     static OvsdbClient* Allocate(Agent *agent, TorAgentParam *params,
             OvsPeerManager *manager);
 protected:
     OvsPeerManager *peer_manager_;
 private:
+    KSyncObjectManager *ksync_obj_manager_;
     DISALLOW_COPY_AND_ASSIGN(OvsdbClient);
 };
 };

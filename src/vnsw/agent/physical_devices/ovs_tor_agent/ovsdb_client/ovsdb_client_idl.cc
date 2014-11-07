@@ -23,6 +23,7 @@ extern "C" {
 #include <vlan_port_binding_ovsdb.h>
 #include <unicast_mac_local_ovsdb.h>
 #include <unicast_mac_remote_ovsdb.h>
+#include <vm_interface_ksync.h>
 
 #include <physical_devices/tables/device_manager.h>
 
@@ -38,6 +39,7 @@ class PhysicalDeviceVnTable;
 using OVSDB::OvsdbClientIdl;
 using OVSDB::OvsdbClientSession;
 using OVSDB::OvsdbEntryBase;
+using OVSDB::VMInterfaceKSyncObject;
 using OVSDB::PhysicalSwitchTable;
 using OVSDB::LogicalSwitchTable;
 using OVSDB::PhysicalPortTable;
@@ -81,6 +83,8 @@ OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent,
         callback_[i] = NULL;
     }
     route_peer_.reset(manager->Allocate(IpAddress()));
+    vm_interface_table_.reset(new VMInterfaceKSyncObject(this,
+                (DBTable *)agent->interface_table()));
     physical_switch_table_.reset(new PhysicalSwitchTable(this));
     logical_switch_table_.reset(new LogicalSwitchTable(this,
                (DBTable *)agent->device_manager()->physical_device_vn_table()));
@@ -159,8 +163,16 @@ Ip4Address OvsdbClientIdl::tsn_ip() {
     return session_->tsn_ip();
 }
 
+KSyncObjectManager *OvsdbClientIdl::ksync_obj_manager() {
+    return session_->ksync_obj_manager();
+}
+
 OvsPeer *OvsdbClientIdl::route_peer() {
     return route_peer_.get();
+}
+
+VMInterfaceKSyncObject *OvsdbClientIdl::vm_interface_table() {
+    return vm_interface_table_.get();
 }
 
 PhysicalSwitchTable *OvsdbClientIdl::physical_switch_table() {

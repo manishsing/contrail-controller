@@ -19,9 +19,11 @@ do {\
 
 class OvsPeer;
 class OvsPeerManager;
+class KSyncObjectManager;
 
 namespace OVSDB {
 class OvsdbClientSession;
+class VMInterfaceKSyncObject;
 class PhysicalSwitchTable;
 class LogicalSwitchTable;
 class PhysicalPortTable;
@@ -73,8 +75,10 @@ public:
     // Get TOR Service Node IP
     Ip4Address tsn_ip();
 
+    KSyncObjectManager *ksync_obj_manager();
     OvsPeer *route_peer();
     Agent *agent() {return agent_;}
+    VMInterfaceKSyncObject *vm_interface_table();
     PhysicalSwitchTable *physical_switch_table();
     LogicalSwitchTable *logical_switch_table();
     PhysicalPortTable *physical_port_table();
@@ -92,6 +96,7 @@ private:
     NotifyCB callback_[OVSDB_TYPE_COUNT];
     PendingTxnMap pending_txn_;
     std::auto_ptr<OvsPeer> route_peer_;
+    std::auto_ptr<VMInterfaceKSyncObject> vm_interface_table_;
     std::auto_ptr<PhysicalSwitchTable> physical_switch_table_;
     std::auto_ptr<LogicalSwitchTable> logical_switch_table_;
     std::auto_ptr<PhysicalPortTable> physical_port_table_;

@@ -54,6 +54,7 @@ private:
     std::string physical_port_name_;
     std::string physical_device_name_;
     uint16_t vlan_;
+    boost::uuids::uuid vmi_uuid_;
     DISALLOW_COPY_AND_ASSIGN(VlanPortBindingEntry);
 };
 };

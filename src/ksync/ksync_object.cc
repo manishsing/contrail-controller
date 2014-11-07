@@ -1134,8 +1134,9 @@ KSyncObjectManager::~KSyncObjectManager() {
 
 SandeshTraceBufferPtr KSyncTraceBuf(SandeshTraceBufferCreate("KSync", 1000));
 
-void KSyncObjectManager::Init() {
+KSyncObjectManager *KSyncObjectManager::Init() {
     singleton_ = new KSyncObjectManager();
+    return singleton_;
 }
 
 void KSyncObjectManager::Shutdown() {

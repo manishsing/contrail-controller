@@ -22,7 +22,7 @@ sandesh_objs = AgentEnv.BuildExceptionCppObj(env, SandeshGenSrcs)
 libovsdbclient = env.Library('ovsdbclient',
                              sandesh_objs +
                              [
-                                 'ovsdb_wrapper.c',
+                                 'logical_switch_ovsdb.cc',
                                  'ovsdb_client.cc',
                                  'ovsdb_client_idl.cc',
                                  'ovsdb_client_session.cc',
@@ -31,13 +31,14 @@ libovsdbclient = env.Library('ovsdbclient',
                                  'ovsdb_object.cc',
                                  'ovsdb_route_data.cc',
                                  'ovsdb_route_peer.cc',
-                                 'physical_switch_ovsdb.cc',
-                                 'logical_switch_ovsdb.cc',
-                                 'physical_port_ovsdb.cc',
-                                 'vlan_port_binding_ovsdb.cc',
+                                 'ovsdb_wrapper.c',
                                  'physical_locator_ovsdb.cc',
+                                 'physical_port_ovsdb.cc',
+                                 'physical_switch_ovsdb.cc',
                                  'unicast_mac_local_ovsdb.cc',
                                  'unicast_mac_remote_ovsdb.cc',
+                                 'vlan_port_binding_ovsdb.cc',
+                                 'vm_interface_ksync.cc'
                              ])
 env.Requires(libovsdbclient, '#/build/include/openvswitch/include')
 

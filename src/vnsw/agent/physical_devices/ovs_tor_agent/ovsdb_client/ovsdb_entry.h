@@ -68,7 +68,7 @@ public:
     bool Change();
     bool Delete();
 
-    bool IsDataResolved();
+    virtual bool IsDataResolved();
     bool IsDelAckWaiting();
     bool IsAddChangeAckWaiting();
 

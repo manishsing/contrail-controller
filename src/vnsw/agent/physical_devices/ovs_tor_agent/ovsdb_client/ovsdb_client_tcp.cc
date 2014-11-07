@@ -127,6 +127,11 @@ bool OvsdbClientTcpSession::ReceiveDequeue(queue_msg msg) {
     return true;
 }
 
+KSyncObjectManager *OvsdbClientTcpSession::ksync_obj_manager() {
+    OvsdbClientTcp *ovs_server = static_cast<OvsdbClientTcp *>(server());
+    return ovs_server->ksync_obj_manager();
+}
+
 Ip4Address OvsdbClientTcpSession::tsn_ip() {
     OvsdbClientTcp *ovs_server = static_cast<OvsdbClientTcp *>(server());
     return ovs_server->tsn_ip();

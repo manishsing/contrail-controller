@@ -12,6 +12,7 @@
 
 class OvsPeer;
 class OvsPeerManager;
+class KSyncObjectManager;
 
 namespace OVSDB {
 class OvsdbClientIdl;
@@ -20,6 +21,7 @@ public:
     OvsdbClientSession(Agent *agent, OvsPeerManager *manager);
     virtual ~OvsdbClientSession();
 
+    virtual KSyncObjectManager *ksync_obj_manager() = 0;
     virtual Ip4Address tsn_ip() = 0;
     virtual void SendMsg(u_int8_t *buf, std::size_t len) = 0;
     void MessageProcess(const u_int8_t *buf, std::size_t len);

@@ -56,6 +56,7 @@ public:
     // Dequeue received message from workqueue for processing
     bool ReceiveDequeue(queue_msg msg);
 
+    KSyncObjectManager *ksync_obj_manager();
     Ip4Address tsn_ip();
 
     void set_status(std::string status) {status_ = status;}
