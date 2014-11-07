@@ -365,7 +365,7 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
                         (bgp_xmpp_peer, route,
                          active_path->NexthopIp(table->agent()),
                          route->dest_vn_name(), state->label_,
-                         TunnelType::AllType());
+                         TunnelType::GetTunnelBmap(state->tunnel_type_));
                 } else {
                     state->evpn_exported_ =
                         AgentXmppChannel::ControllerSendEvpnRouteDelete(bgp_xmpp_peer,

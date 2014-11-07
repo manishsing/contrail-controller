@@ -151,6 +151,8 @@ public:
     static DBTableBase *CreateTable(DB *db, const std::string &name);
     static MplsTable *GetInstance() {return mpls_table_;};
     void Process(DBRequest &req);
+    bool ChangeNH(MplsLabel *mpls, NextHop *nh);
+
 private:
     static MplsTable *mpls_table_;
     bool ChangeHandler(MplsLabel *mpls, const DBRequest *req);

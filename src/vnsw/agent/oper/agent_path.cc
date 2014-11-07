@@ -80,15 +80,29 @@ const NextHop* AgentPath::nexthop(Agent *agent) const {
 
 bool AgentPath::ChangeNH(Agent *agent, NextHop *nh) {
     // If NH is not found, point route to discard NH
+    bool ret = false;
     if (nh == NULL) {
         nh = agent->nexthop_table()->discard_nh();
     }
 
     if (nh_ != nh) {
         nh_ = nh;
-        return true;
+        ret = true;
     }
-    return false;
+
+    if ((peer_->GetType() == Peer::MULTICAST_PEER) &&
+        (label_ != MplsTable::kInvalidLabel)) {
+        MplsLabelKey key(MplsLabel::MCAST_NH, label_);
+        MplsLabel *mpls = static_cast<MplsLabel *>(agent->mpls_table()->
+                                                   FindActiveEntry(&key));
+        ret = agent->mpls_table()->ChangeNH(mpls, nh);
+        if (mpls) {
+            //Send notify of change
+            mpls->get_table_partition()->Notify(mpls);
+        }
+    }
+
+    return ret;
 }
 
 bool AgentPath::RebakeAllTunnelNHinCompositeNH(const AgentRoute *sync_route) {
@@ -167,7 +181,10 @@ bool AgentPath::UpdateNHPolicy(Agent *agent) {
 }
 
 bool AgentPath::UpdateTunnelType(Agent *agent, const AgentRoute *sync_route) {
-    if (tunnel_type_ == TunnelType::ComputeType(tunnel_bmap_)) {
+    //Return if there is no change in tunnel type for non Composite NH.
+    //For composite NH component needs to be traversed.
+    if ((tunnel_type_ == TunnelType::ComputeType(tunnel_bmap_)) &&
+        (nh_.get() && nh_.get()->GetType() != NextHop::COMPOSITE)) {
         return false;
     }
 
