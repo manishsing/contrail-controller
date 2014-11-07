@@ -65,6 +65,19 @@ bool MplsTable::OnChange(DBEntry *entry, const DBRequest *req) {
     return ret;
 }
 
+bool MplsTable::ChangeNH(MplsLabel *mpls, NextHop *nh) {
+    if (mpls == NULL)
+        return false;
+
+    if (mpls->nh_ != nh) {
+        mpls->nh_ = nh;
+        assert(nh);
+        mpls->SyncDependentPath();
+        return true;
+    }
+    return false;
+}
+
 // No Change expected for MPLS Label
 bool MplsTable::ChangeHandler(MplsLabel *mpls, const DBRequest *req) {
     bool ret = false;
@@ -77,13 +90,7 @@ bool MplsTable::ChangeHandler(MplsLabel *mpls, const DBRequest *req) {
         nh = static_cast<NextHop *>
             (agent()->nexthop_table()->FindActiveEntry(&key));
     }
-
-    if (mpls->nh_ != nh) {
-        mpls->nh_ = nh;
-        assert(nh);
-        mpls->SyncDependentPath();
-        ret = true;
-    }
+    ret = ChangeNH(mpls, nh);
 
     return ret;
 }
@@ -163,6 +170,9 @@ void MplsLabel::CreateVPortLabel(uint32_t label, const uuid &intf_uuid,
 void MplsLabel::CreateMcastLabelReq(uint32_t label, COMPOSITETYPE type,
                                     ComponentNHKeyList &component_nh_key_list,
                                     const std::string vrf_name) {
+    if (label == 0 || label == MplsTable::kInvalidLabel)
+        return;
+
     DBRequest req;
     req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
 

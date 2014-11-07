@@ -246,6 +246,9 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
     bool route_can_be_dissociated = RouteCanDissociate(route);
     const Agent *agent = bgp_xmpp_peer->agent();
 
+    if (route->GetTableType() != Agent::LAYER2)
+        return;
+
     if (route_can_be_dissociated && (state != NULL)) {
         if ((state->exported_ == true) && !(agent->simulate_evpn_tor())) {
             AgentXmppChannel::ControllerSendMcastRouteDelete(bgp_xmpp_peer,
@@ -362,7 +365,7 @@ void RouteExport::MulticastNotify(AgentXmppChannel *bgp_xmpp_peer,
                         (bgp_xmpp_peer, route,
                          active_path->NexthopIp(table->agent()),
                          route->dest_vn_name(), state->label_,
-                         TunnelType::AllType());
+                         TunnelType::GetTunnelBmap(state->tunnel_type_));
                 } else {
                     state->evpn_exported_ =
                         AgentXmppChannel::ControllerSendEvpnRouteDelete(bgp_xmpp_peer,

@@ -1432,6 +1432,12 @@ void CompositeNH::ChangeComponentNHKeyTunnelType(
         if ((*it)->nh_key()->GetType() == NextHop::COMPOSITE) {
             CompositeNHKey *composite_nh_key =
                 static_cast<CompositeNHKey *>((*it)->nh_key()->Clone());
+            if (composite_nh_key->composite_nh_type() == Composite::TOR) {
+                type = TunnelType::VXLAN;
+            }
+            if (composite_nh_key->composite_nh_type() == Composite::FABRIC) {
+                type = TunnelType::ComputeType(TunnelType::MplsType());
+            }
             ChangeComponentNHKeyTunnelType(
                     composite_nh_key->component_nh_key_list_, type);
             std::auto_ptr<const NextHopKey> nh_key(composite_nh_key);
@@ -1458,13 +1464,18 @@ void CompositeNH::ChangeComponentNHKeyTunnelType(
 //would call ChangeTunnelType() API which would result in recursion
 CompositeNH *CompositeNH::ChangeTunnelType(Agent *agent,
                                            TunnelType::Type type) const {
+    if (composite_nh_type_ == Composite::TOR) {
+        type = TunnelType::VXLAN;
+    }
+    if (composite_nh_type_ == Composite::FABRIC) {
+        type = TunnelType::ComputeType(TunnelType::MplsType());
+    }
     //Create all component NH with new tunnel type
     CreateComponentNH(agent, type);
 
     //Change the tunnel type of all component NH key
     ComponentNHKeyList new_component_nh_key_list = component_nh_key_list_;
     ChangeComponentNHKeyTunnelType(new_component_nh_key_list, type);
-
     //Create the new nexthop
     CompositeNHKey *comp_nh_key = new CompositeNHKey(composite_nh_type_,
                                                      policy_,

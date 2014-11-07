@@ -111,15 +111,16 @@ void LogicalSwitchEntry::OvsdbChange() {
 bool LogicalSwitchEntry::Sync(DBEntry *db_entry) {
     PhysicalDeviceVnEntry *entry =
         static_cast<PhysicalDeviceVnEntry *>(db_entry);
+    bool change = false;
     if (vxlan_id_ != entry->vn()->GetVxLanId()) {
         vxlan_id_ = entry->vn()->GetVxLanId();
-        return true;
+        change = true;
     }
     if (device_name_ != entry->device()->name()) {
         device_name_ = entry->device()->name();
-        return true;
+        change = true;
     }
-    return false;
+    return change;
 }
 
 bool LogicalSwitchEntry::IsLess(const KSyncEntry &entry) const {
@@ -183,17 +184,12 @@ LogicalSwitchTable::~LogicalSwitchTable() {
 
 void LogicalSwitchTable::OvsdbNotify(OvsdbClientIdl::Op op,
         struct ovsdb_idl_row *row) {
-    const char *name = ovsdb_wrapper_logical_switch_name(row);
-    int64_t vxlan = ovsdb_wrapper_logical_switch_tunnel_key(row);
+    LogicalSwitchEntry key(this, row);
     if (op == OvsdbClientIdl::OVSDB_DEL) {
-        LogicalSwitchEntry key(this, name);
         NotifyDeleteOvsdb((OvsdbDBEntry*)&key);
-        key.vxlan_id_ = vxlan;
         key.SendTrace(LogicalSwitchEntry::DEL_ACK);
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        LogicalSwitchEntry key(this, name);
         NotifyAddOvsdb((OvsdbDBEntry*)&key, row);
-        key.vxlan_id_ = vxlan;
         key.SendTrace(LogicalSwitchEntry::ADD_ACK);
     } else {
         assert(0);

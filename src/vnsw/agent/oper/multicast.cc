@@ -77,11 +77,12 @@ void MulticastHandler::AddL2BroadcastRoute(MulticastGroupObject *obj,
         GetInterfaceComponentNHKeyList(obj, InterfaceNHFlags::LAYER2);
     if (component_nh_key_list.size() == 0)
         return;
+    uint32_t route_tunnel_bmap = TunnelType::AllType();
     Layer2AgentRouteTable::AddLayer2BroadcastRoute(agent_->local_vm_peer(),
                                                    vrf_name, vn_name,
                                                    label, vxlan_id,
                                                    ethernet_tag,
-                                                   TunnelType::AllType(),
+                                                   route_tunnel_bmap,
                                                    Composite::L2INTERFACE,
                                                    component_nh_key_list);
     RebakeSubnetRoute(agent_->local_vm_peer(), vrf_name, label,
@@ -476,13 +477,14 @@ void MulticastHandler::TriggerLocalRouteChange(MulticastGroupObject *obj,
             obj->GetGroupAddress().to_string(),
             component_nh_key_list.size());
     //Add Layer2 FF:FF:FF:FF:FF:FF, local_vm_peer
+    uint32_t route_tunnel_bmap = TunnelType::AllType();
     Layer2AgentRouteTable::AddLayer2BroadcastRoute(peer,
                                                    obj->vrf_name(),
                                                    obj->GetVnName(),
                                                    obj->evpn_mpls_label(),
                                                    obj->vxlan_id(),
                                                    0,
-                                                   TunnelType::AllType(),
+                                                   route_tunnel_bmap,
                                                    Composite::L2INTERFACE,
                                                    component_nh_key_list);
 }

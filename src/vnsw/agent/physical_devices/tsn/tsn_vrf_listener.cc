@@ -37,23 +37,4 @@ void TsnVrfListener::VrfNotify(DBEntryBase *entry) {
                                                      address,
                                                      "pkt0", true);
     }
-
-    //Add TSN route
-    boost::system::error_code ec;
-    IpAddress tsn_addr =  IpAddress::from_string(agent_->tsn_ip_1(), ec).to_v4();
-    IpAddress tsn_gw_addr =  IpAddress::from_string(agent_->tsn_ip_2(), ec).to_v4();
-    SecurityGroupList sg;
-    PathPreference pref;
-    ControllerVmRoute *data =
-        ControllerVmRoute::MakeControllerVmRoute(agent_->local_peer(),
-                              Agent::GetInstance()->fabric_vrf_name(),
-                              Agent::GetInstance()->router_id(),
-                              Agent::GetInstance()->fabric_vrf_name(),
-                              tsn_gw_addr.to_v4(), TunnelType::VxlanType(),
-                              4, "", sg, pref);
-
-    InetUnicastAgentRouteTable::AddRemoteVmRouteReq(agent_->local_peer(),
-                                                    Agent::GetInstance()->fabric_vrf_name(),
-                                                    tsn_addr, 32,
-                                                    data);
 }

@@ -293,6 +293,13 @@ public:
     static TypeBmap DefaultTypeBmap() {return (1 << DefaultType());}
     static TypeBmap VxlanType() {return (1 << VXLAN);};
     static TypeBmap MplsType() {return ((1 << MPLS_GRE) | (1 << MPLS_UDP));};
+    static TypeBmap GetTunnelBmap(TunnelType::Type type) {
+        if (type == MPLS_GRE || type == MPLS_UDP)
+            return TunnelType::MplsType();
+        if (type == VXLAN)
+            return TunnelType::VxlanType();
+        return TunnelType::AllType();
+    }
     static TypeBmap AllType() {return ((1 << MPLS_GRE) | (1 << MPLS_UDP) | 
                                        (1 << VXLAN));}
     static TypeBmap GREType() {return (1 << MPLS_GRE);}
@@ -1120,6 +1127,7 @@ public:
     void CreateTunnelNH(Agent *agent);
     void CreateTunnelNHReq(Agent *agent);
     void ChangeTunnelType(TunnelType::Type tunnel_type);
+    COMPOSITETYPE composite_nh_type() const {return composite_nh_type_;}
 private:
     friend class CompositeNH;
     void ExpandLocalCompositeNH(Agent *agent);
