@@ -153,7 +153,8 @@ static void AddDefaultRoute(Agent *agent, InetUnicastAgentRouteTable *table,
     if (xconnect) {
         const PhysicalInterface *physical_intf =
             static_cast<const PhysicalInterface *>(xconnect);
-        if (physical_intf->no_arp()) {
+        if (physical_intf->no_arp() ||
+            (physical_intf->encap_type() == PhysicalInterface::RAW_IP)) {
             table->AddInterfaceRouteReq(agent, agent->local_peer(),
                                         vrf->GetName(), Ip4Address(0), 0,
                                         xconnect, vn_name);
@@ -186,8 +187,11 @@ static void AddHostRoutes(Agent *agent, InetUnicastAgentRouteTable *table,
 
     const PhysicalInterface *physical_intf =
         static_cast<const PhysicalInterface *>(xconnect);
-    if (physical_intf && physical_intf->no_arp()) {
-        return;
+    if (physical_intf) {
+       if (physical_intf->no_arp())
+           return;
+       if (physical_intf->encap_type() != PhysicalInterface::ETHERNET)
+           return;
     }
 
     table->AddVHostSubnetRecvRoute(agent->local_peer(), vrf->GetName(),

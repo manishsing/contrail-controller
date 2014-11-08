@@ -31,7 +31,7 @@ public:
     std::string ToString() const { return "ETH <" + name() + ">"; }
     KeyPtr GetDBRequestKey() const;
     virtual void Add();
-    virtual void Delete();
+    virtual bool Delete(const DBRequest *req);
     void PostAdd();
 
     SubType subtype() const { return subtype_; }
