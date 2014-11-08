@@ -85,9 +85,11 @@ void MulticastHandler::AddL2BroadcastRoute(MulticastGroupObject *obj,
                                                    route_tunnel_bmap,
                                                    Composite::L2INTERFACE,
                                                    component_nh_key_list);
+    /*
     RebakeSubnetRoute(agent_->local_vm_peer(), vrf_name, label,
                       vxlan_id, vn_name, false,
                       component_nh_key_list, Composite::L2INTERFACE);
+                      */
 }
 
 /*
