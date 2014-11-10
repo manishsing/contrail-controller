@@ -375,14 +375,6 @@ public:
 
     AgentSignal *agent_signal() const { return agent_signal_.get(); }
 
-    const std::string &tsn_ip_1() const {
-        return tsn_ip_1_;
-    }
-
-    const std::string &tsn_ip_2() const {
-        return tsn_ip_2_;
-    }
-
     // TODO: Should they be moved under controller/dns/cfg?
 
     // Common XMPP Client for control-node and config clients
@@ -846,8 +838,6 @@ private:
     Ip4Address gateway_id_;
     std::string xs_cfg_addr_;
     int8_t xs_idx_;
-    std::string tsn_ip_1_;
-    std::string tsn_ip_2_;
     std::string xs_addr_[MAX_XMPP_SERVERS];
     uint32_t xs_port_[MAX_XMPP_SERVERS];
     uint64_t xs_stime_[MAX_XMPP_SERVERS];

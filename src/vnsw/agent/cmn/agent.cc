@@ -182,14 +182,6 @@ void Agent::CopyConfig(AgentParam *params) {
     int count = 0;
     int dns_count = 0;
 
-    if (params_->tsn_ip_1().to_ulong()) {
-        tsn_ip_1_ = params_->tsn_ip_1().to_string();
-    }
-
-    if (params_->tsn_ip_2().to_ulong()) {
-        tsn_ip_2_ = params_->tsn_ip_2().to_string();
-    }
-
     if (params_->xmpp_server_1().to_ulong()) {
         SetAgentMcastLabelRange(count);
         xs_addr_[count++] = params_->xmpp_server_1().to_string();
@@ -368,8 +360,7 @@ Agent::Agent() :
     acl_table_(NULL), mirror_table_(NULL), vrf_assign_table_(NULL),
     mirror_cfg_table_(NULL), intf_mirror_cfg_table_(NULL),
     intf_cfg_table_(NULL), router_id_(0), prefix_len_(0), 
-    gateway_id_(0), xs_cfg_addr_(""), xs_idx_(0),
-    tsn_ip_1_(), tsn_ip_2_(), xs_addr_(), xs_port_(),
+    gateway_id_(0), xs_cfg_addr_(""), xs_idx_(0), xs_addr_(), xs_port_(),
     xs_stime_(), xs_dns_idx_(0), dns_addr_(), dns_port_(),
     dss_addr_(""), dss_port_(0), dss_xs_instances_(0),
     discovery_client_name_(),

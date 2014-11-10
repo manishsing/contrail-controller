@@ -643,7 +643,6 @@ void AgentParam::InitFromConfig() {
 
     ParseCollector();
     ParseVirtualHost();
-    ParseServerList("TSN.server", &tsn_ip_1_, &tsn_ip_2_);
     ParseServerList("CONTROL-NODE.server", &xmpp_server_1_, &xmpp_server_2_);
     ParseServerList("DNS.server", &dns_server_1_, &dns_port_1_,
                     &dns_server_2_, &dns_port_2_);
@@ -664,8 +663,6 @@ void AgentParam::InitFromConfig() {
 void AgentParam::InitFromArguments() {
     ParseCollectorArguments(var_map_);
     ParseVirtualHostArguments(var_map_);
-    ParseServerListArguments(var_map_, tsn_ip_1_, tsn_ip_2_, 
-                             "CONTROL-NODE.server");
     ParseServerListArguments(var_map_, xmpp_server_1_, xmpp_server_2_, 
                              "CONTROL-NODE.server");
     ParseServerListArguments(var_map_, &dns_server_1_, &dns_port_1_,
@@ -897,8 +894,7 @@ AgentParam::AgentParam(Agent *agent, bool enable_flow_options,
         enable_vhost_options_(enable_vhost_options),
         enable_hypervisor_options_(enable_hypervisor_options),
         enable_service_options_(enable_service_options),
-        enable_tsn_(enable_tsn), tsn_ip_1_(), tsn_ip_2_(),
-        vhost_(), eth_port_(),
+        enable_tsn_(enable_tsn), vhost_(), eth_port_(),
         xmpp_instance_count_(), xmpp_server_1_(),
         xmpp_server_2_(), dns_server_1_(), dns_server_2_(),
         dns_port_1_(ContrailPorts::DnsServerPort()),
