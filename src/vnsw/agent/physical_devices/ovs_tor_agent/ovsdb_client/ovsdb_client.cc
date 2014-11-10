@@ -28,6 +28,7 @@ void OvsdbClient::Init() {
 
 OvsdbClient *OvsdbClient::Allocate(Agent *agent, TorAgentParam *params,
         OvsPeerManager *manager) {
+    KSyncObjectManager::Init();
     return (new OvsdbClientTcp(agent, params, manager));
 }
 

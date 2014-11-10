@@ -18,7 +18,8 @@ public:
     virtual ~OvsdbRouteData();
 
     virtual std::string ToString() const;
-    virtual bool AddChangePath(Agent *agent, AgentPath *path);
+    virtual bool AddChangePath(Agent *agent, AgentPath *path,
+                               const AgentRoute *data);
 
 private:
     const Peer *peer_;

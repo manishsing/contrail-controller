@@ -35,7 +35,8 @@ std::string OvsdbRouteData::ToString() const {
     return "OVS Route Data";
 }
 
-bool OvsdbRouteData::AddChangePath(Agent *agent, AgentPath *path) {
+bool OvsdbRouteData::AddChangePath(Agent *agent, AgentPath *path,
+                                   const AgentRoute *data) {
     bool ret = false;
     NextHop *nh = NULL;
 

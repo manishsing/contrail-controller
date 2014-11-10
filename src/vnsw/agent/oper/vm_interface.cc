@@ -1316,14 +1316,6 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
         ret = true;
     }
 
-    if (ifmap_node_ != data->ifmap_node_) {
-        if (ifmap_node_ != NULL)
-            table->operdb()->dependency_manager()->ResetObject(ifmap_node_);
-        ifmap_node_ = data->ifmap_node_;
-        if (ifmap_node_)
-            table->operdb()->dependency_manager()->SetObject(ifmap_node_, this);
-    }
-
     if (data->parent_ != Agent::NullString()) {
         PhysicalInterfaceKey key(data->parent_);
         parent_ = static_cast<Interface *>
