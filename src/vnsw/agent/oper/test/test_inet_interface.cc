@@ -81,9 +81,9 @@ public:
         WAIT_FOR(100, 1000, (agent_->vn_table()->Size() == 0U));
     }
 
-    int intf_count_;
-    int nh_count_;
-    int vrf_count_;
+    uint32_t intf_count_;
+    uint32_t nh_count_;
+    uint32_t vrf_count_;
     Agent *agent_;
     InterfaceTable *interface_table_;
     NextHopTable *nh_table_;
@@ -330,9 +330,6 @@ static bool RouteValidate(Agent *agent, const Ip4Address &ip, uint8_t plen,
 }
 
 TEST_F(InetInterfaceTest, physical_eth_encap_1) {
-    const NextHop *nh = NULL;
-    const InetUnicastRouteEntry *rt = NULL;
-    AgentParam *param = client->param();
     DelInetConfig(agent_);
 
     Ip4Address ip = Ip4Address::from_string("10.10.10.10");
@@ -366,9 +363,6 @@ TEST_F(InetInterfaceTest, physical_eth_encap_1) {
 }
 
 TEST_F(InetInterfaceTest, physical_eth_raw_ip_1) {
-    const NextHop *nh = NULL;
-    const InetUnicastRouteEntry *rt = NULL;
-    AgentParam *param = client->param();
     DelInetConfig(agent_);
 
     Ip4Address ip = Ip4Address::from_string("10.10.10.10");
@@ -404,9 +398,6 @@ TEST_F(InetInterfaceTest, physical_eth_raw_ip_1) {
 }
 
 TEST_F(InetInterfaceTest, physical_eth_no_arp_1) {
-    const NextHop *nh = NULL;
-    const InetUnicastRouteEntry *rt = NULL;
-    AgentParam *param = client->param();
     DelInetConfig(agent_);
 
     Ip4Address ip = Ip4Address::from_string("10.10.10.10");

@@ -492,7 +492,6 @@ TEST_F(MetadataTest, MetadataNoLinkLocalTest) {
 
 // Send message and close server connection while message is going
 TEST_F(MetadataTest, MetadataCloseServerTest) {
-    int count = 0;
     MetadataProxy::MetadataStats stats;
     struct PortInfo input[] = {
         {"vnet1", 1, vm1_ip, "00:00:00:01:01:01", 1, 1},
@@ -514,7 +513,6 @@ TEST_F(MetadataTest, MetadataCloseServerTest) {
     for (int i = 0; i < 200; i++) {
         large_data.append("add more data to be sent");
     }
-    HttpConnection *conn = SendHttpClientRequest(POST_METHOD, large_data);
     // stop server
     StopNovaApiProxy();
     client->WaitForIdle();
