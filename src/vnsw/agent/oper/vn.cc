@@ -693,6 +693,8 @@ bool VnTable::IpamChangeNotify(std::vector<VnIpam> &old_ipam,
         } else {
             //Evaluate non key members of IPAM for changes.
             // no change in entry
+            bool gateway_changed = ((*it_old).default_gw !=
+                                    (*it_new).default_gw);
             bool service_address_changed = ((*it_old).dns_server != (*it_new).dns_server);
 
             if ((*it_old).installed) {
@@ -700,6 +702,10 @@ bool VnTable::IpamChangeNotify(std::vector<VnIpam> &old_ipam,
                 // VNIPAM comparator does not check for gateway.
                 // If gateway is changed then take appropriate actions.
                 IpAddress unspecified;
+                if (gateway_changed) {
+                    UpdateHostRoute((*it_old).default_gw,
+                                    (*it_new).default_gw, vn);
+                }
                 if (service_address_changed) {
                     UpdateHostRoute((*it_old).dns_server,
                                     (*it_new).dns_server, vn);
@@ -709,6 +715,9 @@ bool VnTable::IpamChangeNotify(std::vector<VnIpam> &old_ipam,
                 (*it_old).installed = (*it_new).installed;
             }
 
+            if (gateway_changed) {
+                (*it_old).default_gw = (*it_new).default_gw;
+            }
             if (service_address_changed) {
                 (*it_old).dns_server = (*it_new).dns_server;
             }
@@ -758,6 +767,7 @@ void VnTable::AddIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
         if (vrf->GetName() == Agent::GetInstance()->linklocal_vrf_name()) {
             return;
         }
+        AddHostRoute(vn, ipam.default_gw);
         AddHostRoute(vn, ipam.dns_server);
         AddSubnetRoute(vn, ipam);
         ipam.installed = true;
@@ -767,6 +777,7 @@ void VnTable::AddIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
 void VnTable::DelIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
     VrfEntry *vrf = vn->GetVrf();
     if (vrf && ipam.installed) {
+        DelHostRoute(vn, ipam.default_gw);
         DelHostRoute(vn, ipam.dns_server);
         DelSubnetRoute(vn, ipam);
         ipam.installed = false;

@@ -156,7 +156,8 @@ void VnUveTableBase::InterfaceAddHandler(const VmEntry* vm, const VnEntry* vn,
 
     UveVirtualNetworkAgent uve;
 
-    vn_uve_entry->VmAdd(vm->GetCfgName());
+    if (vm)
+        vn_uve_entry->VmAdd(vm->GetCfgName());
     vn_uve_entry->InterfaceAdd(intf);
     if (vn_uve_entry->BuildInterfaceVmList(uve)) {
         DispatchVnMsg(uve);
@@ -189,15 +190,16 @@ void VnUveTableBase::InterfaceNotify(DBTablePartBase *partition, DBEntryBase *e)
     } else {
         const VmEntry *vm = vm_port->vm();
         const VnEntry *vn = vm_port->vn();
+        std::string vm_name = vm? vm->GetCfgName() : agent_->NullString();
 
         if (!state) {
-            state = new VnUveInterfaceState(vm->GetCfgName(),
+            state = new VnUveInterfaceState(vm_name,
                                             vn->GetName(), false, false);
             e->SetState(partition->parent(), intf_listener_id_, state);
         }
         /* Change in VM config name is not supported now */
         if (state->vm_name_ != agent_->NullString() &&
-                (state->vm_name_.compare(vm->GetCfgName()) != 0)) {
+                (state->vm_name_.compare(vm_name) != 0)) {
             assert(0);
         }
         /* Change in VN name is not supported now */

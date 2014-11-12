@@ -79,8 +79,6 @@ public:
     const std::string &eth_port() const { return eth_port_; }
     const bool &eth_port_no_arp() const { return eth_port_no_arp_; }
     const std::string &eth_port_encap_type() const { return eth_port_encap_type_; }
-    const Ip4Address &tsn_ip_1() const { return tsn_ip_1_; }
-    const Ip4Address &tsn_ip_2() const { return tsn_ip_2_; }
     const Ip4Address &xmpp_server_1() const { return xmpp_server_1_; }
     const Ip4Address &xmpp_server_2() const { return xmpp_server_2_; }
     const Ip4Address &dns_server_1() const { return dns_server_1_; }
@@ -244,8 +242,6 @@ private:
     bool enable_hypervisor_options_;
     bool enable_service_options_;
     bool enable_tsn_;
-    Ip4Address tsn_ip_1_;
-    Ip4Address tsn_ip_2_;
 
     PortInfo vhost_;
     std::string agent_name_;
