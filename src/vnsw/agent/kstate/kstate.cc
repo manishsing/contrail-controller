@@ -301,7 +301,6 @@ void KState::VrfStatsMsgHandler(vr_vrf_stats_req *r) {
         const_cast<std::vector<KVrfStatsInfo>&>(resp->get_vrf_stats_list());
     data.set_vrf_id(r->get_vsr_vrf());
     data.set_vrf_family(state->FamilyToString(r->get_vsr_family()));
-    //data.set_vrf_type(state->TypeToString(r->get_vsr_type()));
     data.set_vrf_rid(r->get_vsr_rid());
     data.set_vrf_discards(r->get_vsr_discards());
     data.set_vrf_resolves(r->get_vsr_resolves());

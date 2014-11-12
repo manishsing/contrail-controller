@@ -90,7 +90,7 @@ bool AgentPath::ChangeNH(Agent *agent, NextHop *nh) {
         ret = true;
     }
 
-    if ((peer_->GetType() == Peer::MULTICAST_PEER) &&
+    if (peer_ && (peer_->GetType() == Peer::MULTICAST_PEER) &&
         (label_ != MplsTable::kInvalidLabel)) {
         MplsLabelKey key(MplsLabel::MCAST_NH, label_);
         MplsLabel *mpls = static_cast<MplsLabel *>(agent->mpls_table()->

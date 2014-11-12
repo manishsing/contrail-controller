@@ -18,7 +18,7 @@ class AgentParam;
 class AgentConfig;
 class AgentStats;
 class KSync;
-class AgentUve;
+class AgentUveBase;
 class PktModule;
 class VirtualGateway;
 class ServicesModule;
@@ -375,14 +375,6 @@ public:
 
     AgentSignal *agent_signal() const { return agent_signal_.get(); }
 
-    const std::string &tsn_ip_1() const {
-        return tsn_ip_1_;
-    }
-
-    const std::string &tsn_ip_2() const {
-        return tsn_ip_2_;
-    }
-
     // TODO: Should they be moved under controller/dns/cfg?
 
     // Common XMPP Client for control-node and config clients
@@ -657,8 +649,8 @@ public:
     KSync *ksync() const;
     void set_ksync(KSync *ksync);
 
-    AgentUve *uve() const;
-    void set_uve(AgentUve *uve);
+    AgentUveBase *uve() const;
+    void set_uve(AgentUveBase *uve);
 
     PktModule *pkt() const;
     void set_pkt(PktModule *pkt);
@@ -782,7 +774,7 @@ private:
     AgentConfig *cfg_;
     AgentStats *stats_;
     KSync *ksync_;
-    AgentUve *uve_;
+    AgentUveBase *uve_;
     PktModule *pkt_;
     ServicesModule *services_;
     VirtualGateway *vgw_;
@@ -846,8 +838,6 @@ private:
     Ip4Address gateway_id_;
     std::string xs_cfg_addr_;
     int8_t xs_idx_;
-    std::string tsn_ip_1_;
-    std::string tsn_ip_2_;
     std::string xs_addr_[MAX_XMPP_SERVERS];
     uint32_t xs_port_[MAX_XMPP_SERVERS];
     uint64_t xs_stime_[MAX_XMPP_SERVERS];

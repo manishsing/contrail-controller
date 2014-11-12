@@ -266,17 +266,11 @@ int RouteKSyncEntry::Encode(sandesh_op::type op, uint8_t replace_plen,
             boost::array<unsigned char, 4> bytes = addr_.to_v4().to_bytes();
             std::vector<int8_t> rtr_prefix(bytes.begin(), bytes.end());
             encoder.set_rtr_prefix(rtr_prefix);
-            //boost::array<unsigned char, 4> src_bytes = src_addr_.to_v4().to_bytes();
-            //std::vector<int8_t> rtr_src(src_bytes.begin(), src_bytes.end());
-            //encoder.set_rtr_src(rtr_src);
         } else if (addr_.is_v6()) {
             encoder.set_rtr_family(AF_INET6);
             boost::array<unsigned char, 16> bytes = addr_.to_v6().to_bytes();
             std::vector<int8_t> rtr_prefix(bytes.begin(), bytes.end());
             encoder.set_rtr_prefix(rtr_prefix);
-            //boost::array<unsigned char, 16> src_bytes = src_addr_.to_v6().to_bytes();
-            //std::vector<int8_t> rtr_src(src_bytes.begin(), src_bytes.end());
-            //encoder.set_rtr_src(rtr_src);
         }
         encoder.set_rtr_prefix_len(prefix_len_);
     } else {

@@ -74,7 +74,7 @@ buildinfo_dep_libs += MapBuildAgentLib([
     'physical_devices/tables/libphysical_devices.a',
     'physical_devices/tsn/libtsn.a',
     'services/libagent_services.a',
-    'uve/libagentuve.a'
+    'uve/libstatsuve.a'
 ])
 
 env.GenerateBuildInfoCode(
