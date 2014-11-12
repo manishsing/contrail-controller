@@ -539,7 +539,8 @@ void MulticastHandler::TriggerRemoteRouteChange(MulticastGroupObject *obj,
 
     // - Update operation with lower sequence number sent compared to
     // local identifier, ignore
-    if (peer_identifier < obj_peer_identifier) {
+    if ((peer_identifier < obj_peer_identifier) &&
+        (comp_type != Composite::TOR)) {
         return;
     }
 
@@ -565,7 +566,11 @@ void MulticastHandler::TriggerRemoteRouteChange(MulticastGroupObject *obj,
         req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
         req.key.reset(key);
         req.data.reset(tnh_data);
-        Agent::GetInstance()->nexthop_table()->Enqueue(&req);
+        if (comp_type == Composite::TOR)
+            Agent::GetInstance()->nexthop_table()->Process(req);
+        else
+            Agent::GetInstance()->nexthop_table()->Enqueue(&req);
+
         MCTRACE(Log, "Enqueue add TOR TUNNEL ",
                 Agent::GetInstance()->fabric_vrf_name(),
                 it->daddr_.to_string(), it->label_);
