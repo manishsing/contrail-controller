@@ -124,12 +124,12 @@ static PhysicalInterface::EncapType ComputeEncapType(const string &encap) {
     return PhysicalInterface::ETHERNET;
 }
 
-void ContrailInitCommon::CreateServiceAddress(AgentParam *param) {
+void ContrailInitCommon::ProcessComputeAddress(AgentParam *param) {
     InetUnicastAgentRouteTable *rt_table =
         agent()->fabric_inet4_unicast_table();
 
     const AgentParam::AddressList &addr_list =
-        param->vhost_service_address_list();
+        param->compute_node_address_list();
     AgentParam::AddressList::const_iterator it = addr_list.begin();
     while (it != addr_list.end()) {
         rt_table->AddVHostRecvRouteReq(agent()->local_peer(),
@@ -139,14 +139,14 @@ void ContrailInitCommon::CreateServiceAddress(AgentParam *param) {
         it++;
     }
 
-    // If vhost_service_addresses are specified, it will mean user wants
+    // If compute_node_address are specified, it will mean user wants
     // to run services such as metadata on an IP different than vhost.
-    // Set vhost_services_ip_ to vhost_addr if no services_address are 
-    // specified. Else, pick first address to run the services.
+    // Set compute_node_ip_ to vhost_addr if no compute_node_address are 
+    // specified. Else, pick first address to run in compute_node_address_list
     //
-    // The vhost_services_ip_ is used only in adding Flow NAT rules.
-    if (param->vhost_service_address_list().size()) {
-        agent()->set_vhost_services_ip(param->vhost_service_address_list()[0]);
+    // The compute_node_ip is used only in adding Flow NAT rules.
+    if (param->compute_node_address_list().size()) {
+        agent()->set_compute_node_ip(param->compute_node_address_list()[0]);
     }
 }
 
@@ -196,7 +196,7 @@ void ContrailInitCommon::CreateInterfaces() {
         agent()->vgw()->CreateInterfaces();
     }
 
-    CreateServiceAddress(agent_param());
+    ProcessComputeAddress(agent_param());
 }
 
 void ContrailInitCommon::InitDone() {

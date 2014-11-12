@@ -220,7 +220,7 @@ void Agent::CopyConfig(AgentParam *params) {
         router_id_configured_ = false;
     }
 
-    vhost_services_ip_ = router_id_;
+    compute_node_ip_ = router_id_;
     if (params_->tunnel_type() == "MPLSoUDP")
         TunnelType::SetDefaultType(TunnelType::MPLS_UDP);
     else if (params_->tunnel_type() == "VXLAN")
@@ -361,7 +361,7 @@ Agent::Agent() :
     acl_table_(NULL), mirror_table_(NULL), vrf_assign_table_(NULL),
     mirror_cfg_table_(NULL), intf_mirror_cfg_table_(NULL),
     intf_cfg_table_(NULL), router_id_(0), prefix_len_(0), 
-    gateway_id_(0), vhost_services_ip_(0), xs_cfg_addr_(""), xs_idx_(0),
+    gateway_id_(0), compute_node_ip_(0), xs_cfg_addr_(""), xs_idx_(0),
     xs_addr_(), xs_port_(),
     xs_stime_(), xs_dns_idx_(0), dns_addr_(), dns_port_(),
     dss_addr_(""), dss_port_(0), dss_xs_instances_(0),

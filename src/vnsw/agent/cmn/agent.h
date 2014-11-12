@@ -373,9 +373,9 @@ public:
         router_id_configured_ = value;
     }
 
-    Ip4Address vhost_services_ip() const {return vhost_services_ip_;}
-    void set_vhost_services_ip(const Ip4Address &addr) {
-        vhost_services_ip_ = addr;
+    Ip4Address compute_node_ip() const {return compute_node_ip_;}
+    void set_compute_node_ip(const Ip4Address &addr) {
+        compute_node_ip_ = addr;
     }
 
     AgentSignal *agent_signal() const { return agent_signal_.get(); }
@@ -841,10 +841,12 @@ private:
     Ip4Address router_id_;
     uint32_t prefix_len_;
     Ip4Address gateway_id_;
-    // If vhost interface in host-os is un-numbered, agent will have to run
-    // services such as metadata on vhost_services_ip_.
-    // The vhost_services_ip_ is used only in adding Flow NAT rules.
-    Ip4Address vhost_services_ip_;
+
+    // IP address on the compute node used by agent to run services such
+    // as metadata service. This is different than router_id when vhost0
+    // is un-numbered interface in host-os
+    // The compute_node_ip_ is used only in adding Flow NAT rules.
+    Ip4Address compute_node_ip_;
     std::string xs_cfg_addr_;
     int8_t xs_idx_;
     std::string xs_addr_[MAX_XMPP_SERVERS];

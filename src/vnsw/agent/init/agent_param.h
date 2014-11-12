@@ -162,8 +162,8 @@ public:
     }
     bool isTsnEnabled() const { return enable_tsn_; }
 
-    const AddressList &vhost_service_address_list() const {
-        return vhost_service_address_list_;
+    const AddressList &compute_node_address_list() const {
+        return compute_node_address_list_;
     }
     void BuildAddressList(const std::string &val);
 
@@ -307,9 +307,8 @@ private:
     int si_netns_timeout_;
     std::string si_haproxy_ssl_cert_path_;
     VmwareMode vmware_mode_;
-    // If vhost interface is un-numbered in host-os, agent will use one of the
-    // vhost_service_addresses to run services (like metadata...)
-    AddressList vhost_service_address_list_;
+    // List of IP addresses on the compute node.
+    AddressList compute_node_address_list_;
 
     DISALLOW_COPY_AND_ASSIGN(AgentParam);
 };

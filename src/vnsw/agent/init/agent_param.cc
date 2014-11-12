@@ -273,7 +273,7 @@ void AgentParam::ParseCollector() {
 }
 
 void AgentParam::BuildAddressList(const string &val) {
-    vhost_service_address_list_.clear();
+    compute_node_address_list_.clear();
     if (val.empty()) {
         return;
     }
@@ -288,7 +288,7 @@ void AgentParam::BuildAddressList(const string &val) {
         boost::algorithm::trim(str);
         Ip4Address addr;
         if (GetIpAddress(str, &addr)) {
-            vhost_service_address_list_.push_back(addr);
+            compute_node_address_list_.push_back(addr);
         } else {
             LOG(ERROR, "Error in parsing address " << *it);
         }
@@ -322,7 +322,7 @@ void AgentParam::ParseVirtualHost() {
                              "VIRTUAL-HOST-INTERFACE.physical_interface");
 
     if (opt_str = tree_.get_optional<string>
-        ("VIRTUAL-HOST-INTERFACE.vhost_services_ip")) {
+        ("VIRTUAL-HOST-INTERFACE.compute_node_address")) {
         BuildAddressList(opt_str.get());
     }
 }
@@ -1083,9 +1083,9 @@ AgentParam::AgentParam(Agent *agent, bool enable_flow_options,
              "Gateway IP address for virtual host")
             ("VIRTUAL-HOST-INTERFACE.physical_interface", opt::value<string>(), 
              "Physical interface name to which virtual host interface maps to")
-            ("VIRTUAL-HOST-INTERFACE.vhost_services_ip",
+            ("VIRTUAL-HOST-INTERFACE.compute_node_address",
              opt::value<std::vector<std::string> >()->multitoken(),
-             "Static routes to be added on vhost interface")
+             "List of addresses on compute node")
             ("VIRTUAL-HOST-INTERFACE.physical_port_routes",
              opt::value<std::vector<std::string> >()->multitoken(),
              "Static routes to be added on physical interface")

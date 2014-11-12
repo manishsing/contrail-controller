@@ -536,9 +536,9 @@ void PktFlowInfo::LinkLocalServiceFromVm(const PktInfo *pkt, PktControlInfo *in,
         // the packet not coming to vrouter for reverse NAT.
         // Destination would be local host (FindLinkLocalService returns this)
         nat_ip_saddr = vm_port->mdata_ip_addr();
-        // Services such as metadata will run on vhost_services_ip. Set nat
-        // address to vhost_services_ip
-        nat_server = Agent::GetInstance()->vhost_services_ip();
+        // Services such as metadata will run on compute_node_ip. Set nat
+        // address to compute_node_ip
+        nat_server = Agent::GetInstance()->compute_node_ip();
         nat_sport = pkt->sport;
     } else {
         nat_ip_saddr = Agent::GetInstance()->router_id();

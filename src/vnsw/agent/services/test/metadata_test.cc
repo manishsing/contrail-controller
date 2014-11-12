@@ -401,12 +401,12 @@ TEST_F(MetadataTest, MetadataReqTest_services_ip) {
         {"vnet1", 1, vm1_ip, "00:00:00:01:01:01", 1, 1},
     };
 
-    // Change vhost_services_ip
-    Ip4Address old_ip = agent_->vhost_services_ip();
+    // Change compute_node_ip
+    Ip4Address old_ip = agent_->compute_node_ip();
     AgentParam param(agent_);
     param.BuildAddressList("5.5.5.5");
     TestAgentInit *init = static_cast<TestAgentInit *>(client->agent_init());
-    init->CreateServiceAddress(&param);
+    init->ProcessComputeAddress(&param);
 
     StartNovaApiProxy();
     SetupLinkLocalConfig();
@@ -452,7 +452,7 @@ TEST_F(MetadataTest, MetadataReqTest_services_ip) {
     ClearLinkLocalConfig();
     StopNovaApiProxy();
     client->WaitForIdle();
-    agent_->set_vhost_services_ip(old_ip);
+    agent_->set_compute_node_ip(old_ip);
 
     Agent::GetInstance()->services()->metadataproxy()->ClearStats();
 }

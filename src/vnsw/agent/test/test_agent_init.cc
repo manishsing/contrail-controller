@@ -47,8 +47,8 @@ void TestAgentInit::ProcessOptions
     }
 }
 
-void TestAgentInit::CreateServiceAddress(AgentParam *param) {
-    ContrailInitCommon::CreateServiceAddress(param);
+void TestAgentInit::ProcessComputeAddress(AgentParam *param) {
+    ContrailInitCommon::ProcessComputeAddress(param);
 }
 
 /****************************************************************************

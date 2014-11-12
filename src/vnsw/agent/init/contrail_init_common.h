@@ -20,7 +20,7 @@ public:
 
     void ProcessOptions(const std::string &config_file,
                         const std::string &program_name);
-    void CreateServiceAddress(AgentParam *param);
+    void ProcessComputeAddress(AgentParam *param);
     int Start();
 
     // Initialization virtual methods
