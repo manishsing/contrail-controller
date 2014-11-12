@@ -32,6 +32,7 @@ public:
     void WaitForIdle();
 
     TestPkt0Interface *pkt0() const { return pkt0_.get(); }
+    void CreateServiceAddress(AgentParam *param);
 private:
     std::auto_ptr<KSync> ksync_;
     std::auto_ptr<AgentUveBase> uve_;

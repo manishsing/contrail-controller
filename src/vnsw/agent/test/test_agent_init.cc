@@ -47,6 +47,10 @@ void TestAgentInit::ProcessOptions
     }
 }
 
+void TestAgentInit::CreateServiceAddress(AgentParam *param) {
+    ContrailInitCommon::CreateServiceAddress(param);
+}
+
 /****************************************************************************
  * Initialization routines
  ***************************************************************************/

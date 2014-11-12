@@ -124,6 +124,32 @@ static PhysicalInterface::EncapType ComputeEncapType(const string &encap) {
     return PhysicalInterface::ETHERNET;
 }
 
+void ContrailInitCommon::CreateServiceAddress(AgentParam *param) {
+    InetUnicastAgentRouteTable *rt_table =
+        agent()->fabric_inet4_unicast_table();
+
+    const AgentParam::AddressList &addr_list =
+        param->vhost_service_address_list();
+    AgentParam::AddressList::const_iterator it = addr_list.begin();
+    while (it != addr_list.end()) {
+        rt_table->AddVHostRecvRouteReq(agent()->local_peer(),
+                                       agent()->fabric_vrf_name(),
+                                       param->vhost_name(), *it, 32,
+                                       agent()->fabric_vn_name(), false);
+        it++;
+    }
+
+    // If vhost_service_addresses are specified, it will mean user wants
+    // to run services such as metadata on an IP different than vhost.
+    // Set vhost_services_ip_ to vhost_addr if no services_address are 
+    // specified. Else, pick first address to run the services.
+    //
+    // The vhost_services_ip_ is used only in adding Flow NAT rules.
+    if (param->vhost_service_address_list().size()) {
+        agent()->set_vhost_services_ip(param->vhost_service_address_list()[0]);
+    }
+}
+
 void ContrailInitCommon::CreateInterfaces() {
     InterfaceTable *table = agent()->interface_table();
     PhysicalInterface::EncapType type;
@@ -140,7 +166,7 @@ void ContrailInitCommon::CreateInterfaces() {
                           agent_param()->vhost_plen(),
                           agent_param()->vhost_gw(),
                           agent_param()->eth_port(),
-                          agent()->fabric_vrf_name());
+                          agent()->fabric_vn_name());
     agent()->InitXenLinkLocalIntf();
     if (agent_param()->isVmwareMode()) {
         PhysicalInterface::Create(agent()->interface_table(),
@@ -169,6 +195,8 @@ void ContrailInitCommon::CreateInterfaces() {
     if (agent()->vgw()) {
         agent()->vgw()->CreateInterfaces();
     }
+
+    CreateServiceAddress(agent_param());
 }
 
 void ContrailInitCommon::InitDone() {

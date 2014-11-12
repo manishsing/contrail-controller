@@ -272,6 +272,29 @@ void AgentParam::ParseCollector() {
     }
 }
 
+void AgentParam::BuildAddressList(const string &val) {
+    vhost_service_address_list_.clear();
+    if (val.empty()) {
+        return;
+    }
+
+    vector<string> tokens;
+    boost::split(tokens, val, boost::is_any_of(" "));
+    vector<string>::iterator it = tokens.begin();
+    while (it != tokens.end()) {
+        std::string str = *it;
+        ++it;
+
+        boost::algorithm::trim(str);
+        Ip4Address addr;
+        if (GetIpAddress(str, &addr)) {
+            vhost_service_address_list_.push_back(addr);
+        } else {
+            LOG(ERROR, "Error in parsing address " << *it);
+        }
+    }
+}
+
 void AgentParam::ParseVirtualHost() { 
     boost::system::error_code ec;
     optional<string> opt_str;
@@ -280,7 +303,7 @@ void AgentParam::ParseVirtualHost() {
 
     if (opt_str = tree_.get_optional<string>("VIRTUAL-HOST-INTERFACE.ip")) {
         ec = Ip4PrefixParse(opt_str.get(), &vhost_.addr_, &vhost_.plen_);
-        if (ec != 0 || vhost_.plen_ >= 32) {
+        if (ec != 0 || vhost_.plen_ > 32) {
             cout << "Error in config file <" << config_file_ 
                     << ">. Error parsing vhost ip-address from <" 
                     << opt_str.get() << ">\n";
@@ -295,8 +318,13 @@ void AgentParam::ParseVirtualHost() {
         }
     }
 
-    GetValueFromTree<string>(eth_port_, 
+    GetValueFromTree<string>(eth_port_,
                              "VIRTUAL-HOST-INTERFACE.physical_interface");
+
+    if (opt_str = tree_.get_optional<string>
+        ("VIRTUAL-HOST-INTERFACE.vhost_services_ip")) {
+        BuildAddressList(opt_str.get());
+    }
 }
 
 void AgentParam::ParseDiscovery() {
@@ -1055,6 +1083,12 @@ AgentParam::AgentParam(Agent *agent, bool enable_flow_options,
              "Gateway IP address for virtual host")
             ("VIRTUAL-HOST-INTERFACE.physical_interface", opt::value<string>(), 
              "Physical interface name to which virtual host interface maps to")
+            ("VIRTUAL-HOST-INTERFACE.vhost_services_ip",
+             opt::value<std::vector<std::string> >()->multitoken(),
+             "Static routes to be added on vhost interface")
+            ("VIRTUAL-HOST-INTERFACE.physical_port_routes",
+             opt::value<std::vector<std::string> >()->multitoken(),
+             "Static routes to be added on physical interface")
             ;
         options_.add(vhost);
     }

@@ -586,6 +586,69 @@ TEST_F(FlowTest, ServerToVm_1) {
     client->WaitForIdle();
 }
 
+// Test for traffic from server to VM. Source-IP different than vhost
+TEST_F(FlowTest, ServerToVm_2) {
+    SetupMetadataService();
+    client->WaitForIdle();
+    char src_ip[32] = "80.80.80.1";
+
+    // Packet with no route for IP-DA
+    TxIpPacketUtil(vhost->id(), src_ip, "80.80.80.80", 1, 1);
+    client->WaitForIdle();
+    EXPECT_TRUE(FlowGet(vhost->vrf()->GetName(), src_ip, "80.80.80.80",
+                        1, 0, 0, false, agent_->fabric_vn_name().c_str(),
+                        agent_->fabric_vn_name().c_str(), 1,
+                        true, false, vhost->flow_key_nh()->id()));
+
+    EXPECT_TRUE(FlowDelete(vhost->vrf()->GetName(), src_ip, "80.80.80.80",
+                           1, 0, 0, vhost->flow_key_nh()->id()));
+
+    client->WaitForIdle();
+    EXPECT_TRUE(FlowFail(vhost->vrf()->GetName(), src_ip, "80.80.80.80",
+                         1, 0, 0, vhost->flow_key_nh()->id()));
+
+    // Ping from server to vnet1
+    TxIpPacketUtil(vhost->id(), src_ip,
+                   vnet[1]->mdata_ip_addr().to_string().c_str(), 1, 1);
+
+    EXPECT_TRUE(NatValidateFlow(1, vhost->vrf()->GetName().c_str(),
+                                src_ip,
+                                vnet[1]->mdata_ip_addr().to_string().c_str(),
+                                1, 0, 0, 1, "vrf1", "169.254.169.254",
+                                vnet_addr[1], 0, 0,
+                                agent_->fabric_vn_name().c_str(), "vn1",
+                                vhost->flow_key_nh()->id(),
+                                vnet[1]->flow_key_nh()->id()));
+
+    // UDP from server to vnet1
+    TxUdpPacket(vhost->id(), src_ip,
+                vnet[1]->mdata_ip_addr().to_string().c_str(), 10, 20);
+
+    EXPECT_TRUE(NatValidateFlow(1, vhost->vrf()->GetName().c_str(),
+                                src_ip,
+                                vnet[1]->mdata_ip_addr().to_string().c_str(),
+                                IPPROTO_UDP, 10, 20, 1, "vrf1",
+                                "169.254.169.254", vnet_addr[1], 10, 20,
+                                agent_->fabric_vn_name().c_str(), "vn1",
+                                vhost->flow_key_nh()->id(),
+                                vnet[1]->flow_key_nh()->id()));
+
+    // TCP from server to vnet1
+    TxTcpPacket(vhost->id(), src_ip,
+                vnet[1]->mdata_ip_addr().to_string().c_str(), 10, 20, false);
+
+    EXPECT_TRUE(NatValidateFlow(1, vhost->vrf()->GetName().c_str(),
+                                src_ip,
+                                vnet[1]->mdata_ip_addr().to_string().c_str(),
+                                IPPROTO_TCP, 10, 20, 1, "vrf1", "169.254.169.254",
+                                vnet_addr[1], 10, 20,
+                                agent_->fabric_vn_name().c_str(), "vn1",
+                                vhost->flow_key_nh()->id(),
+                                vnet[1]->flow_key_nh()->id()));
+     RemoveMetadataService();
+     client->WaitForIdle();
+}
+
 // Test for traffic from VM to server
 TEST_F(FlowTest, VmToServer_1) {
     SetupMetadataService();

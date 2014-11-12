@@ -19,6 +19,7 @@ public:
     static const uint32_t kAgentStatsInterval = (30 * 1000); // time in millisecs
     static const uint32_t kFlowStatsInterval = (1000); // time in milliseconds
     static const uint32_t kVrouterStatsInterval = (30 * 1000); //time-millisecs
+    typedef std::vector<Ip4Address> AddressList;
 
     // Hypervisor mode we are working on
     enum Mode {
@@ -33,6 +34,7 @@ public:
         ESXI_NEUTRON,
         VCENTER
     };
+
 
     struct PortInfo {
         PortInfo() : 
@@ -159,6 +161,11 @@ public:
         return options_;
     }
     bool isTsnEnabled() const { return enable_tsn_; }
+
+    const AddressList &vhost_service_address_list() const {
+        return vhost_service_address_list_;
+    }
+    void BuildAddressList(const std::string &val);
 
 protected:
     void set_mode(Mode m) { mode_ = m; }
@@ -300,6 +307,9 @@ private:
     int si_netns_timeout_;
     std::string si_haproxy_ssl_cert_path_;
     VmwareMode vmware_mode_;
+    // If vhost interface is un-numbered in host-os, agent will use one of the
+    // vhost_service_addresses to run services (like metadata...)
+    AddressList vhost_service_address_list_;
 
     DISALLOW_COPY_AND_ASSIGN(AgentParam);
 };
