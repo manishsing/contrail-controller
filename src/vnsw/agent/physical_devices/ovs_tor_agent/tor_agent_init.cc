@@ -22,6 +22,7 @@
 #include <oper/mpls.h>
 #include <oper/route_common.h>
 #include <oper/layer2_route.h>
+#include <uve/agent_uve_base.h>
 
 #include <cfg/cfg_init.h>
 #include <controller/controller_init.h>
@@ -78,6 +79,8 @@ void TorAgentInit::CreateModules() {
     ovsdb_client_.reset(OvsdbClient::Allocate(agent(),
                 static_cast<TorAgentParam *>(agent_param()),
                 ovs_peer_manager()));
+    uve_.reset(new AgentUveBase(agent(), AgentUveBase::kBandwidthInterval));
+    agent()->set_uve(uve_.get());
 }
 
 void TorAgentInit::CreateDBTables() {
@@ -87,10 +90,12 @@ void TorAgentInit::CreateDBTables() {
 void TorAgentInit::RegisterDBClients() {
     device_manager_->RegisterDBClients();
     ovsdb_client_->RegisterClients();
+    uve_->RegisterDBClients();
 }
 
 void TorAgentInit::InitModules() {
     device_manager_->Init();
+    uve_->Init();
 }
 
 void TorAgentInit::ConnectToController() {
@@ -100,6 +105,10 @@ void TorAgentInit::ConnectToController() {
 /****************************************************************************
  * Shutdown routines
  ****************************************************************************/
+void TorAgentInit::UveShutdown() {
+    uve_->Shutdown();
+}
+
 void TorAgentInit::WaitForIdle() {
     sleep(5);
 }
