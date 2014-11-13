@@ -172,16 +172,20 @@ KSyncEntry *VlanPortBindingEntry::UnresolvedReference() {
         return vm_intf;
     }
 
-    assert(!logical_switch_name_.empty());
-    LogicalSwitchTable *l_table = table_->client_idl()->logical_switch_table();
-    LogicalSwitchEntry ls_key(l_table, logical_switch_name_.c_str());
-    LogicalSwitchEntry *ls_entry =
-        static_cast<LogicalSwitchEntry *>(l_table->GetReference(&ls_key));
-    if (!ls_entry->IsResolved()) {
-        OVSDB_TRACE(Trace, "Logical Switch  unavailable for Port Vlan Binding "+
-                physical_port_name_ + " vlan " + integerToString(vlan_) +
-                " to Logical Switch " + logical_switch_name_);
-        return ls_entry;
+    if (!logical_switch_name_.empty()) {
+        // Check only if logical switch name is present.
+        LogicalSwitchTable *l_table =
+            table_->client_idl()->logical_switch_table();
+        LogicalSwitchEntry ls_key(l_table, logical_switch_name_.c_str());
+        LogicalSwitchEntry *ls_entry =
+            static_cast<LogicalSwitchEntry *>(l_table->GetReference(&ls_key));
+        if (!ls_entry->IsResolved()) {
+            OVSDB_TRACE(Trace, "Logical Switch  unavailable for Port Vlan "
+                    "Binding " + physical_port_name_ + " vlan " +
+                    integerToString(vlan_) + " to Logical Switch " +
+                    logical_switch_name_);
+            return ls_entry;
+        }
     }
 
     return NULL;
