@@ -196,7 +196,7 @@ void HandleTorRoute(const PhysicalDeviceVnEntry *device_vn,
         return;
     }
 
-    if (add_request) {
+    if (add_request && (device_vn->IsDeleted() == false)) {
         //TBD Make a common func to create object
         if (obj == NULL) {
             boost::system::error_code ec;
