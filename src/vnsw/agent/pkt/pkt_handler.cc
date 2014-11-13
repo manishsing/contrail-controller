@@ -71,7 +71,7 @@ void PktHandler::InterfaceNotify(DBEntryBase *entry) {
         return;
 
     const VmInterface *vmitf = static_cast<VmInterface *>(entry);
-    if (vmitf->vm_mac().empty())
+    if (vmitf->vm_mac().empty() || !vmitf->vn())
         return;
 
     boost::system::error_code ec;
@@ -79,12 +79,13 @@ void PktHandler::InterfaceNotify(DBEntryBase *entry) {
     if (ec) {
         return;
     }
+    MacVmBindingKey key(address, vmitf->vn()->GetVxLanId());
 
     if (entry->IsDeleted()) {
-        mac_vm_binding_map_.erase(address);
+        mac_vm_binding_map_.erase(key);
     } else {
-        // assumed that VM mac doesnt change
-        mac_vm_binding_map_.insert(MacVmBindingPair(address, itf));
+        // assumed that VM mac and VN's vxlan id do not change
+        mac_vm_binding_map_.insert(MacVmBindingPair(key, itf));
     }
 }
 
@@ -523,7 +524,8 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
         if (pkt_type != PktType::UDP || pkt_info->dport != VXLAN_UDP_DEST_PORT)
             return false;
 
-        // Point to original L2 frame after the VXLAN header
+        // Get VXLAN id and point to original L2 frame after the VXLAN header
+        uint32_t vxlan = ntohl(*(uint32_t *)(pkt + 4)) >> 8;
         pkt += 8;
 
         // get to the actual packet header
@@ -532,7 +534,8 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
         ether_addr addr;
         memcpy(addr.ether_addr_octet, pkt_info->eth->ether_shost, ETH_ALEN);
         MacAddress address(addr);
-        MacVmBindingMap::iterator it = mac_vm_binding_map_.find(address);
+        MacVmBindingKey key(address, vxlan);
+        MacVmBindingMap::iterator it = mac_vm_binding_map_.find(key);
         if (it == mac_vm_binding_map_.end())
             return false;
 
