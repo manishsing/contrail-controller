@@ -45,7 +45,7 @@ void PhysicalLocatorTable::OvsdbNotify(OvsdbClientIdl::Op op,
     const char *dip_str = ovsdb_wrapper_physical_locator_dst_ip(row);
     PhysicalLocatorEntry key(this, dip_str);
     PhysicalLocatorEntry *entry =
-        static_cast<PhysicalLocatorEntry *>(Find(&key));
+        static_cast<PhysicalLocatorEntry *>(FindActiveEntry(&key));
     if (op == OvsdbClientIdl::OVSDB_DEL) {
         if (entry != NULL) {
             OVSDB_TRACE(Trace, "Delete received for Physical Locator " +

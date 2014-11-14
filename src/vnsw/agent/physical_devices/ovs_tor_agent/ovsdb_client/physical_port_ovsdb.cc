@@ -91,18 +91,15 @@ PhysicalPortTable::~PhysicalPortTable() {
 void PhysicalPortTable::Notify(OvsdbClientIdl::Op op,
         struct ovsdb_idl_row *row) {
     bool override_ovs = false;
-    PhysicalPortEntry *entry = NULL;
+    PhysicalPortEntry key(this, ovsdb_wrapper_physical_port_name(row));
+    PhysicalPortEntry *entry = static_cast<PhysicalPortEntry *>(FindActiveEntry(&key));
     if (op == OvsdbClientIdl::OVSDB_DEL) {
         OVSDB_TRACE(Trace, "Delete of Physical Port " +
                 std::string(ovsdb_wrapper_physical_port_name(row)));
-        PhysicalPortEntry key(this, ovsdb_wrapper_physical_port_name(row));
-        entry = static_cast<PhysicalPortEntry *>(Find(&key));
         if (entry != NULL) {
             Delete(entry);
         }
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        PhysicalPortEntry key(this, ovsdb_wrapper_physical_port_name(row));
-        entry = static_cast<PhysicalPortEntry *>(Find(&key));
         if (entry == NULL) {
             OVSDB_TRACE(Trace, "Add/Change of Physical Port " +
                     std::string(ovsdb_wrapper_physical_port_name(row)));

@@ -100,7 +100,7 @@ void UnicastMacLocalOvsdb::Notify(OvsdbClientIdl::Op op,
     }
     UnicastMacLocalEntry key(this, row);
     UnicastMacLocalEntry *entry =
-        static_cast<UnicastMacLocalEntry *>(Find(&key));
+        static_cast<UnicastMacLocalEntry *>(FindActiveEntry(&key));
     /* trigger delete if dest ip is not available */
     if (op == OvsdbClientIdl::OVSDB_DEL || dest_ip == NULL) {
         if (entry != NULL) {
