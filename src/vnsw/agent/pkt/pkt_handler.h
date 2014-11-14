@@ -259,8 +259,20 @@ public:
 private:
     friend bool ::CallPktParse(PktInfo *pkt_info, uint8_t *ptr, int len);
 
-    typedef std::map<MacAddress, InterfaceConstRef> MacVmBindingMap;
-    typedef std::pair<MacAddress, InterfaceConstRef> MacVmBindingPair;
+    struct MacVmBindingKey {
+        MacAddress mac;
+        int vxlan;
+
+        MacVmBindingKey(MacAddress &m, int v) : mac(m), vxlan(v) {}
+        bool operator<(const MacVmBindingKey &rhs) const {
+            if (vxlan != rhs.vxlan)
+                return vxlan < rhs.vxlan;
+
+            return mac < rhs.mac;
+        }
+    };
+    typedef std::map<MacVmBindingKey, InterfaceConstRef> MacVmBindingMap;
+    typedef std::pair<MacVmBindingKey, InterfaceConstRef> MacVmBindingPair;
 
     void InterfaceNotify(DBEntryBase *entry);
     uint8_t *ParseEthernetHeader(PktInfo *pkt_info,
