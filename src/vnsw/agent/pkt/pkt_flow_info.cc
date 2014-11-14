@@ -231,14 +231,22 @@ static bool NhDecode(const NextHop *nh, const PktInfo *pkt, PktFlowInfo *info,
 
     case NextHop::ARP: {
         const ArpNH *arp_nh = static_cast<const ArpNH *>(nh);
-        out->nh_ = arp_nh->GetInterface()->flow_key_nh()->id();
+        if (in->intf_->type() == Interface::VM_INTERFACE) {
+            const VmInterface *vm_intf =
+                static_cast<const VmInterface *>(in->intf_);
+            if (vm_intf->sub_type() == VmInterface::VCPE) {
+                out->nh_ = arp_nh->id();
+            } else {
+                out->nh_ = arp_nh->GetInterface()->flow_key_nh()->id();
+            }
+        }
         out->intf_ = arp_nh->GetInterface();
         break;
     }
 
     case NextHop::RESOLVE: {
          const ResolveNH *rsl_nh = static_cast<const ResolveNH *>(nh);
-         out->nh_ = rsl_nh->interface()->flow_key_nh()->id();
+         out->nh_ = rsl_nh->id();
          out->intf_ = rsl_nh->interface();
          break;
     }
@@ -920,7 +928,6 @@ void PktFlowInfo::IngressProcess(const PktInfo *pkt, PktControlInfo *in,
     if (out->intf_ == NULL && out->rt_) {
         RouteToOutInfo(out->rt_, pkt, this, in, out);
     }
-
     if (out->rt_) {
         const NextHop* nh = out->rt_->GetActiveNextHop();
         if (nh && nh->GetType() == NextHop::TUNNEL) {

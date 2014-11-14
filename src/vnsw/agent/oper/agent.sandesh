@@ -70,6 +70,7 @@ struct ItfSandeshData {
    38: i16 rx_vlan_id;
    39: string parent_interface;
    40: optional string subnet;
+   41: optional string sub_type;
 }
 
 struct VnIpamData {

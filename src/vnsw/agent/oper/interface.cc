@@ -841,6 +841,15 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
                 << (int)vintf->subnet_plen();
             data.set_subnet(str.str());
         }
+        if (vintf->sub_type() == VmInterface::VCPE) {
+            data.set_sub_type("VCPE");
+        } else if (vintf->sub_type() == VmInterface::TOR) {
+            data.set_sub_type("TOR");
+        } else if (vintf->sub_type() == VmInterface::NOVA) {
+             data.set_sub_type("Tap");
+        } else {
+            data.set_sub_type("None");
+        }
         break;
     }
     case Interface::INET:

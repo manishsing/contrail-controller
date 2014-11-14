@@ -266,6 +266,7 @@ void ArpVrfState::RouteUpdate(DBTablePartBase *part, DBEntryBase *entry) {
                 arp_proto->del_gratuitous_arp_entry();
             }
             entry->ClearState(part->parent(), route_table_listener_id);
+            state->Delete(route);
             delete state;
         }
         return;

@@ -508,7 +508,8 @@ static void ReadDhcpEnable(Agent *agent, VmInterfaceConfigData *data,
 //TBD Use link instead of device_owner
 VmInterface::SubType GetVmInterfaceSubType(Agent *agent,
                                            const std::string &device_owner) {
-    if (device_owner.compare("compute:nova") == 0 || agent->test_mode())
+    if (device_owner.compare("compute:nova") == 0 || agent->test_mode() ||
+        agent->tsn_enabled() == false)
         return VmInterface::NOVA;
     else
         return VmInterface::TOR;
@@ -721,7 +722,7 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
         IFMapNode *physical_node = agent_->cfg_listener()->
             FindAdjacentIFMapNode(agent_, logical_node, "physical-interface");
         //Add physical interface
-        if (AddPhysicalInterface(agent_, physical_node)) {
+        if (physical_node && AddPhysicalInterface(agent_, physical_node)) {
             autogen::PhysicalInterface *physical_interface =
                 static_cast <autogen::PhysicalInterface *>(
                         physical_node->GetObject());
@@ -729,10 +730,17 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
         }
     }
 
-    if (!data->subnet_.is_unspecified()) {
+    if (!data->subnet_.is_unspecified() &&
+        data->parent_ != agent_->NullString()) {
         interface_sub_type = VmInterface::VCPE;
+        delete key;
+        //Add request for a VMI of type VCPE
+        key = new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, u,
+                                 cfg->display_name());
     }
+
     data->sub_type_ = interface_sub_type;
+
     if (cfg->mac_addresses().size()) {
         data->vm_mac_ = cfg->mac_addresses().at(0);
     }
@@ -999,8 +1007,9 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old
     //Need not apply config for TOR VMI as it is more of an inidicative
     //interface. No route addition or NH addition happens for this interface.
     if (sub_type_ == VmInterface::TOR &&
-        (old_subnet.is_unspecified() && old_subnet_plen == 0))
+        (old_subnet.is_unspecified() && old_subnet_plen == 0)) {
         return;
+    }
 
     bool force_update = false;
     if (sg_changed || ecmp_mode_changed | local_pref_changed) {
@@ -1316,6 +1325,11 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
         ret = true;
     }
 
+    if (sub_type_ == VCPE) {
+        rx_vlan_id_ = data->rx_vlan_id_;
+        tx_vlan_id_ = data->tx_vlan_id_;
+    }
+
     if (data->parent_ != Agent::NullString()) {
         PhysicalInterfaceKey key(data->parent_);
         parent_ = static_cast<Interface *>
@@ -1577,6 +1591,10 @@ bool VmInterface::IsIpv4Active() const {
     }
 
     if (subnet_.is_unspecified() && ip_addr_.to_ulong() == 0) {
+        return false;
+    }
+
+    if (subnet_.is_unspecified() == false && parent_ == NULL) {
         return false;
     }
 
@@ -3134,6 +3152,56 @@ void VmInterface::InstanceIpSync(InterfaceTable *table, IFMapNode *node) {
     }
 
 }
+
+void VmInterface::PhysicalPortSync(InterfaceTable *table, IFMapNode *node) {
+    CfgListener *cfg_listener = table->agent()->cfg_listener();
+    if (cfg_listener->SkipNode(node)) {
+        return;
+    }
+
+    DBGraph *graph =
+        static_cast<IFMapAgentTable *> (node->table())->GetGraph();;
+    for (DBGraphVertex::adjacency_iterator iter = node->begin(graph);
+         iter != node->end(graph); ++iter) {
+        IFMapNode *adj = static_cast<IFMapNode *>(iter.operator->());
+        if (table->agent()->cfg_listener()->SkipNode(adj)) {
+            continue;
+        }
+
+        if (adj->table() ==
+            table->agent()->cfg()->cfg_logical_port_table()) {
+            LogicalPortSync(table, adj);
+        }
+    }
+}
+
+
+
+void VmInterface::LogicalPortSync(InterfaceTable *table, IFMapNode *node) {
+    CfgListener *cfg_listener = table->agent()->cfg_listener();
+    if (cfg_listener->SkipNode(node)) {
+        return;
+    }
+
+    DBGraph *graph =
+        static_cast<IFMapAgentTable *> (node->table())->GetGraph();;
+    for (DBGraphVertex::adjacency_iterator iter = node->begin(graph);
+         iter != node->end(graph); ++iter) {
+        IFMapNode *adj = static_cast<IFMapNode *>(iter.operator->());
+        if (table->agent()->cfg_listener()->SkipNode(adj)) {
+            continue;
+        }
+
+        if (adj->table() ==
+            table->agent()->cfg()->cfg_vm_interface_table()) {
+            DBRequest req;
+            if (table->IFNodeToReq(adj, req)) {
+                table->Enqueue(&req);
+            }
+        }
+    }
+}
+
 
 void VmInterface::SubnetSync(InterfaceTable *table, IFMapNode *node) {
     CfgListener *cfg_listener = table->agent()->cfg_listener();
