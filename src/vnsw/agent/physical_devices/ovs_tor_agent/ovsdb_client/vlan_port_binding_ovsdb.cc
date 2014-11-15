@@ -170,6 +170,9 @@ KSyncEntry *VlanPortBindingEntry::UnresolvedReference() {
                 physical_port_name_ + " vlan " + integerToString(vlan_) +
                 " to Logical Switch " + logical_switch_name_);
         return vm_intf;
+    } else if (logical_switch_name_.empty()) {
+        // update latest name after resolution.
+        logical_switch_name_ = vm_intf->vn_name();
     }
 
     if (!logical_switch_name_.empty()) {
@@ -224,10 +227,16 @@ KSyncDBObject::DBFilterResp VlanPortBindingTable::DBEntryFilter(
         const DBEntry *entry) {
     const AGENT::VlanLogicalPortEntry *l_port =
         static_cast<const AGENT::VlanLogicalPortEntry *>(entry);
-    if (l_port->physical_port() == NULL ||
-        l_port->physical_port()->device() == NULL) {
-        // Since we need physical port name and device name as key, ignore entry
-        // if physical port or device is not yet present.
+    // Since we need physical port name and device name as key, ignore entry
+    // if physical port or device is not yet present.
+    if (l_port->physical_port() == NULL) {
+        OVSDB_TRACE(Trace, "Ignoring Port Vlan Binding due to physical port "
+                "unavailablity Logical port = " + l_port->name());
+        return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.
+    }
+    if (l_port->physical_port()->device() == NULL) {
+        OVSDB_TRACE(Trace, "Ignoring Port Vlan Binding due to device "
+                "unavailablity Logical port = " + l_port->name());
         return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.
     }
     return DBFilterAccept;

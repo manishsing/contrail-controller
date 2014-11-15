@@ -66,6 +66,10 @@ KSyncEntry *VMInterfaceKSyncEntry::UnresolvedReference() {
     return NULL;
 }
 
+const std::string &VMInterfaceKSyncEntry::vn_name() const {
+    return vn_name_;
+}
+
 VMInterfaceKSyncObject::VMInterfaceKSyncObject(OvsdbClientIdl *idl, DBTable *table) :
     OvsdbDBObject(idl, table) {
 }
