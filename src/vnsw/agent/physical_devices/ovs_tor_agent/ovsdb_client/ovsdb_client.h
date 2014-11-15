@@ -12,6 +12,7 @@ class OvsPeerManager;
 class KSyncObjectManager;
 
 namespace OVSDB {
+class OvsdbClientSession;
 class OvsdbClient {
 public:
     OvsdbClient(OvsPeerManager *manager);
@@ -21,6 +22,7 @@ public:
     virtual const std::string server() = 0;
     virtual uint16_t port() = 0;
     virtual Ip4Address tsn_ip() = 0;
+    virtual OvsdbClientSession *next_session(OvsdbClientSession *session) = 0;
     virtual void AddSessionInfo(SandeshOvsdbClient &client) = 0;
     KSyncObjectManager *ksync_obj_manager();
     void Init();

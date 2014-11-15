@@ -84,6 +84,7 @@ public:
     const std::string server();
     uint16_t port();
     Ip4Address tsn_ip();
+    OvsdbClientSession *next_session(OvsdbClientSession *session);
     void AddSessionInfo(SandeshOvsdbClient &client);
 private:
     friend class OvsdbClientTcpSession;

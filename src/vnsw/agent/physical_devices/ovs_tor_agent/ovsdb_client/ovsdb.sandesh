@@ -37,6 +37,21 @@ traceobject sandesh OvsdbError {
   Sandesh definitions for Physical Switch.
  ****************************************************************************/
 
+struct OvsdbPhysicalSwitchEntry {
+    1: string state;
+    2: string name;
+    3: string tunnel_ip;
+}
+
+response sandesh OvsdbPhysicalSwitchResp {
+    1: list<OvsdbPhysicalSwitchEntry> pswitch;
+}
+
+request sandesh OvsdbPhysicalSwitchReq {
+    1: string session_remote_ip;
+    2: i16 session_remote_port;
+}
+
 struct SandeshPhysicalSwitchInfo {
     1: string op;
     2: string name;
@@ -47,8 +62,48 @@ traceobject sandesh OvsdbPhysicalSwitch {
 }
 
 /****************************************************************************
+  Sandesh definitions for Physical Port.
+ ****************************************************************************/
+
+struct OvsdbPhysicalPortVlanInfo {
+    1: i16 vlan;
+    2: string logical_switch;
+}
+
+struct OvsdbPhysicalPortEntry {
+    1: string state;
+    2: string name;
+    3: list<OvsdbPhysicalPortVlanInfo> vlans;
+}
+
+response sandesh OvsdbPhysicalPortResp {
+    1: list<OvsdbPhysicalPortEntry> port;
+}
+
+request sandesh OvsdbPhysicalPortReq {
+    1: string session_remote_ip;
+    2: i16 session_remote_port;
+}
+
+/****************************************************************************
   Sandesh definitions for Logical Switch.
  ****************************************************************************/
+
+struct OvsdbLogicalSwitchEntry {
+    1: string state;
+    2: string name;
+    3: string physical_switch;
+    4: i64 vxlan_id;
+}
+
+response sandesh OvsdbLogicalSwitchResp {
+    1: list<OvsdbLogicalSwitchEntry> lswitch;
+}
+
+request sandesh OvsdbLogicalSwitchReq {
+    1: string session_remote_ip;
+    2: i16 session_remote_port;
+}
 
 struct SandeshLogicalSwitchInfo {
     1: string op;

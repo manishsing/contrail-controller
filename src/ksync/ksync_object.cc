@@ -57,6 +57,19 @@ KSyncEntry *KSyncObject::Find(const KSyncEntry *key) {
     return NULL;
 }
 
+KSyncEntry *KSyncObject::Next(const KSyncEntry *entry) {
+    Tree::const_iterator it;
+    if (entry == NULL) {
+        it = tree_.begin();
+    } else {
+        it = tree_.iterator_to(*entry);
+        it++;
+    }
+    if (it != tree_.end()) {
+        return const_cast<KSyncEntry *>(it.operator->());
+    }
+    return NULL;
+}
 KSyncEntry *KSyncObject::CreateImpl(const KSyncEntry *key) {
     KSyncEntry *entry;
     if (need_index_) {

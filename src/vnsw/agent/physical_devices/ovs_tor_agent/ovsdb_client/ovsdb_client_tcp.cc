@@ -10,6 +10,7 @@
 
 #include <physical_devices/ovs_tor_agent/tor_agent_param.h>
 
+using OVSDB::OvsdbClientSession;
 using OVSDB::OvsdbClientTcp;
 using OVSDB::OvsdbClientTcpSession;
 using OVSDB::OvsdbClientTcpSessionReader;
@@ -73,6 +74,11 @@ uint16_t OvsdbClientTcp::port() {
 
 Ip4Address OvsdbClientTcp::tsn_ip() {
     return tsn_ip_;
+}
+
+OvsdbClientSession *OvsdbClientTcp::next_session(OvsdbClientSession *session) {
+    return static_cast<OvsdbClientSession *>(
+            static_cast<OvsdbClientTcpSession *>(session_));
 }
 
 void OvsdbClientTcp::AddSessionInfo(SandeshOvsdbClient &client){

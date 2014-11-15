@@ -30,6 +30,7 @@ public:
     ~PhysicalSwitchEntry();
 
     Ip4Address &tunnel_ip();
+    const std::string &name();
     void set_tunnel_ip(std::string ip);
     bool IsLess(const KSyncEntry&) const;
     std::string ToString() const {return "Physical Switch";}

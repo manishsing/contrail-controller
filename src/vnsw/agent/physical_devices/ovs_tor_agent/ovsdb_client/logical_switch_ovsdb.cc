@@ -5,6 +5,10 @@
 extern "C" {
 #include <ovsdb_wrapper.h>
 };
+#include <physical_devices/ovs_tor_agent/tor_agent_init.h>
+#include <ovsdb_client.h>
+#include <ovsdb_client_idl.h>
+#include <ovsdb_client_session.h>
 #include <physical_switch_ovsdb.h>
 #include <logical_switch_ovsdb.h>
 #include <physical_locator_ovsdb.h>
@@ -19,6 +23,8 @@ using OVSDB::LogicalSwitchEntry;
 using OVSDB::LogicalSwitchTable;
 using OVSDB::OvsdbDBEntry;
 using OVSDB::OvsdbDBObject;
+using OVSDB::OvsdbClient;
+using OVSDB::OvsdbClientSession;
 
 LogicalSwitchEntry::LogicalSwitchEntry(OvsdbDBObject *table,
         const AGENT::PhysicalDeviceVnEntry *entry) : OvsdbDBEntry(table),
@@ -106,6 +112,18 @@ void LogicalSwitchEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
 void LogicalSwitchEntry::OvsdbChange() {
     if (!IsResolved())
         table_->NotifyEvent(this, KSyncEntry::ADD_CHANGE_REQ);
+}
+
+const std::string &LogicalSwitchEntry::name() const {
+    return name_;
+}
+
+const std::string &LogicalSwitchEntry::device_name() const {
+    return device_name_;
+}
+
+int64_t LogicalSwitchEntry::vxlan_id() const {
+    return vxlan_id_;
 }
 
 bool LogicalSwitchEntry::Sync(DBEntry *db_entry) {
@@ -275,3 +293,52 @@ OvsdbDBEntry *LogicalSwitchTable::AllocOvsEntry(struct ovsdb_idl_row *row) {
     return static_cast<OvsdbDBEntry *>(Create(&key));
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// Sandesh routines
+/////////////////////////////////////////////////////////////////////////////
+class LogicalSwitchSandeshTask : public Task {
+public:
+    LogicalSwitchSandeshTask(std::string resp_ctx) :
+        Task((TaskScheduler::GetInstance()->GetTaskId("Agent::KSync")), -1),
+        resp_(new OvsdbLogicalSwitchResp()), resp_data_(resp_ctx) {
+    }
+    virtual ~LogicalSwitchSandeshTask() {}
+    virtual bool Run() {
+        std::vector<OvsdbLogicalSwitchEntry> lswitch;
+        TorAgentInit *init =
+            static_cast<TorAgentInit *>(Agent::GetInstance()->agent_init());
+        OvsdbClientSession *session = init->ovsdb_client()->next_session(NULL);
+        LogicalSwitchTable *table =
+            session->client_idl()->logical_switch_table();
+        LogicalSwitchEntry *entry =
+            static_cast<LogicalSwitchEntry *>(table->Next(NULL));
+        while (entry != NULL) {
+            OvsdbLogicalSwitchEntry lentry;
+            lentry.set_state(entry->StateString());
+            lentry.set_name(entry->name());
+            lentry.set_physical_switch(entry->device_name());
+            lentry.set_vxlan_id(entry->vxlan_id());
+            lswitch.push_back(lentry);
+            entry = static_cast<LogicalSwitchEntry *>(table->Next(entry));
+        }
+        resp_->set_lswitch(lswitch);
+        SendResponse();
+        return true;
+    }
+private:
+    void SendResponse() {
+        resp_->set_context(resp_data_);
+        resp_->set_more(false);
+        resp_->Response();
+    }
+
+    OvsdbLogicalSwitchResp *resp_;
+    std::string resp_data_;
+    DISALLOW_COPY_AND_ASSIGN(LogicalSwitchSandeshTask);
+};
+
+void OvsdbLogicalSwitchReq::HandleRequest() const {
+    LogicalSwitchSandeshTask *task = new LogicalSwitchSandeshTask(context());
+    TaskScheduler *scheduler = TaskScheduler::GetInstance();
+    scheduler->Enqueue(task);
+}

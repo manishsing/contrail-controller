@@ -33,6 +33,10 @@ public:
     void Encode(struct ovsdb_idl_txn *);
     void AddBinding(int16_t vlan, LogicalSwitchEntry *ls);
     void DeleteBinding(int16_t vlan, LogicalSwitchEntry *ls);
+
+    const std::string &name() const;
+    const VlanLSTable &ovs_binding_table() const;
+
 private:
     friend class PhysicalPortTable;
     void OverrideOvs();
