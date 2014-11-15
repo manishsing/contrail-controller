@@ -540,6 +540,18 @@ void AgentXmppChannel::AddEcmpRoute(string vrf_name, Ip4Address prefix_addr,
             MplsLabel *mpls =
                 agent_->mpls_table()->FindMplsLabel(label);
             if (mpls != NULL) {
+                if (mpls->nexthop()->GetType() == NextHop::VRF) {
+                    BgpPeer *bgp_peer = bgp_peer_id();
+                    ClonedLocalPath *data =
+                        new ClonedLocalPath(unicast_sequence_number(), this,
+                                label, item->entry.virtual_network,
+                                item->entry.security_group_list.security_group);
+                    rt_table->AddClonedLocalPathReq(bgp_peer, vrf_name,
+                            prefix_addr,
+                            prefix_len, data);
+                    return;
+                }
+
                 DBEntryBase::KeyPtr key = mpls->nexthop()->GetDBRequestKey();
                 NextHopKey *nh_key = static_cast<NextHopKey *>(key.release());
                 if (nh_key->GetType() != NextHop::COMPOSITE) {

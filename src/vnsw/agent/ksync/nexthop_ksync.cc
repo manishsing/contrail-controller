@@ -195,6 +195,13 @@ bool NHKSyncEntry::IsLess(const KSyncEntry &rhs) const {
         return false;
     }
 
+    if (type_ == NextHop::ARP) {
+        //Policy is ignored for ARP NH
+        if (vrf_id_ != entry.vrf_id_) {
+            return vrf_id_ < entry.vrf_id_;
+        }
+        return sip_.s_addr < entry.sip_.s_addr;
+    }
 
     if (policy_ != entry.policy_) {
         return policy_ < entry.policy_;
@@ -202,13 +209,6 @@ bool NHKSyncEntry::IsLess(const KSyncEntry &rhs) const {
 
     if (type_ == NextHop::VRF) {
         return vrf_id_ < entry.vrf_id_;
-    }
-
-    if (type_ == NextHop::ARP) {
-        if (vrf_id_ != entry.vrf_id_) {
-            return vrf_id_ < entry.vrf_id_;
-        }
-        return sip_.s_addr < entry.sip_.s_addr;
     }
 
     if (type_ == NextHop::INTERFACE) {

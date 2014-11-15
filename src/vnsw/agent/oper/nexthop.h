@@ -873,6 +873,11 @@ public:
     }
     virtual ~VrfNHKey() { }
 
+    virtual bool NextHopKeyIsLess(const NextHopKey &rhs) const {
+        const VrfNHKey &key = static_cast<const VrfNHKey &>(rhs);
+        return vrf_key_.IsLess(key.vrf_key_);
+    }
+
     virtual NextHop *AllocEntry() const;
     virtual NextHopKey *Clone() const {
         return new VrfNHKey(vrf_key_.name_, policy_); 

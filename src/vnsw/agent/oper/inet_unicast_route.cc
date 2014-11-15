@@ -620,7 +620,7 @@ bool InetUnicastRouteEntry::is_multicast() const {
 
 bool Inet4UnicastArpRoute::AddChangePath(Agent *agent, AgentPath *path,
                                          const AgentRoute *rt) {
-    bool ret = false;
+    bool ret = true;
 
     ArpNHKey key(vrf_name_, addr_, policy_);
     NextHop *nh = 

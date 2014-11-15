@@ -154,6 +154,14 @@ void AgentConfig::RegisterDBClients(DB *db) {
                      agent_->oper_db()->global_vrouter(), _1), -1);
 
     cfg_listener_->Register
+        ("physical-interface", boost::bind(&VmInterface::PhysicalPortSync,
+                               agent_->interface_table(), _1), -1);
+
+    cfg_listener_->Register
+        ("logical-interface", boost::bind(&VmInterface::LogicalPortSync,
+                               agent_->interface_table(), _1), -1);
+
+    cfg_listener_->Register
         ("subnet", boost::bind(&VmInterface::SubnetSync,
                                agent_->interface_table(), _1), -1);
 
@@ -216,6 +224,11 @@ void AgentConfig::RegisterDBClients(DB *db) {
                     (IFMapTable::FindTable(agent_->db(),
                       "subnet")));
     assert(cfg_route_table_);
+
+    cfg_logical_port_table_ = (static_cast<IFMapAgentTable *>
+                                (IFMapTable::FindTable(agent_->db(),
+                                                       "logical-interface")));
+    assert(cfg_logical_port_table_);
 
     cfg_interface_client_->Init();
 }

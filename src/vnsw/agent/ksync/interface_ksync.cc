@@ -187,7 +187,11 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
 
     if (intf->type() == Interface::VM_INTERFACE) {
         VmInterface *vm_port = static_cast<VmInterface *>(intf);
-        vm_sub_type_ = vm_port->sub_type();
+        if (vm_sub_type_ != vm_port->sub_type()) {
+            vm_sub_type_ = vm_port->sub_type();
+            ret = true;
+        }
+
         if (dhcp_enable_ != vm_port->dhcp_enable_config()) {
             dhcp_enable_ = vm_port->dhcp_enable_config();
             ret = true;
@@ -209,6 +213,16 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
         }
         if (layer2_forwarding_ != vm_port->layer2_forwarding()) {
             layer2_forwarding_ = vm_port->layer2_forwarding();
+            ret = true;
+        }
+
+        if (rx_vlan_id_ != vm_port->rx_vlan_id()) {
+            rx_vlan_id_ = vm_port->rx_vlan_id();
+            ret = true;
+        }
+
+        if (tx_vlan_id_ != vm_port->tx_vlan_id()) {
+            tx_vlan_id_ = vm_port->tx_vlan_id();
             ret = true;
         }
 
@@ -424,6 +438,9 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
         }
         if (layer2_forwarding_) {
             flags |= VIF_FLAG_L2_ENABLED;
+        }
+        if (vm_sub_type_ == VmInterface::VCPE) {
+            flags |= VIF_FLAG_NATIVE_VLAN_TAG;
         }
         MacAddress mac;
         if (parent_.get() != NULL) {

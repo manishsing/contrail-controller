@@ -931,7 +931,6 @@ void PktFlowInfo::IngressProcess(const PktInfo *pkt, PktControlInfo *in,
     if (out->intf_ == NULL && out->rt_) {
         RouteToOutInfo(out->rt_, pkt, this, in, out);
     }
-
     if (out->rt_) {
         const NextHop* nh = out->rt_->GetActiveNextHop();
         if (nh && nh->GetType() == NextHop::TUNNEL) {

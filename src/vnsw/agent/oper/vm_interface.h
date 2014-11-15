@@ -410,6 +410,8 @@ public:
     static void FloatingIpVrfSync(InterfaceTable *table, IFMapNode *node);
     static void VnSync(InterfaceTable *table, IFMapNode *node);
     static void SubnetSync(InterfaceTable *table, IFMapNode *node);
+    static void LogicalPortSync(InterfaceTable *table, IFMapNode *node);
+    static void PhysicalPortSync(InterfaceTable *table, IFMapNode *node);
     static void VmSync(InterfaceTable *table, IFMapNode *node);
 
     void AllocL2MplsLabel(bool force_update, bool policy_change);
@@ -702,7 +704,9 @@ struct VmInterfaceConfigData : public VmInterfaceData {
         mirror_direction_(Interface::UNKNOWN), sg_list_(),
         floating_ip_list_(), service_vlan_list_(), static_route_list_(),
         allowed_address_pair_list_(), sub_type_(VmInterface::NONE),
-        parent_(""), ifmap_node_(NULL), subnet_(0), subnet_plen_(0) {
+        parent_(""), ifmap_node_(NULL), subnet_(0), subnet_plen_(0),
+        rx_vlan_id_(VmInterface::kInvalidVlanId),
+        tx_vlan_id_(VmInterface::kInvalidVlanId) {
     }
 
     virtual ~VmInterfaceConfigData() { }
@@ -749,6 +753,8 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     IFMapNode *ifmap_node_;
     Ip4Address subnet_;
     uint8_t subnet_plen_;
+    uint16_t rx_vlan_id_;
+    uint16_t tx_vlan_id_;
 };
 
 // Definition for structures when request queued from Nova
