@@ -274,6 +274,29 @@ ovsdb_wrapper_physical_port_vlan_binding(struct ovsdb_idl_row *row,
     }
 }
 
+size_t
+ovsdb_wrapper_physical_port_vlan_stats_count(struct ovsdb_idl_row *row)
+{
+    struct vteprec_physical_port *p =
+        row ? CONTAINER_OF(row, struct vteprec_physical_port, header_) : NULL;
+    return p->n_vlan_stats;
+}
+
+void
+ovsdb_wrapper_physical_port_vlan_stats(struct ovsdb_idl_row *row,
+        struct ovsdb_wrapper_port_vlan_stats *stats)
+{
+    struct vteprec_physical_port *p =
+        row ? CONTAINER_OF(row, struct vteprec_physical_port, header_) : NULL;
+    size_t count = p->n_vlan_stats;
+    size_t i = 0;
+    while (i < count) {
+        stats[i].vlan = p->key_vlan_stats[i];
+        stats[i].stats = ((struct ovsdb_idl_row *) ((char *)(p->value_vlan_stats[i]) + offsetof(struct vteprec_logical_binding_stats, header_)));
+        i++;
+    }
+}
+
 void
 ovsdb_wrapper_update_physical_port(struct ovsdb_idl_txn *txn,
         struct ovsdb_idl_row *row,
@@ -527,5 +550,21 @@ ovsdb_wrapper_mcast_mac_remote_physical_locator_set(struct ovsdb_idl_row *row)
     struct vteprec_mcast_macs_remote *mcast =
         row ? CONTAINER_OF(row, struct vteprec_mcast_macs_remote, header_) : NULL;
     return &(mcast->locator_set->header_);
+}
+
+/* logical binding stats */
+void
+ovsdb_wrapper_get_logical_binding_stats(struct ovsdb_idl_row *row,
+        int64_t *in_pkts, int64_t *in_bytes,
+        int64_t *out_pkts, int64_t *out_bytes)
+{
+    struct vteprec_logical_binding_stats *stats =
+        row ? CONTAINER_OF(row, struct vteprec_logical_binding_stats, header_) : NULL;
+    if (row == NULL)
+        return;
+    *in_pkts = stats->packets_from_local;
+    *in_bytes = stats->bytes_from_local;
+    *out_pkts = stats->packets_to_local;
+    *out_bytes = stats->bytes_to_local;
 }
 

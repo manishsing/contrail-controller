@@ -86,6 +86,11 @@ PhysicalPortEntry::ovs_binding_table() const {
     return ovs_binding_table_;
 }
 
+const PhysicalPortEntry::VlanStatsTable &
+PhysicalPortEntry::stats_table() const {
+    return stats_table_;
+}
+
 void PhysicalPortEntry::OverrideOvs() {
     struct ovsdb_idl_txn *txn = table_->client_idl()->CreateTxn(this);
     Encode(txn);
@@ -147,6 +152,13 @@ void PhysicalPortTable::Notify(OvsdbClientIdl::Op op,
             entry->ovs_binding_table_[new_bind[i].vlan] = ls_entry;
             old.erase(new_bind[i].vlan);
         }
+        count = ovsdb_wrapper_physical_port_vlan_stats_count(row);
+        struct ovsdb_wrapper_port_vlan_stats stats[count];
+        ovsdb_wrapper_physical_port_vlan_stats(row, stats);
+        entry->stats_table_.clear();
+        for (std::size_t i = 0; i < count; i++) {
+            entry->stats_table_[stats[i].vlan] = stats[i].stats;
+        }
         PhysicalPortEntry::VlanLSTable::iterator it = old.begin();
         for ( ; it != old.end(); it++) {
             if (entry->binding_table_.find(it->first) !=
@@ -198,6 +210,8 @@ public:
             pentry.set_name(entry->name());
             const PhysicalPortEntry::VlanLSTable &bindings =
                 entry->ovs_binding_table();
+            const PhysicalPortEntry::VlanStatsTable &stats_table =
+                entry->stats_table();
             PhysicalPortEntry::VlanLSTable::const_iterator it =
                 bindings.begin();
             std::vector<OvsdbPhysicalPortVlanInfo> vlan_list;
@@ -205,6 +219,22 @@ public:
                 OvsdbPhysicalPortVlanInfo vlan;
                 vlan.set_vlan(it->first);
                 vlan.set_logical_switch(it->second->name());
+                PhysicalPortEntry::VlanStatsTable::const_iterator stats_it =
+                    stats_table.find(it->first);
+                if (stats_it != stats_table.end()) {
+                    int64_t in_pkts, in_bytes, out_pkts, out_bytes;
+                    ovsdb_wrapper_get_logical_binding_stats(stats_it->second,
+                            &in_pkts, &in_bytes, &out_pkts, &out_bytes);
+                    vlan.set_in_pkts(in_pkts);
+                    vlan.set_in_bytes(in_bytes);
+                    vlan.set_out_pkts(out_pkts);
+                    vlan.set_out_bytes(out_bytes);
+                } else {
+                    vlan.set_in_pkts(0);
+                    vlan.set_in_bytes(0);
+                    vlan.set_out_pkts(0);
+                    vlan.set_out_bytes(0);
+                }
                 vlan_list.push_back(vlan);
             }
             pentry.set_vlans(vlan_list);

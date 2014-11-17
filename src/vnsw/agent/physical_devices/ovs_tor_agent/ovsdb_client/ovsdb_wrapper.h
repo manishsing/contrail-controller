@@ -12,6 +12,11 @@ struct ovsdb_wrapper_port_vlan_binding {
     struct ovsdb_idl_row *ls;
 };
 
+struct ovsdb_wrapper_port_vlan_stats {
+    int64_t vlan;
+    struct ovsdb_idl_row *stats;
+};
+
 /* Wrapper for C APIs */
 struct ovsdb_idl * ovsdb_wrapper_idl_create();
 void ovsdb_wrapper_idl_destroy(struct ovsdb_idl *idl);
@@ -58,6 +63,9 @@ char *ovsdb_wrapper_physical_port_name(struct ovsdb_idl_row *row);
 size_t ovsdb_wrapper_physical_port_vlan_binding_count(struct ovsdb_idl_row *row);
 void ovsdb_wrapper_physical_port_vlan_binding(struct ovsdb_idl_row *row,
         struct ovsdb_wrapper_port_vlan_binding*);
+size_t ovsdb_wrapper_physical_port_vlan_stats_count(struct ovsdb_idl_row *row);
+void ovsdb_wrapper_physical_port_vlan_stats(struct ovsdb_idl_row *row,
+        struct ovsdb_wrapper_port_vlan_stats*);
 void ovsdb_wrapper_update_physical_port(struct ovsdb_idl_txn *, struct ovsdb_idl_row *,
         struct ovsdb_wrapper_port_vlan_binding*, size_t binding_count);
 
@@ -101,6 +109,11 @@ char *
 ovsdb_wrapper_mcast_mac_remote_logical_switch(struct ovsdb_idl_row *row);
 struct ovsdb_idl_row *
 ovsdb_wrapper_mcast_mac_remote_physical_locator_set(struct ovsdb_idl_row *row);
+
+/* logical binding stats */
+void ovsdb_wrapper_get_logical_binding_stats(struct ovsdb_idl_row *row,
+        int64_t *in_pkts, int64_t *in_bytes,
+        int64_t *out_pkts, int64_t *out_bytes);
 
 #endif //SRC_VNSW_AGENT_PHYSICAL_DEVICES_OVS_TOR_AGENT_OVSDB_CLIENT_OVSDB_WRAPPER_H_
 
