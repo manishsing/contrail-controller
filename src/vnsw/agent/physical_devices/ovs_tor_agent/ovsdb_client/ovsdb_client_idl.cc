@@ -60,13 +60,14 @@ void ovsdb_wrapper_idl_txn_ack(void *idl_base, struct ovsdb_idl_txn *txn) {
     OvsdbClientIdl *client_idl = (OvsdbClientIdl *) idl_base;
     OvsdbEntryBase *entry = client_idl->pending_txn_[txn];
     bool success = ovsdb_wrapper_is_txn_success(txn);
-    client_idl->DeleteTxn(txn);
     if (!success) {
-        OVSDB_TRACE(Error, "Transaction failed");
+        OVSDB_TRACE(Error, "Transaction failed: " +
+                std::string(ovsdb_wrapper_txn_get_error(txn)));
         // we don't handle the case where txn fails, when entry is not present
         // case of unicast_mac_remote entry.
         assert(entry != NULL);
     }
+    client_idl->DeleteTxn(txn);
     if (entry)
         entry->Ack(success);
 }

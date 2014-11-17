@@ -168,6 +168,12 @@ ovsdb_wrapper_is_txn_success(struct ovsdb_idl_txn *txn)
     return ovsdb_idl_is_txn_success(txn);
 }
 
+const char *
+ovsdb_wrapper_txn_get_error(struct ovsdb_idl_txn *txn)
+{
+    return ovsdb_idl_txn_get_error(txn);
+}
+
 struct jsonrpc_msg *
 ovsdb_wrapper_idl_txn_encode(struct ovsdb_idl_txn *txn)
 {

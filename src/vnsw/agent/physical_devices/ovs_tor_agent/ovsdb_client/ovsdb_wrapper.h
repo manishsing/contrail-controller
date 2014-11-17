@@ -39,6 +39,7 @@ void ovsdb_wrapper_jsonrpc_msg_destroy(struct jsonrpc_msg *msg);
 struct ovsdb_idl_txn *ovsdb_wrapper_idl_txn_create(struct ovsdb_idl *idl);
 void ovsdb_wrapper_idl_txn_destroy(struct ovsdb_idl_txn *txn);
 bool ovsdb_wrapper_is_txn_success(struct ovsdb_idl_txn *txn);
+const char *ovsdb_wrapper_txn_get_error(struct ovsdb_idl_txn *txn);
 struct jsonrpc_msg *ovsdb_wrapper_idl_txn_encode(struct ovsdb_idl_txn *txn);
 
 /* Physical Switch */
