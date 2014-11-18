@@ -46,6 +46,11 @@ public:
     std::string ToString() const {return "Vlan Port Binding";}
     KSyncEntry* UnresolvedReference();
 
+    const std::string &logical_switch_name() const;
+    const std::string &physical_port_name() const;
+    const std::string &physical_device_name() const;
+    uint16_t vlan() const;
+
 private:
     friend class VlanPortBindingTable;
     KSyncEntryPtr logical_switch_;

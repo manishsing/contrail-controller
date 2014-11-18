@@ -37,6 +37,11 @@ public:
     bool IsLess(const KSyncEntry&) const;
     KSyncEntry* UnresolvedReference();
     std::string ToString() const {return "Unicast Mac Local";}
+
+    const std::string &mac() const;
+    const std::string &logical_switch_name() const;
+    const std::string &dest_ip() const;
+
 private:
     friend class UnicastMacLocalOvsdb;
     std::string mac_;

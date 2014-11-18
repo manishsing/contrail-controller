@@ -66,6 +66,11 @@ public:
     std::string ToString() const {return "Unicast Mac Remote";}
     KSyncEntry* UnresolvedReference();
 
+    const std::string &mac() const;
+    const std::string &logical_switch_name() const;
+    const std::string &dest_ip() const;
+    bool self_exported_route() const;
+
 private:
     friend class UnicastMacRemoteTable;
     friend class VrfOvsdbObject;
@@ -92,6 +97,8 @@ public:
     void OvsdbRouteNotify(OvsdbClientIdl::Op, struct ovsdb_idl_row *);
 
     void VrfNotify(DBTablePartBase *partition, DBEntryBase *e);
+    const LogicalSwitchMap &logical_switch_map() const;
+
 private:
     OvsdbClientIdl *client_idl_;
     DBTable *table_;

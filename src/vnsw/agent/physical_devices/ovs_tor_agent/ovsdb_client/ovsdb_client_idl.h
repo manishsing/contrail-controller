@@ -83,6 +83,9 @@ public:
     LogicalSwitchTable *logical_switch_table();
     PhysicalPortTable *physical_port_table();
     PhysicalLocatorTable *physical_locator_table();
+    VlanPortBindingTable *vlan_port_table();
+    UnicastMacLocalOvsdb *unicast_mac_local_ovsdb();
+    VrfOvsdbObject *vrf_ovsdb();
 
 private:
     friend void ovsdb_wrapper_idl_callback(void *, int, struct ovsdb_idl_row *);

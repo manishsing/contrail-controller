@@ -41,6 +41,7 @@ TcpSession *OvsdbClientTcp::AllocSession(Socket *socket) {
 void OvsdbClientTcp::OnSessionEvent(TcpSession *session,
         TcpSession::Event event) {
     OvsdbClientTcpSession *tcp = static_cast<OvsdbClientTcpSession *>(session);
+    boost::system::error_code ec;
     switch (event) {
     case TcpSession::CONNECT_FAILED:
         /* Failed to Connect, Try Again! */
@@ -52,6 +53,8 @@ void OvsdbClientTcp::OnSessionEvent(TcpSession *session,
         tcp->OnClose();
         break;
     case TcpSession::CONNECT_COMPLETE:
+        ec = tcp->SetSocketOptions();
+        assert(ec.value() == 0);
         tcp->set_status("Established");
         tcp->OnEstablish();
         break;

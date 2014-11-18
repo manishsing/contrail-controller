@@ -44,6 +44,9 @@ using OVSDB::PhysicalSwitchTable;
 using OVSDB::LogicalSwitchTable;
 using OVSDB::PhysicalPortTable;
 using OVSDB::PhysicalLocatorTable;
+using OVSDB::VlanPortBindingTable;
+using OVSDB::UnicastMacLocalOvsdb;
+using OVSDB::VrfOvsdbObject;
 
 namespace OVSDB {
 void ovsdb_wrapper_idl_callback(void *idl_base, int op,
@@ -190,5 +193,17 @@ PhysicalPortTable *OvsdbClientIdl::physical_port_table() {
 
 PhysicalLocatorTable *OvsdbClientIdl::physical_locator_table() {
     return physical_locator_table_.get();
+}
+
+VlanPortBindingTable *OvsdbClientIdl::vlan_port_table() {
+    return vlan_port_table_.get();
+}
+
+UnicastMacLocalOvsdb *OvsdbClientIdl::unicast_mac_local_ovsdb() {
+    return unicast_mac_local_ovsdb_.get();
+}
+
+VrfOvsdbObject *OvsdbClientIdl::vrf_ovsdb() {
+    return vrf_ovsdb_.get();
 }
 
