@@ -12,9 +12,16 @@
 #include <agent_types.h>
 
 extern SandeshTraceBufferPtr OvsdbTraceBuf;
+extern SandeshTraceBufferPtr OvsdbPktTraceBuf;
+
 #define OVSDB_TRACE(obj, ...)\
 do {\
     Ovsdb##obj::TraceMsg(OvsdbTraceBuf, __FILE__, __LINE__, __VA_ARGS__);\
+} while(false);
+
+#define OVSDB_PKT_TRACE(obj, ...)\
+do {\
+    Ovsdb##obj::TraceMsg(OvsdbPktTraceBuf, __FILE__, __LINE__, __VA_ARGS__);\
 } while(false);
 
 class OvsPeer;
