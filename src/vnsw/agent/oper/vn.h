@@ -260,6 +260,7 @@ private:
     void DeleteAllIpamRoutes(VnEntry *vn);
     void AddSubnetRoute(VnEntry *vn, VnIpam &ipam);
     void DelSubnetRoute(VnEntry *vn, VnIpam &ipam);
+    bool IsGwHostRouteRequired();
     void AddHostRoute(VnEntry *vn, const IpAddress &address);
     void DelHostRoute(VnEntry *vn, const IpAddress &address);
     bool ChangeHandler(DBEntry *entry, const DBRequest *req);
