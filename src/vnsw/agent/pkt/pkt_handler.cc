@@ -71,7 +71,7 @@ void PktHandler::InterfaceNotify(DBEntryBase *entry) {
         return;
 
     const VmInterface *vmitf = static_cast<VmInterface *>(entry);
-    if (vmitf->vm_mac().empty() || !vmitf->vn())
+    if (vmitf->vm_mac().empty())
         return;
 
     boost::system::error_code ec;
@@ -79,14 +79,32 @@ void PktHandler::InterfaceNotify(DBEntryBase *entry) {
     if (ec) {
         return;
     }
-    MacVmBindingKey key(address, vmitf->vn()->GetVxLanId());
 
-    if (entry->IsDeleted()) {
-        mac_vm_binding_map_.erase(key);
-    } else {
-        // assumed that VM mac and VN's vxlan id do not change
-        mac_vm_binding_map_.insert(MacVmBindingPair(key, itf));
+    MacVmBindingSet::iterator it = FindMacVmBinding(address, itf);
+    if (it != mac_vm_binding_.end())
+        mac_vm_binding_.erase(it);
+
+    if (!entry->IsDeleted()) {
+        if (!vmitf->vn() || vmitf->vn()->GetVxLanId() == 0) {
+            return;
+        }
+        // assumed that VM mac does not change
+        MacVmBindingKey key(address, vmitf->vn()->GetVxLanId(), itf);
+        mac_vm_binding_.insert(key);
     }
+}
+
+PktHandler::MacVmBindingSet::iterator
+PktHandler::FindMacVmBinding(MacAddress &address, const Interface *interface) {
+    MacVmBindingSet::iterator it =
+        mac_vm_binding_.lower_bound(MacVmBindingKey(address, 0, NULL));
+    while (it != mac_vm_binding_.end()) {
+        if (it->interface == interface)
+            return it;
+        it++;
+    }
+
+    return it;
 }
 
 void PktHandler::Register(PktModuleName type, RcvQueueFunc cb) {
@@ -534,17 +552,17 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
         ether_addr addr;
         memcpy(addr.ether_addr_octet, pkt_info->eth->ether_shost, ETH_ALEN);
         MacAddress address(addr);
-        MacVmBindingKey key(address, vxlan);
-        MacVmBindingMap::iterator it = mac_vm_binding_map_.find(key);
-        if (it == mac_vm_binding_map_.end())
+        MacVmBindingKey key(address, vxlan, NULL);
+        MacVmBindingSet::iterator it = mac_vm_binding_.find(key);
+        if (it == mac_vm_binding_.end())
             return false;
 
         // update agent_hdr to reflect the VM interface data
         // cmd_param is set to physical interface id
         pkt_info->agent_hdr.cmd = AgentHdr::TRAP_TOR_CONTROL_PKT;
         pkt_info->agent_hdr.cmd_param = pkt_info->agent_hdr.ifindex;
-        pkt_info->agent_hdr.ifindex = it->second->id();
-        pkt_info->agent_hdr.vrf = it->second->vrf_id();
+        pkt_info->agent_hdr.ifindex = it->interface->id();
+        pkt_info->agent_hdr.vrf = it->interface->vrf_id();
 
         // Parse payload
         if (pkt_info->ether_type == ETHERTYPE_ARP) {

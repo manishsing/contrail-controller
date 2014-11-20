@@ -690,8 +690,10 @@ bool VnTable::IpamChangeNotify(std::vector<VnIpam> &old_ipam,
                 // If gateway is changed then take appropriate actions.
                 IpAddress unspecified;
                 if (gateway_changed) {
-                    UpdateHostRoute((*it_old).default_gw,
-                                    (*it_new).default_gw, vn);
+                    if (IsGwHostRouteRequired()) {
+                        UpdateHostRoute((*it_old).default_gw,
+                                        (*it_new).default_gw, vn);
+                    }
                 }
                 if (service_address_changed) {
                     UpdateHostRoute((*it_old).dns_server,
@@ -754,7 +756,8 @@ void VnTable::AddIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
         if (vrf->GetName() == Agent::GetInstance()->linklocal_vrf_name()) {
             return;
         }
-        AddHostRoute(vn, ipam.default_gw);
+        if (IsGwHostRouteRequired())
+            AddHostRoute(vn, ipam.default_gw);
         AddHostRoute(vn, ipam.dns_server);
         AddSubnetRoute(vn, ipam);
         ipam.installed = true;
@@ -764,11 +767,16 @@ void VnTable::AddIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
 void VnTable::DelIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
     VrfEntry *vrf = vn->GetVrf();
     if (vrf && ipam.installed) {
-        DelHostRoute(vn, ipam.default_gw);
+        if (IsGwHostRouteRequired())
+            DelHostRoute(vn, ipam.default_gw);
         DelHostRoute(vn, ipam.dns_server);
         DelSubnetRoute(vn, ipam);
         ipam.installed = false;
     }
+}
+
+bool VnTable::IsGwHostRouteRequired() {
+    return (!agent()->tsn_enabled());
 }
 
 // Add receive route for default gw
