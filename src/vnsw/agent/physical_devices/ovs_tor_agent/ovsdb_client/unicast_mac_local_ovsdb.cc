@@ -5,7 +5,9 @@
 extern "C" {
 #include <ovsdb_wrapper.h>
 };
+#include <oper/vn.h>
 #include <physical_devices/ovs_tor_agent/tor_agent_init.h>
+#include <physical_devices/tables/physical_device_vn.h>
 #include <ovsdb_client.h>
 #include <ovsdb_client_idl.h>
 #include <ovsdb_client_session.h>
@@ -17,6 +19,7 @@ extern "C" {
 #include <logical_switch_ovsdb.h>
 #include <unicast_mac_local_ovsdb.h>
 
+using namespace AGENT;
 using OVSDB::UnicastMacLocalOvsdb;
 using OVSDB::UnicastMacLocalEntry;
 using OVSDB::OvsdbClientSession;
@@ -57,8 +60,11 @@ bool UnicastMacLocalEntry::Delete() {
     UnicastMacLocalOvsdb *table = static_cast<UnicastMacLocalOvsdb *>(table_);
     OVSDB_TRACE(Trace, "Deleting Route " + mac_ + " VN uuid " +
             logical_switch_name_ + " destination IP " + dest_ip_);
-    boost::uuids::uuid ls_uuid = StringToUuid(logical_switch_name_);
-    table->peer()->DeleteOvsRoute(ls_uuid, MacAddress(mac_));
+    LogicalSwitchEntry *ls_entry =
+        static_cast<LogicalSwitchEntry *>(logical_switch_.get());
+    const PhysicalDeviceVnEntry *dev_vn =
+        static_cast<const PhysicalDeviceVnEntry *>(ls_entry->GetDBEntry());
+    table->peer()->DeleteOvsRoute(dev_vn->vn(), MacAddress(mac_));
     return true;
 }
 
