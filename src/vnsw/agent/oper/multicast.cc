@@ -232,6 +232,12 @@ void DeleteTorFromAllMulticastObject(MulticastHandler *mc_handler,
                                                       multicast_tor_peer(),
                                                       obj->vrf_name(),
                                                       obj->vxlan_id());
+            ComponentNHKeyList component_nh_key_list; //dummy list
+            mc_handler->RebakeSubnetRoute(Agent::GetInstance()->multicast_tor_peer(),
+                                          obj->vrf_name(), 0, obj->vxlan_id(),
+                                          obj ? obj->GetVnName() : "",
+                                          true, component_nh_key_list,
+                                          Composite::TOR);
             if (obj->CanBeDeleted()) {
                 MCTRACE(Log, "delete obj  vrf/grp/size ",
                         obj->vrf_name(), obj->GetGroupAddress().to_string(),
@@ -292,6 +298,11 @@ void HandleTorRoute(MulticastHandler *mc_handler,
                                                       multicast_tor_peer(),
                                                       device_vn_vrf->GetName(),
                                                       vxlan_id);
+            ComponentNHKeyList component_nh_key_list; //dummy list
+            mc_handler->RebakeSubnetRoute(Agent::GetInstance()->multicast_tor_peer(),
+                                          device_vn_vrf->GetName(), 0, vxlan_id, "",
+                                          true, component_nh_key_list,
+                                          Composite::TOR);
             MulticastHandler::GetInstance()->
                 DeleteMulticastObject(device_vn->GetVrf()->GetName(), addr);
             return;
@@ -749,6 +760,10 @@ void MulticastHandler::RebakeSubnetRoute(const Peer *peer,
                                          const ComponentNHKeyList &comp_nh_list,
                                          COMPOSITETYPE comp_type)
 {
+    if (peer->GetType() != Peer::MULTICAST_TOR_PEER &&
+        peer->GetType() != Peer::BGP_PEER) {
+        return;
+    }
     std::vector<VnIpam> &vrf_ipam =
         (vrf_ipam_mapping_.find(vrf_name))->second;
     for (std::vector<VnIpam>::iterator it = vrf_ipam.begin();
