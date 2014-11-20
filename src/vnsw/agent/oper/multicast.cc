@@ -387,7 +387,7 @@ bool MulticastHandler::TorWalker(DBTablePartBase *partition,
 
 void MulticastHandler::HandleTor(const VnEntry *vn) 
 {
-    if (Agent::GetInstance()->tsn_enabled()) {
+    if (Agent::GetInstance()->tsn_enabled() == false) {
         return;
     }
 
