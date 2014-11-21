@@ -10,8 +10,8 @@ extern "C" {
 #include <physical_locator_ovsdb.h>
 
 #include <oper/vn.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 #include <ovsdb_types.h>
 
 using namespace AGENT;
@@ -21,7 +21,7 @@ using OVSDB::OvsdbDBEntry;
 using OVSDB::OvsdbDBObject;
 
 LogicalSwitchEntry::LogicalSwitchEntry(OvsdbDBObject *table,
-        const AGENT::PhysicalDeviceVnEntry *entry) : OvsdbDBEntry(table),
+        const PhysicalDeviceVnEntry *entry) : OvsdbDBEntry(table),
         name_(UuidToString(entry->vn()->GetUuid())), mcast_local_row_(NULL),
         mcast_remote_row_(NULL), old_mcast_remote_row_(NULL) {
     vxlan_id_ = entry->vn()->GetVxLanId();

@@ -14,9 +14,10 @@ extern "C" {
 #include <oper/vn.h>
 #include <oper/interface.h>
 #include <oper/vm_interface.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
-#include <physical_devices/tables/logical_port.h>
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
+#include <oper/physical_interface.h>
+#include <oper/logical_interface.h>
 #include <ovsdb_types.h>
 
 using OVSDB::OvsdbDBEntry;
@@ -27,9 +28,10 @@ using OVSDB::PhysicalPortEntry;
 using OVSDB::LogicalSwitchEntry;
 
 VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
-        const AGENT::VlanLogicalPortEntry *entry) : OvsdbDBEntry(table_),
-    logical_switch_name_(), physical_port_name_(entry->physical_port()->name()),
-    physical_device_name_(entry->physical_port()->device()->name()),
+        const VlanLogicalInterface *entry) : OvsdbDBEntry(table_),
+    logical_switch_name_(),
+    physical_port_name_(entry->physical_interface()->name()),
+    physical_device_name_(entry->physical_interface()->physical_device()->name()),
     vlan_(entry->vlan()) {
 }
 
@@ -99,8 +101,8 @@ void VlanPortBindingEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
 }
 
 bool VlanPortBindingEntry::Sync(DBEntry *db_entry) {
-    AGENT::VlanLogicalPortEntry *entry =
-        static_cast<AGENT::VlanLogicalPortEntry *>(db_entry);
+    VlanLogicalInterface *entry =
+        static_cast<VlanLogicalInterface *>(db_entry);
     std::string ls_name;
     boost::uuids::uuid vmi_uuid;
     bool change = false;
@@ -210,8 +212,8 @@ KSyncEntry *VlanPortBindingTable::Alloc(const KSyncEntry *key, uint32_t index) {
 }
 
 KSyncEntry *VlanPortBindingTable::DBToKSyncEntry(const DBEntry* db_entry) {
-    const AGENT::VlanLogicalPortEntry *entry =
-        static_cast<const AGENT::VlanLogicalPortEntry *>(db_entry);
+    const VlanLogicalInterface *entry =
+        static_cast<const VlanLogicalInterface *>(db_entry);
     VlanPortBindingEntry *key = new VlanPortBindingEntry(this, entry);
     return static_cast<KSyncEntry *>(key);
 }
@@ -222,10 +224,10 @@ OvsdbDBEntry *VlanPortBindingTable::AllocOvsEntry(struct ovsdb_idl_row *row) {
 
 KSyncDBObject::DBFilterResp VlanPortBindingTable::DBEntryFilter(
         const DBEntry *entry) {
-    const AGENT::VlanLogicalPortEntry *l_port =
-        static_cast<const AGENT::VlanLogicalPortEntry *>(entry);
-    if (l_port->physical_port() == NULL ||
-        l_port->physical_port()->device() == NULL) {
+    const VlanLogicalInterface *l_port =
+        static_cast<const VlanLogicalInterface *>(entry);
+    if (l_port->physical_interface() == NULL ||
+        l_port->physical_interface()->physical_device() == NULL) {
         // Since we need physical port name and device name as key, ignore entry
         // if physical port or device is not yet present.
         return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.

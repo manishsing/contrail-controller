@@ -26,12 +26,12 @@
 #define DEFAULT_WALKER_YIELD 1024
 
 using namespace pugi;
-int num_vns = 1;
-int num_vms_per_vn = 1;
-int num_ctrl_peers = 1;
-int walker_wait_usecs = 0;
-int walker_yield = 0;
-int num_remote = 0;
+uint32_t num_vns = 1;
+uint32_t num_vms_per_vn = 1;
+uint32_t num_ctrl_peers = 1;
+uint32_t walker_wait_usecs = 0;
+uint32_t walker_yield = 0;
+uint32_t num_remote = 0;
 
 void SetWalkerYield(int yield) {
     char iterations_env[80];
@@ -105,7 +105,7 @@ Ip4Address IncrementIpAddress(Ip4Address base_addr) {
 void InitXmppServers() {
     Ip4Address addr = Ip4Address::from_string("127.0.0.0");
 
-    for (int i = 0; i < num_ctrl_peers; i++) {
+    for (uint32_t i = 0; i < num_ctrl_peers; i++) {
         addr = IncrementIpAddress(addr);
         Agent::GetInstance()->set_controller_ifmap_xmpp_server(addr.to_string(), i);
     }
@@ -161,7 +161,6 @@ public:
 
         EXPECT_TRUE(item.XmlParse(node));
         EXPECT_TRUE(item.entry.nlri.af == BgpAf::IPv4);
-        uint32_t label = 0;
         if (peer_skip_route_list_.find(item.entry.nlri.address) !=
            peer_skip_route_list_.end()) {
             return;
@@ -206,7 +205,6 @@ public:
 
         EXPECT_TRUE(item.XmlParse(node));
         EXPECT_TRUE(item.entry.nlri.af == BgpAf::L2Vpn);
-        uint32_t label = 0;
         if (peer_skip_route_list_.find(item.entry.nlri.mac) !=
            peer_skip_route_list_.end()) {
             return;
@@ -557,7 +555,7 @@ protected:
     }
  
     virtual void SetUp() {
-        for (int i = 0; i < num_ctrl_peers; i++) {
+        for (uint32_t i = 0; i < num_ctrl_peers; i++) {
             xs[i] = new XmppServer(&evm_, XmppInit::kControlNodeJID);
             xc[i] = new XmppClient(&evm_);
 
@@ -574,7 +572,7 @@ protected:
         TaskScheduler::GetInstance()->Start();
         client->WaitForIdle();
 
-        for (int i = 0; i < num_ctrl_peers; i++) {
+        for (uint32_t i = 0; i < num_ctrl_peers; i++) {
             Agent::GetInstance()->set_controller_xmpp_channel(NULL, i);
             xc[i]->ConfigUpdate(new XmppConfigData());
             client->WaitForIdle(5);
@@ -595,7 +593,7 @@ protected:
         WAIT_FOR(1000, 1000, (Agent::GetInstance()->controller()->DecommissionedPeerListSize() 
                               == 0));
 
-        for (int i = 0; i < num_ctrl_peers; i++) {
+        for (uint32_t i = 0; i < num_ctrl_peers; i++) {
             TcpServerManager::DeleteServer(xs[i]);
             TcpServerManager::DeleteServer(xc[i]);
         }
@@ -617,9 +615,8 @@ protected:
         return cfg;
     }
 
-    void VerifyConnections(int i, int mock_peer_count = 1) {
+    void VerifyConnections(int i, uint32_t mock_peer_count = 1) {
         XmppServer *xs_l = xs[i];
-        XmppClient *xc_l = xc[i];
 
         XmppConnection *sconnection_l = sconnection[i];
 
@@ -642,7 +639,7 @@ protected:
 
     void BuildControlPeers() {
         Ip4Address addr = Ip4Address::from_string("127.0.0.0");
-        for (int i = 0; i < num_ctrl_peers; i++) {
+        for (uint32_t i = 0; i < num_ctrl_peers; i++) {
             addr = IncrementIpAddress(addr);
             //Create control node mock
             mock_peer[i].reset(new ControlNodeMockBgpXmppPeer());
@@ -682,7 +679,7 @@ protected:
         //Build the VM port list
         input = (struct PortInfo *)malloc(sizeof(struct PortInfo) * num_entries);
         int intf_id = 1;
-        for (int vn_cnt = 1; vn_cnt <= num_vns; vn_cnt++) {
+        for (uint32_t vn_cnt = 1; vn_cnt <= num_vns; vn_cnt++) {
             stringstream ip_addr;
             ip_addr << vn_cnt << ".1.1.0";
             Ip4Address addr = 
@@ -714,7 +711,7 @@ protected:
 
     void VerifyVmPortActive(bool active) {
         int intf_id;
-        for (int i = 0; i < (num_vns * num_vms_per_vn); i++) {
+        for (uint32_t i = 0; i < (num_vns * num_vms_per_vn); i++) {
             intf_id = input[i].intf_id;
             if (active) {
                 WAIT_FOR(1000, 1000, VmPortActive(intf_id));
@@ -729,7 +726,7 @@ protected:
         PortInfo *del_input = NULL;
         int input_id = 0;
         int intf_count = agent_->interface_table()->Size();
-        for (int vn_cnt = 1; vn_cnt <= num_vns; vn_cnt++) {
+        for (uint32_t vn_cnt = 1; vn_cnt <= num_vns; vn_cnt++) {
             for (int j = 0; j < num_vms_per_vn; j++) {
                 del_input = &input[input_id];
                 DeleteVmportEnv(del_input, 1, 1);
@@ -755,14 +752,14 @@ protected:
         int intf_id = 1;
         MacAddress flood_mac = MacAddress::BroadcastMac();
         MacAddress local_vm_mac;
-        for (int vn_cnt = 1; vn_cnt <= num_vns; vn_cnt++) {
+        for (uint32_t vn_cnt = 1; vn_cnt <= num_vns; vn_cnt++) {
             stringstream ip_addr;
             ip_addr << vn_cnt << ".1.1.0";
             Ip4Address addr =
                 IncrementIpAddress(Ip4Address::from_string(ip_addr.str()));
             stringstream name;
             name << "vrf" << intf_id;
-            for (int vm_cnt = 0; vm_cnt < num_vms_per_vn; vm_cnt++) {
+            for (uint32_t vm_cnt = 0; vm_cnt < num_vms_per_vn; vm_cnt++) {
                 stringstream mac;
                 mac << "00:00:00:00:" << std::hex << vn_cnt << ":" <<
                     std::hex << (vm_cnt + 1);

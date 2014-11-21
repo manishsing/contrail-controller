@@ -9,10 +9,8 @@
 #include <agent_types.h>
 
 namespace AGENT {
-class PhysicalDeviceTable;
 class PhysicalPortTable;
 class LogicalPortTable;
-class PhysicalDeviceVnTable;
 }
 class TsnVrfListener;
 
@@ -27,23 +25,18 @@ class PhysicalDeviceManager {
     void Shutdown();
 
     Agent *agent() const { return agent_; }
-    AGENT::PhysicalDeviceTable *device_table() const { return device_table_; }
+
     AGENT::PhysicalPortTable *physical_port_table() const {
         return physical_port_table_;
     }
     AGENT::LogicalPortTable *logical_port_table() const {
         return logical_port_table_;
     }
-    AGENT::PhysicalDeviceVnTable *physical_device_vn_table() const {
-        return physical_device_vn_table_;
-    }
 
  private:
     Agent *agent_;
-    AGENT::PhysicalDeviceTable *device_table_;
     AGENT::PhysicalPortTable *physical_port_table_;
     AGENT::LogicalPortTable *logical_port_table_;
-    AGENT::PhysicalDeviceVnTable *physical_device_vn_table_;
     std::auto_ptr<TsnVrfListener> tsn_vrf_listener_;
 
     DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceManager);

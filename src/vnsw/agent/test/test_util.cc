@@ -803,7 +803,7 @@ bool VmPortInactive(PortInfo *input, int id) {
 
 PhysicalInterface *EthInterfaceGet(const char *name) {
     PhysicalInterface *intf;
-    PhysicalInterfaceKey key(name);
+    PhysicalInterfaceKey key(nil_uuid(), name);
     intf=static_cast<PhysicalInterface *>(Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
     return intf;
 }
@@ -1264,7 +1264,7 @@ bool TunnelRouteAdd(const char *server, const char *vmip, const char *vm_vrf,
 bool AddArp(const char *ip, const char *mac_str, const char *ifname) {
     MacAddress mac(mac_str);
     Interface *intf;
-    PhysicalInterfaceKey key(ifname);
+    PhysicalInterfaceKey key(nil_uuid(), ifname);
     intf = static_cast<Interface *>(Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
     boost::system::error_code ec;
     InetUnicastAgentRouteTable::ArpRoute(DBRequest::DB_ENTRY_ADD_CHANGE,
@@ -1279,7 +1279,7 @@ bool AddArp(const char *ip, const char *mac_str, const char *ifname) {
 bool DelArp(const string &ip, const char *mac_str, const string &ifname) {
     MacAddress mac(mac_str);
     Interface *intf;
-    PhysicalInterfaceKey key(ifname);
+    PhysicalInterfaceKey key(nil_uuid(), ifname);
     intf = static_cast<Interface *>(Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
     boost::system::error_code ec;
     InetUnicastAgentRouteTable::ArpRoute(DBRequest::DB_ENTRY_DELETE,

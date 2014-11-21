@@ -17,32 +17,15 @@
 
 #include <physical_devices/tables/physical_devices_types.h>
 #include <physical_devices/tables/device_manager.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_port.h>
-#include <physical_devices/tables/logical_port.h>
-#include <physical_devices/tables/physical_device_vn.h>
+#include <oper/physical_device.h>
+#include <oper/physical_interface.h>
+#include <oper/logical_interface.h>
+#include <oper/physical_device_vn.h>
 
 using namespace std;
 using namespace pugi;
 using namespace boost::uuids;
 using namespace AgentUtXmlUtils;
-
-using AGENT::PhysicalDeviceEntry;
-using AGENT::PhysicalDeviceTable;
-using AGENT::PhysicalDeviceKey;
-
-using AGENT::PhysicalPortEntry;
-using AGENT::PhysicalPortTable;
-using AGENT::PhysicalPortKey;
-
-using AGENT::LogicalPortEntry;
-using AGENT::LogicalPortTable;
-using AGENT::VlanLogicalPortKey;
-using AGENT::DefaultLogicalPortKey;
-
-using AGENT::PhysicalDeviceVnEntry;
-using AGENT::PhysicalDeviceVnTable;
-using AGENT::PhysicalDeviceVnKey;
 
 AgentUtXmlValidationNode *
 CreatePhysicalDeviceValidateNode(const string &type, const string &name,
@@ -232,7 +215,7 @@ bool AgentUtXmlPhysicalDeviceValidate::Validate() {
     PhysicalDeviceEntry *dev;
     PhysicalDeviceKey key(id_);
     dev = static_cast<PhysicalDeviceEntry *>
-        (Agent::GetInstance()->device_manager()->device_table()->FindActiveEntry(&key));
+        (Agent::GetInstance()->physical_device_table()->FindActiveEntry(&key));
     if (present()) {
         return dev != NULL;
     } else {
@@ -270,12 +253,12 @@ bool AgentUtXmlPhysicalInterfaceValidate::ReadXml() {
 }
 
 bool AgentUtXmlPhysicalInterfaceValidate::Validate() {
-    PhysicalDeviceManager *mgr = Agent::GetInstance()->device_manager();
+    Agent *agent = Agent::GetInstance();
 
-    PhysicalPortEntry *port;
-    PhysicalPortKey key(id_);
-    port = static_cast<PhysicalPortEntry *>
-        (mgr->physical_port_table()->FindActiveEntry(&key));
+    PhysicalInterface *port;
+    PhysicalInterfaceKey key(id_, "");
+    port = static_cast<PhysicalInterface *>
+        (agent->interface_table()->FindActiveEntry(&key));
 
     if (present() == false) {
         if (port != NULL)
@@ -287,7 +270,7 @@ bool AgentUtXmlPhysicalInterfaceValidate::Validate() {
         return false;
 
     if (device_uuid_ != nil_uuid()) {
-        PhysicalDeviceEntry *dev = port->device();
+        PhysicalDeviceEntry *dev = port->physical_device();
         if (dev->uuid() != device_uuid_)
             return false;
     }
@@ -332,19 +315,11 @@ bool AgentUtXmlLogicalInterfaceValidate::ReadXml() {
 }
 
 bool AgentUtXmlLogicalInterfaceValidate::Validate() {
-    PhysicalDeviceManager *mgr = Agent::GetInstance()->device_manager();
+    Agent *agent = Agent::GetInstance();
 
-    LogicalPortEntry *port;
-
-    if (vlan_ == 0) {
-        DefaultLogicalPortKey key(id_);
-        port = static_cast<LogicalPortEntry *>
-            (mgr->logical_port_table()->FindActiveEntry(&key));
-    } else {
-        VlanLogicalPortKey key(id_);
-        port = static_cast<LogicalPortEntry *>
-            (mgr->logical_port_table()->FindActiveEntry(&key));
-    }
+    VlanLogicalInterfaceKey key(id_, "");
+    LogicalInterface *port = static_cast<LogicalInterface *>
+        (agent->interface_table()->FindActiveEntry(&key));
 
     if (present() == false) {
         if (port != NULL)
@@ -356,8 +331,8 @@ bool AgentUtXmlLogicalInterfaceValidate::Validate() {
         return false;
 
     if (physical_port_uuid_ != nil_uuid()) {
-        PhysicalPortEntry *physical_port = port->physical_port();
-        if (physical_port->uuid() != physical_port_uuid_)
+        PhysicalInterface *physical_port = port->physical_interface();
+        if (physical_port->GetUuid() != physical_port_uuid_)
             return false;
     }
 
@@ -406,12 +381,12 @@ bool AgentUtXmlPhysicalDeviceVnValidate::ReadXml() {
 }
 
 bool AgentUtXmlPhysicalDeviceVnValidate::Validate() {
-    PhysicalDeviceManager *mgr = Agent::GetInstance()->device_manager();
+    Agent *agent = Agent::GetInstance();
 
     PhysicalDeviceVnEntry *entry;
     PhysicalDeviceVnKey key(device_uuid_, vn_uuid_);
     entry = static_cast<PhysicalDeviceVnEntry *>
-        (mgr->physical_device_vn_table()->FindActiveEntry(&key));
+        (agent->physical_device_vn_table()->FindActiveEntry(&key));
 
     if (present() == false) {
         if (entry != NULL)

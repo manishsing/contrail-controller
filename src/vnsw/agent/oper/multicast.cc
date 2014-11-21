@@ -17,8 +17,8 @@
 #include <oper/mpls.h>
 #include <controller/controller_init.h>
 #include <controller/controller_route_path.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 
 #include <sandesh/sandesh_types.h>
 #include <sandesh/sandesh_constants.h>
@@ -26,10 +26,6 @@
 #include <sandesh/sandesh_trace.h>
 
 using namespace std;
-using AGENT::PhysicalDeviceVnTable;
-using AGENT::PhysicalDeviceTable;
-using AGENT::PhysicalDeviceVnEntry;
-using AGENT::PhysicalDeviceEntry;
 
 #define INVALID_PEER_IDENTIFIER ControllerPeerPath::kInvalidPeerIdentifier
 
@@ -49,7 +45,7 @@ void MulticastHandler::Register() {
         boost::bind(&MulticastHandler::ModifyVmInterface, _1, _2));
     if (Agent::GetInstance()->tsn_enabled()) {
         physical_device_vn_listener_id_ =
-            agent_->device_manager()->physical_device_vn_table()->
+            agent_->physical_device_vn_table()->
             Register(boost::bind(&MulticastHandler::ModifyTor,
                                  _1, _2));
     }
@@ -259,7 +255,7 @@ void MulticastHandler::HandleTor(const VnEntry *vn)
     if (!vn->GetVrf())
         return;
     if ((Agent::GetInstance()->device_manager() == NULL) ||
-        (Agent::GetInstance()->device_manager()->physical_device_vn_table()
+        (Agent::GetInstance()->physical_device_vn_table()
          == NULL)) {
         return;
     }
@@ -272,8 +268,8 @@ void MulticastHandler::HandleTor(const VnEntry *vn)
     //    walker->WalkCancel(it->second);
     DBTableWalker::WalkId walk_id = DBTableWalker::kInvalidWalkerId;
     //Start a walk on VN table
-    walk_id = walker->WalkTable(Agent::GetInstance()->device_manager()->
-                      physical_device_vn_table(), NULL,
+    walk_id = walker->WalkTable(Agent::GetInstance()->physical_device_vn_table(),
+                                NULL,
                       boost::bind(&MulticastHandler::TorWalker, this, _1,
                                   _2, vn),
                       boost::bind(&MulticastHandler::WalkDone, this,

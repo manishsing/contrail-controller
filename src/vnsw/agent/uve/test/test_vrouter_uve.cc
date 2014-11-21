@@ -432,7 +432,8 @@ TEST_F(UveVrouterUveTest, BandwidthTest_1) {
     vector<AgentIfBandwidth> empty_list;
     uve.set_phy_if_1min_usage(empty_list);
 
-    PhysicalInterfaceKey key(Agent::GetInstance()->params()->eth_port());
+    PhysicalInterfaceKey key(nil_uuid(),
+                             Agent::GetInstance()->params()->eth_port());
     Interface *intf = static_cast<Interface *>
         (Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
     EXPECT_TRUE((intf != NULL));
@@ -496,7 +497,8 @@ TEST_F(UveVrouterUveTest, BandwidthTest_2) {
     vr->clear_count();
     VrouterStatsAgent &uve = vr->prev_stats();
 
-    PhysicalInterfaceKey key(Agent::GetInstance()->params()->eth_port());
+    PhysicalInterfaceKey key(nil_uuid(),
+                             Agent::GetInstance()->params()->eth_port());
     Interface *intf = static_cast<Interface *>
         (Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
     EXPECT_TRUE((intf != NULL));
@@ -595,7 +597,8 @@ TEST_F(UveVrouterUveTest, BandwidthTest_3) {
     vr->clear_count();
     VrouterStatsAgent &uve = vr->prev_stats();
 
-    PhysicalInterfaceKey key(Agent::GetInstance()->params()->eth_port());
+    PhysicalInterfaceKey key(nil_uuid(),
+                             Agent::GetInstance()->params()->eth_port());
     Interface *intf = static_cast<Interface *>
         (Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
     EXPECT_TRUE((intf != NULL));

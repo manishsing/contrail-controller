@@ -106,7 +106,8 @@ public:
     }
 
     std::size_t fabric_interface_id() { 
-        PhysicalInterfaceKey key(Agent::GetInstance()->params()->eth_port().c_str());
+        PhysicalInterfaceKey key(nil_uuid(),
+                                 Agent::GetInstance()->params()->eth_port().c_str());
         Interface *intf = static_cast<Interface *>
             (Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
         if (intf)
@@ -393,7 +394,7 @@ public:
         // Check the dhcp_enable flag
         VnEntry *vn = VnGet(1);
         std::vector<VnIpam> vn_ipam = vn->GetVnIpam();
-        for (int i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
+        for (uint32_t i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
             EXPECT_TRUE(vn_ipam[i].dhcp_enable == ipam_info[i].dhcp_enable);
         }
 
@@ -407,13 +408,13 @@ public:
         EXPECT_EQ(1U, stats.acks);
 
         // modify IPAM dhcp_enable
-        for (int i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
+        for (uint32_t i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
             ipam_info[i].dhcp_enable = !ipam_info[i].dhcp_enable;
         }
         AddIPAM("vn1", ipam_info, 3, ipam_attr, "vdns1");
         client->WaitForIdle();
         vn_ipam = vn->GetVnIpam();
-        for (int i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
+        for (uint32_t i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
             EXPECT_TRUE(vn_ipam[i].dhcp_enable == ipam_info[i].dhcp_enable);
         }
 

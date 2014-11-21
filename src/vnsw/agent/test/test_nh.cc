@@ -1098,7 +1098,6 @@ TEST_F(CfgTest, EcmpNH_9) {
     InetUnicastRouteEntry *rt1 = RouteGet("vrf1", ip1, 32);
     EXPECT_TRUE(rt1->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
 
-    const NextHop *nh = rt1->GetActiveNextHop();
     //Change ip1 route nexthop to be unicast nexthop
     Inet4TunnelRouteAdd(bgp_peer, "vrf1", ip1, 32, remote_server_ip1,
                         TunnelType::AllType(), 8, "vn1",

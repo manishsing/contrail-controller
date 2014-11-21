@@ -564,20 +564,22 @@ void InterfaceNH::CreatePacketInterfaceNh(const string &ifname) {
     NextHopTable::GetInstance()->Process(req);
 }
 
-void InterfaceNH::CreatePhysicalInterfaceNh(const string &ifname,
+void InterfaceNH::CreatePhysicalInterfaceNh(const boost::uuids::uuid &uuid,
+                                            const string &ifname,
                                             const MacAddress &mac) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    req.key.reset(new InterfaceNHKey(new PhysicalInterfaceKey(ifname), false,
-                                     InterfaceNHFlags::INET4));
+    req.key.reset(new InterfaceNHKey(new PhysicalInterfaceKey(uuid, ifname),
+                                     false, InterfaceNHFlags::INET4));
     req.data.reset(new InterfaceNHData(Agent::GetInstance()->fabric_vrf_name(),
                                        mac));
     NextHopTable::GetInstance()->Process(req);
 }
 
-void InterfaceNH::DeletePhysicalInterfaceNh(const string &ifname) {
+void InterfaceNH::DeletePhysicalInterfaceNh(const boost::uuids::uuid &uuid,
+                                            const string &ifname) {
     DBRequest req(DBRequest::DB_ENTRY_DELETE);
-    req.key.reset(new InterfaceNHKey(new PhysicalInterfaceKey(ifname), false,
-                                     InterfaceNHFlags::INET4));
+    req.key.reset(new InterfaceNHKey(new PhysicalInterfaceKey(uuid, ifname),
+                                     false, InterfaceNHFlags::INET4));
     req.data.reset(NULL);
     NextHopTable::GetInstance()->Process(req);
 }

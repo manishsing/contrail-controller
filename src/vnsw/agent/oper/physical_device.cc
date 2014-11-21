@@ -13,19 +13,16 @@
 #include <oper/operdb_init.h>
 #include <oper/ifmap_dependency_manager.h>
 
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 #include <physical_devices/tables/physical_devices_types.h>
-#include <physical_devices/tables/device_manager.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
 
 #include <vector>
 #include <string>
 
-using AGENT::PhysicalDeviceEntry;
-using AGENT::PhysicalDeviceTable;
-using AGENT::PhysicalDeviceKey;
-using AGENT::PhysicalDeviceData;
 using std::string;
+using boost::assign::map_list_of;
+using boost::assign::list_of;
 
 /////////////////////////////////////////////////////////////////////////////
 // PhysicalDeviceEntry routines
@@ -181,6 +178,14 @@ void PhysicalDeviceTable::ConfigEventHandler(DBEntry *entry) {
 }
 
 void PhysicalDeviceTable::RegisterDBClients(IFMapDependencyManager *dep) {
+    typedef IFMapDependencyTracker::PropagateList PropagateList;
+    typedef IFMapDependencyTracker::ReactionMap ReactionMap;
+
+    ReactionMap device_react = map_list_of<std::string, PropagateList>
+        ("self", list_of("self"))
+        ("physical-router-physical-interface", list_of("self"));
+    dep->RegisterReactionMap("physical-router", device_react);
+
     dep->Register("physical-router",
                   boost::bind(&PhysicalDeviceTable::ConfigEventHandler, this,
                               _1));
@@ -214,7 +219,7 @@ bool PhysicalDeviceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
     req.key.reset(BuildKey(router));
     if (node->IsDeleted()) {
         req.oper = DBRequest::DB_ENTRY_DELETE;
-        agent()->device_manager()->physical_device_vn_table()->ConfigUpdate(node);
+        agent()->physical_device_vn_table()->ConfigUpdate(node);
         return true;
     }
 
@@ -224,7 +229,7 @@ bool PhysicalDeviceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
     // physical-router vn entry is processed below
     Enqueue(&req);
 
-    agent()->device_manager()->physical_device_vn_table()->ConfigUpdate(node);
+    agent()->physical_device_vn_table()->ConfigUpdate(node);
     // Return false since DBRequest already enqueued above.
     return false;
 }
@@ -240,7 +245,7 @@ class DeviceSandesh : public AgentSandesh {
  private:
     DBTable *AgentGetTable() {
         return static_cast<DBTable *>
-            (Agent::GetInstance()->device_manager()->device_table());
+            (Agent::GetInstance()->physical_device_table());
     }
     void Alloc() {
         resp_ = new SandeshDeviceListResp();

@@ -4,8 +4,8 @@
 #ifndef SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_PORT_H_
 #define SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_PORT_H_
 
+#include <oper/physical_device.h>
 #include <physical_devices/tables/device_manager.h>
-#include <physical_devices/tables/physical_device.h>
 #include <string>
 
 class IFMapDependencyManager;

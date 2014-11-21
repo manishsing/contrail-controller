@@ -15,6 +15,8 @@
 
 struct InterfaceData;
 class VmInterface;
+class PhysicalDeviceTable;
+class IFMapDependencyManager;
 
 class Interface : AgentRefCount<Interface>, public AgentDBEntry {
 public:
@@ -23,6 +25,8 @@ public:
         INVALID,
         // Represents the physical ethernet port. Can be LAG interface also
         PHYSICAL,
+        // Logical interface
+        LOGICAL,
         // Interface in the virtual machine
         VM_INTERFACE,
         // The inet interfaces created in host-os
@@ -69,6 +73,7 @@ public:
     virtual void Add() { }
     virtual void SendTrace(Trace event) const;
     virtual void GetOsParams(Agent *agent);
+    virtual void ConfigEventHandler(IFMapNode *node) { assert(0); }
 
     // DBEntry comparator virtual function
     bool IsLess(const DBEntry &rhs) const {
@@ -241,6 +246,7 @@ public:
     virtual ~InterfaceTable() { }
 
     void Init(OperDB *oper);
+    void RegisterDBClients(IFMapDependencyManager *dep);
     static DBTableBase *CreateTable(DB *db, const std::string &name);
 
     // DBTable virtual functions
@@ -254,7 +260,13 @@ public:
     bool Resync(DBEntry *entry, DBRequest *req);
 
     // Config handlers
+    bool VmiIFNodeToReq(IFMapNode *node, DBRequest &req);
+    bool PhysicalInterfaceIFNodeToReq(IFMapNode *node, DBRequest &req);
+    bool LogicalInterfaceIFNodeToReq(IFMapNode *node, DBRequest &req);
     bool IFNodeToReq(IFMapNode *node, DBRequest &req);
+
+    void ConfigEventHandler(DBEntry *entry);
+
     // Handle change in config VRF for the interface
     void VmInterfaceVrfSync(IFMapNode *node);
     // Handle change in VxLan Identifier mode from global-config
@@ -308,6 +320,7 @@ private:
     tbb::mutex dhcp_snoop_mutex_;
     DhcpSnoopMap dhcp_snoop_map_;
     UpdateFloatingIpFn update_floatingip_cb_;
+    PhysicalDeviceTable *device_table_;
     DISALLOW_COPY_AND_ASSIGN(InterfaceTable);
 };
 

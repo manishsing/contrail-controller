@@ -162,7 +162,8 @@ public:
     }
 
     void SendArpMessage(ArpProto::ArpMsgType type, uint32_t addr) {
-    PhysicalInterfaceKey key(Agent::GetInstance()->fabric_interface_name());
+    PhysicalInterfaceKey key(nil_uuid(),
+                             Agent::GetInstance()->fabric_interface_name());
     Interface *eth = static_cast<Interface *>
         (Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
         ArpProto::ArpIpc *ipc = 

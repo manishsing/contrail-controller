@@ -556,7 +556,7 @@ AddPhysicalInterface(Agent *agent, IFMapNode *node) {
 
 // Virtual Machine Interface is added or deleted into oper DB from Nova 
 // messages. The Config notify is used only to change interface.
-bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
+bool InterfaceTable::VmiIFNodeToReq(IFMapNode *node, DBRequest &req) {
     // Get interface UUID
     VirtualMachineInterface *cfg = static_cast <VirtualMachineInterface *>
         (node->GetObject());
@@ -1331,7 +1331,7 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
     }
 
     if (data->parent_ != Agent::NullString()) {
-        PhysicalInterfaceKey key(data->parent_);
+        PhysicalInterfaceKey key(nil_uuid(), data->parent_);
         parent_ = static_cast<Interface *>
             (table->agent()->interface_table()->FindActiveEntry(&key));
         assert(parent_ != NULL);
@@ -1391,7 +1391,7 @@ VmInterface *VmInterfaceNovaData::OnAdd(const InterfaceTable *table,
     if (tx_vlan_id_ != VmInterface::kInvalidVlanId &&
         rx_vlan_id_ != VmInterface::kInvalidVlanId &&
         parent_ != Agent::NullString()) {
-        PhysicalInterfaceKey key_1(parent_);
+        PhysicalInterfaceKey key_1(nil_uuid(), parent_);
         parent = static_cast<Interface *>
             (table->agent()->interface_table()->FindActiveEntry(&key_1));
         assert(parent != NULL);
@@ -3152,56 +3152,6 @@ void VmInterface::InstanceIpSync(InterfaceTable *table, IFMapNode *node) {
     }
 
 }
-
-void VmInterface::PhysicalPortSync(InterfaceTable *table, IFMapNode *node) {
-    CfgListener *cfg_listener = table->agent()->cfg_listener();
-    if (cfg_listener->SkipNode(node)) {
-        return;
-    }
-
-    DBGraph *graph =
-        static_cast<IFMapAgentTable *> (node->table())->GetGraph();;
-    for (DBGraphVertex::adjacency_iterator iter = node->begin(graph);
-         iter != node->end(graph); ++iter) {
-        IFMapNode *adj = static_cast<IFMapNode *>(iter.operator->());
-        if (table->agent()->cfg_listener()->SkipNode(adj)) {
-            continue;
-        }
-
-        if (adj->table() ==
-            table->agent()->cfg()->cfg_logical_port_table()) {
-            LogicalPortSync(table, adj);
-        }
-    }
-}
-
-
-
-void VmInterface::LogicalPortSync(InterfaceTable *table, IFMapNode *node) {
-    CfgListener *cfg_listener = table->agent()->cfg_listener();
-    if (cfg_listener->SkipNode(node)) {
-        return;
-    }
-
-    DBGraph *graph =
-        static_cast<IFMapAgentTable *> (node->table())->GetGraph();;
-    for (DBGraphVertex::adjacency_iterator iter = node->begin(graph);
-         iter != node->end(graph); ++iter) {
-        IFMapNode *adj = static_cast<IFMapNode *>(iter.operator->());
-        if (table->agent()->cfg_listener()->SkipNode(adj)) {
-            continue;
-        }
-
-        if (adj->table() ==
-            table->agent()->cfg()->cfg_vm_interface_table()) {
-            DBRequest req;
-            if (table->IFNodeToReq(adj, req)) {
-                table->Enqueue(&req);
-            }
-        }
-    }
-}
-
 
 void VmInterface::SubnetSync(InterfaceTable *table, IFMapNode *node) {
     CfgListener *cfg_listener = table->agent()->cfg_listener();

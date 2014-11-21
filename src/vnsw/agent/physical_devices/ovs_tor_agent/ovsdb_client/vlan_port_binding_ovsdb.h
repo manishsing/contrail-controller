@@ -8,10 +8,8 @@
 #include <ovsdb_entry.h>
 #include <ovsdb_object.h>
 
-namespace AGENT {
 class PhysicalDeviceVnEntry;
-class VlanLogicalPortEntry;
-};
+class VlanLogicalInterface;
 
 namespace OVSDB {
 class VlanPortBindingTable : public OvsdbDBObject {
@@ -34,7 +32,7 @@ public:
     VlanPortBindingEntry(VlanPortBindingTable *table,
             const VlanPortBindingEntry *key);
     VlanPortBindingEntry(VlanPortBindingTable *table,
-            const AGENT::VlanLogicalPortEntry *entry);
+            const VlanLogicalInterface *entry);
 
     void PreAddChange();
     void PostDelete();

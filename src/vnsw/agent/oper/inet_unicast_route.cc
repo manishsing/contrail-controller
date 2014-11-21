@@ -688,7 +688,8 @@ bool Inet4UnicastGatewayRoute::AddChangePath(Agent *agent, AgentPath *path,
 Inet4UnicastInterfaceRoute::Inet4UnicastInterfaceRoute
 (const PhysicalInterface *interface, const std::string &vn_name) :
         AgentRouteData(false),
-        interface_key_(new PhysicalInterfaceKey(interface->name())),
+        interface_key_(new PhysicalInterfaceKey(interface->GetUuid(),
+                                                interface->name())),
         vn_name_(vn_name) {
 }
 

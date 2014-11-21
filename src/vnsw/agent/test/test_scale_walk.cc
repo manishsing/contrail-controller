@@ -17,7 +17,6 @@ public:
     }
 
     virtual bool RouteWalkNotify(DBTablePartBase *partition, DBEntryBase *e) {
-        AgentRoute *route = static_cast<AgentRoute *>(e);
         route_count_++;
         return true;
     }
@@ -52,7 +51,7 @@ TEST_F(AgentBasicScaleTest, Basic) {
     SetWalkerYield(DEFAULT_WALKER_YIELD);
     
     int total_interface = num_vns * num_vms_per_vn;
-    int expected_route_count = 6 + (2 * num_vns) + (3 * total_interface); 
+    uint32_t expected_route_count = 6 + (2 * num_vns) + (3 * total_interface); 
     EXPECT_TRUE(expected_route_count == route_walker_test->route_count_);
     route_walker_test->vrf_count_ = route_walker_test->route_count_ = 0;
 
@@ -72,7 +71,7 @@ TEST_F(AgentBasicScaleTest, local_and_remote) {
 
     int total_interface = num_vns * num_vms_per_vn;
     //int num_remote = num_remote;
-    int total_v4_routes = Agent::GetInstance()->vrf_table()->
+    uint32_t total_v4_routes = Agent::GetInstance()->vrf_table()->
         GetInet4UnicastRouteTable("vrf1")->Size();
 
     mock_peer[0].get()->AddRemoteV4Routes(num_remote, "vrf1", "vn1", 
@@ -92,7 +91,7 @@ TEST_F(AgentBasicScaleTest, local_and_remote) {
     WAIT_FOR(10000, 10000, route_walker_test->walk_done_);
     SetWalkerYield(DEFAULT_WALKER_YIELD);
     
-    int expected_route_count = 6 + (2 * num_vns) + (3 * total_interface) + 
+    uint32_t expected_route_count = 6 + (2 * num_vns) + (3 * total_interface) + 
         num_remote; 
     EXPECT_TRUE(expected_route_count == route_walker_test->route_count_);
     route_walker_test->vrf_count_ = route_walker_test->route_count_ = 0;

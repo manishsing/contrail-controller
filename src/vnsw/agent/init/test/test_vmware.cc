@@ -56,7 +56,7 @@ TEST_F(VmwareTest, VmwareParam_1) {
 TEST_F(VmwareTest, VmwarePhysicalPort_1) {
 
     // Validate the both IP Fabric and VM physical interfaces are present
-    PhysicalInterfaceKey key(param->vmware_physical_port());
+    PhysicalInterfaceKey key(nil_uuid(), param->vmware_physical_port());
     Interface *intf = static_cast<Interface *>
         (agent->interface_table()->Find(&key, true));
     EXPECT_TRUE(intf != NULL);
@@ -65,7 +65,7 @@ TEST_F(VmwareTest, VmwarePhysicalPort_1) {
     EXPECT_TRUE(phy_intf->persistent() == true);
     EXPECT_TRUE(phy_intf->subtype() == PhysicalInterface::VMWARE);
 
-    PhysicalInterfaceKey key1(agent->fabric_interface_name());
+    PhysicalInterfaceKey key1(nil_uuid(), agent->fabric_interface_name());
     intf = static_cast<Interface *>
         (agent->interface_table()->Find(&key1, true));
     EXPECT_TRUE(intf != NULL);

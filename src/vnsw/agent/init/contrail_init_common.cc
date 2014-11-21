@@ -181,7 +181,8 @@ void ContrailInitCommon::CreateInterfaces() {
         (static_cast<Interface *>(table->FindActiveEntry(&key)));
     assert(agent()->vhost_interface());
 
-    PhysicalInterfaceKey physical_key(agent()->fabric_interface_name());
+    PhysicalInterfaceKey physical_key(nil_uuid(),
+                                      agent()->fabric_interface_name());
     assert(table->FindActiveEntry(&physical_key));
 
     agent()->set_router_id(agent_param()->vhost_addr());

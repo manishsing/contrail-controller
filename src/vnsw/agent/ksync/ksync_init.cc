@@ -207,7 +207,7 @@ void KSync::UpdateVhostMac() {
     strcpy(ifm.if_kind, VHOST_KIND);
     ifm.if_flags = IFF_UP;
 
-    PhysicalInterfaceKey key(agent_->fabric_interface_name());
+    PhysicalInterfaceKey key(nil_uuid(), agent_->fabric_interface_name());
     Interface *eth = static_cast<Interface *>
         (agent_->interface_table()->FindActiveEntry(&key));
     eth->mac().ToArray((u_int8_t *)ifm.if_mac, sizeof(ifm.if_mac));
@@ -227,7 +227,7 @@ void KSync::UpdateVhostMac() {
     strncpy(ifr.ifr_name, agent_->vhost_interface_name().c_str(),
             sizeof(ifr.ifr_name));
 
-    PhysicalInterfaceKey key(agent_->fabric_interface_name());
+    PhysicalInterfaceKey key(nil_uuid(), agent_->fabric_interface_name());
     Interface *eth = static_cast<Interface *>
         (agent_->interface_table()->FindActiveEntry(&key));
     ifr.ifr_addr = eth->mac();

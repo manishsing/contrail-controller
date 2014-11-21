@@ -104,24 +104,19 @@ void intrusive_ptr_add_ref(const AclDBEntry* p);
 typedef std::vector<int> SecurityGroupList;
 
 namespace AGENT {
-class PhysicalDeviceTable;
-class PhysicalDeviceEntry;
-
 class PhysicalPortTable;
 class PhysicalPortEntry;
 
 class LogicalPortTable;
 class LogicalPortEntry;
-
-class PhysicalDeviceVnTable;
-class PhysicalDeviceVnEntry;
 }
 
-typedef boost::intrusive_ptr<AGENT::PhysicalDeviceEntry> PhysicalDeviceEntryRef;
-typedef boost::intrusive_ptr<const AGENT::PhysicalDeviceEntry>
+class PhysicalDeviceEntry;
+typedef boost::intrusive_ptr<PhysicalDeviceEntry> PhysicalDeviceEntryRef;
+typedef boost::intrusive_ptr<const PhysicalDeviceEntry>
     PhysicalDeviceEntryConstRef;
-void intrusive_ptr_release(const AGENT::PhysicalDeviceEntry* p);
-void intrusive_ptr_add_ref(const AGENT::PhysicalDeviceEntry* p);
+void intrusive_ptr_release(const PhysicalDeviceEntry* p);
+void intrusive_ptr_add_ref(const PhysicalDeviceEntry* p);
 
 typedef boost::intrusive_ptr<AGENT::PhysicalPortEntry> PhysicalPortEntryRef;
 typedef boost::intrusive_ptr<const AGENT::PhysicalPortEntry>
@@ -135,12 +130,13 @@ typedef boost::intrusive_ptr<const AGENT::LogicalPortEntry>
 void intrusive_ptr_release(const AGENT::LogicalPortEntry* p);
 void intrusive_ptr_add_ref(const AGENT::LogicalPortEntry* p);
 
-typedef boost::intrusive_ptr<AGENT::PhysicalDeviceVnEntry>
+class PhysicalDeviceVnEntry;
+typedef boost::intrusive_ptr<PhysicalDeviceVnEntry>
     PhysicalDeviceVnEntryRef;
-typedef boost::intrusive_ptr<const AGENT::PhysicalDeviceVnEntry>
+typedef boost::intrusive_ptr<const PhysicalDeviceVnEntry>
     PhysicalDeviceVnEntryConstRef;
-void intrusive_ptr_release(const AGENT::PhysicalDeviceVnEntry* p);
-void intrusive_ptr_add_ref(const AGENT::PhysicalDeviceVnEntry* p);
+void intrusive_ptr_release(const PhysicalDeviceVnEntry* p);
+void intrusive_ptr_add_ref(const PhysicalDeviceVnEntry* p);
 
 class AgentDBTable;
 class InterfaceTable;
@@ -190,6 +186,8 @@ class VNController;
 class AgentSignal;
 class ServiceInstanceTable;
 class LoadbalancerTable;
+class PhysicalDeviceTable;
+class PhysicalDeviceVnTable;
 class PhysicalDeviceManager;
 class Agent;
 
@@ -351,6 +349,20 @@ public:
     }
     void set_fabric_l2_unicast_table(RouteTable *table) {
         l2_rt_table_ = (Layer2AgentRouteTable *)table;
+    }
+
+    PhysicalDeviceTable *physical_device_table() const {
+        return physical_device_table_;
+    }
+    void set_physical_device_table(PhysicalDeviceTable *table) {
+         physical_device_table_ = table;
+    }
+
+    PhysicalDeviceVnTable *physical_device_vn_table() const {
+        return physical_device_vn_table_;
+    }
+    void set_physical_device_vn_table(PhysicalDeviceVnTable *table) {
+         physical_device_vn_table_ = table;
     }
 
     // VHOST related
@@ -568,9 +580,9 @@ public:
     void set_cn_mcast_builder(AgentXmppChannel *peer);
 
     // Fabric related
-    const std::string &fabric_vn_name() {return fabric_vn_name_;};
+    const std::string &fabric_vn_name() const {return fabric_vn_name_;};
 
-    const std::string &fabric_vrf_name() {return fabric_vrf_name_;};
+    const std::string &fabric_vrf_name() const {return fabric_vrf_name_;};
     void set_fabric_vrf_name(const std::string &name) {
         fabric_vrf_name_ = name;
     }
@@ -829,6 +841,8 @@ private:
     VxLanTable *vxlan_table_;
     ServiceInstanceTable *service_instance_table_;
     LoadbalancerTable *loadbalancer_table_;
+    PhysicalDeviceTable *physical_device_table_;
+    PhysicalDeviceVnTable *physical_device_vn_table_;
 
     // Mirror config table
     MirrorCfgTable *mirror_cfg_table_;

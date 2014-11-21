@@ -9,9 +9,7 @@
 #include <ovsdb_object.h>
 #include <ovsdb_client_idl.h>
 
-namespace AGENT {
 class PhysicalDeviceVnEntry;
-};
 
 namespace OVSDB {
 class LogicalSwitchTable : public OvsdbDBObject {
@@ -42,7 +40,7 @@ public:
         OvsdbDBEntry(table), name_(name) {}
     LogicalSwitchEntry(OvsdbDBObject *table, const LogicalSwitchEntry *key);
     LogicalSwitchEntry(OvsdbDBObject *table,
-            const AGENT::PhysicalDeviceVnEntry *entry);
+            const PhysicalDeviceVnEntry *entry);
     LogicalSwitchEntry(OvsdbDBObject *table,
             struct ovsdb_idl_row *entry);
 

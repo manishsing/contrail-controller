@@ -12,17 +12,14 @@
 #include <oper/agent_sandesh.h>
 #include <oper/vn.h>
 #include <oper/ifmap_dependency_manager.h>
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 
 #include <physical_devices/tables/physical_devices_types.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
-
-using AGENT::PhysicalDeviceVnEntry;
-using AGENT::PhysicalDeviceVnTable;
-using AGENT::PhysicalDeviceVnKey;
-using AGENT::PhysicalDeviceVnData;
 
 using std::string;
+using boost::assign::map_list_of;
+using boost::assign::list_of;
 
 //////////////////////////////////////////////////////////////////////////////
 // PhysicalDeviceVnEntry routines
@@ -58,13 +55,13 @@ bool PhysicalDeviceVnEntry::Copy(PhysicalDeviceVnTable *table,
     bool ret = false;
 
     PhysicalDeviceEntry *dev =
-        table->physical_device_table()->Find(device_uuid_);
+        table->agent()->physical_device_table()->Find(device_uuid_);
     if (dev != device_.get()) {
         device_.reset(dev);
         ret = true;
     }
 
-    VnEntry *vn = table->vn_table()->Find(vn_uuid_);
+    VnEntry *vn = table->agent()->vn_table()->Find(vn_uuid_);
     if (vn != vn_.get()) {
         vn_.reset(vn);
         ret = true;
@@ -119,11 +116,6 @@ DBTableBase *PhysicalDeviceVnTable::CreateTable(DB *db,
     PhysicalDeviceVnTable *table = new PhysicalDeviceVnTable(db, name);
     table->Init();
     return table;
-}
-
-void PhysicalDeviceVnTable::RegisterDBClients(IFMapDependencyManager *dep) {
-    physical_device_table_ = agent()->device_manager()->device_table();
-    vn_table_ = agent()->vn_table();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -241,7 +233,7 @@ class AgentPhysicalDeviceVnSandesh : public AgentSandesh {
     DBTable *AgentGetTable() {
         Agent *agent = Agent::GetInstance();
         return static_cast<DBTable *>
-            (agent->device_manager()->physical_device_vn_table());
+            (agent->physical_device_vn_table());
     }
     void Alloc() {
         resp_ = new SandeshPhysicalDeviceVnListResp();
@@ -373,7 +365,7 @@ void SandeshConfigPhysicalDeviceVnReq::HandleRequest() const {
     Agent *agent = Agent::GetInstance();
     ConfigPhysicalDeviceVnSandesh *task =
         new ConfigPhysicalDeviceVnSandesh
-        (agent, agent->device_manager()->physical_device_vn_table(),
+        (agent, agent->physical_device_vn_table(),
          get_device(), context());
     agent->task_scheduler()->Enqueue(task);
 }

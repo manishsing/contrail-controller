@@ -61,7 +61,7 @@ Interface *InetInterfaceKey::AllocEntry(const InterfaceTable *table,
 
 	Interface *xconnect = NULL;
     if (vhost_data->sub_type_ == InetInterface::VHOST) {
-        PhysicalInterfaceKey key(vhost_data->xconnect_);
+        PhysicalInterfaceKey key(nil_uuid(), vhost_data->xconnect_);
         xconnect = static_cast<Interface *>
             (table->agent()->interface_table()->FindActiveEntry(&key));
         assert(xconnect != NULL);

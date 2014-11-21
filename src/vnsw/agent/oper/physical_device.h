@@ -1,15 +1,16 @@
 /*
  * Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
  */
-#ifndef SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_H_
-#define SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_H_
+#ifndef SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_H_
+#define SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_H_
 
-#include <physical_devices/tables/device_manager.h>
+#include <cmn/agent_cmn.h>
+#include <cmn/agent.h>
+#include <agent_types.h>
 #include <string>
 
 class IFMapDependencyManager;
 
-namespace AGENT {
 struct PhysicalDeviceKey : public AgentKey {
     explicit PhysicalDeviceKey(const boost::uuids::uuid &id) :
         AgentKey(), uuid_(id) { }
@@ -107,6 +108,5 @@ class PhysicalDeviceTable : public AgentDBTable {
  private:
     DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceTable);
 };
-};  // namespace AGENT
 
-#endif  // SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_H_
+#endif  // SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_H_
