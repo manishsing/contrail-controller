@@ -36,6 +36,18 @@ using AGENT::PhysicalDeviceEntry;
 MulticastHandler *MulticastHandler::obj_;
 SandeshTraceBufferPtr MulticastTraceBuf(SandeshTraceBufferCreate("Multicast",
                                                                      1000));
+
+Composite::Type GetCompositeTypeFromPeer(const Peer *peer) {
+    if (peer->GetType() == Peer::MULTICAST_TOR_PEER)
+        return Composite::TOR;
+    else if (peer->GetType() == Peer::BGP_PEER)
+        return Composite::EVPN;
+    else if (peer->GetType() == Peer::MULTICAST_FABRIC_TREE_BUILDER)
+        return Composite::FABRIC;
+    else
+        return Composite::L2INTERFACE;
+}
+
 /*
  * Registeration for notification
  * VM - Looking for local VM added 
@@ -101,6 +113,11 @@ void MulticastHandler::DeleteBroadcast(const Peer *peer,
     boost::system::error_code ec;
     MCTRACE(Log, "delete bcast route ", vrf_name, "255.255.255.255", 0);
     Layer2AgentRouteTable::DeleteBroadcastReq(peer, vrf_name, ethernet_tag);
+    ComponentNHKeyList component_nh_key_list; //dummy list
+    RebakeSubnetRoute(Agent::GetInstance()->multicast_tor_peer(),
+                      vrf_name, 0, ethernet_tag, "",
+                      true, component_nh_key_list,
+                      GetCompositeTypeFromPeer(peer));
 }
 
 void MulticastHandler::HandleVxLanChange(const VnEntry *vn) {
@@ -760,10 +777,6 @@ void MulticastHandler::RebakeSubnetRoute(const Peer *peer,
                                          const ComponentNHKeyList &comp_nh_list,
                                          COMPOSITETYPE comp_type)
 {
-    if (peer->GetType() != Peer::MULTICAST_TOR_PEER &&
-        peer->GetType() != Peer::BGP_PEER) {
-        return;
-    }
     std::vector<VnIpam> &vrf_ipam =
         (vrf_ipam_mapping_.find(vrf_name))->second;
     for (std::vector<VnIpam>::iterator it = vrf_ipam.begin();
