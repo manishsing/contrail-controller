@@ -5,10 +5,20 @@
 extern "C" {
 #include <ovsdb_wrapper.h>
 };
+
+#include <base/task.h>
+
+#include <physical_devices/ovs_tor_agent/tor_agent_init.h>
+#include <ovsdb_client.h>
+#include <ovsdb_client_idl.h>
+#include <ovsdb_client_session.h>
+
 #include <logical_switch_ovsdb.h>
 #include <physical_port_ovsdb.h>
 #include <ovsdb_types.h>
 
+using OVSDB::OvsdbClient;
+using OVSDB::OvsdbClientSession;
 using OVSDB::PhysicalPortEntry;
 using OVSDB::PhysicalPortTable;
 
@@ -67,6 +77,20 @@ void PhysicalPortEntry::DeleteBinding(int16_t vlan, LogicalSwitchEntry *ls) {
     binding_table_.erase(vlan);
 }
 
+const std::string &PhysicalPortEntry::name() const {
+    return name_;
+}
+
+const PhysicalPortEntry::VlanLSTable &
+PhysicalPortEntry::ovs_binding_table() const {
+    return ovs_binding_table_;
+}
+
+const PhysicalPortEntry::VlanStatsTable &
+PhysicalPortEntry::stats_table() const {
+    return stats_table_;
+}
+
 void PhysicalPortEntry::OverrideOvs() {
     struct ovsdb_idl_txn *txn = table_->client_idl()->CreateTxn(this);
     Encode(txn);
@@ -91,18 +115,15 @@ PhysicalPortTable::~PhysicalPortTable() {
 void PhysicalPortTable::Notify(OvsdbClientIdl::Op op,
         struct ovsdb_idl_row *row) {
     bool override_ovs = false;
-    PhysicalPortEntry *entry = NULL;
+    PhysicalPortEntry key(this, ovsdb_wrapper_physical_port_name(row));
+    PhysicalPortEntry *entry = static_cast<PhysicalPortEntry *>(FindActiveEntry(&key));
     if (op == OvsdbClientIdl::OVSDB_DEL) {
         OVSDB_TRACE(Trace, "Delete of Physical Port " +
                 std::string(ovsdb_wrapper_physical_port_name(row)));
-        PhysicalPortEntry key(this, ovsdb_wrapper_physical_port_name(row));
-        entry = static_cast<PhysicalPortEntry *>(Find(&key));
         if (entry != NULL) {
             Delete(entry);
         }
     } else if (op == OvsdbClientIdl::OVSDB_ADD) {
-        PhysicalPortEntry key(this, ovsdb_wrapper_physical_port_name(row));
-        entry = static_cast<PhysicalPortEntry *>(Find(&key));
         if (entry == NULL) {
             OVSDB_TRACE(Trace, "Add/Change of Physical Port " +
                     std::string(ovsdb_wrapper_physical_port_name(row)));
@@ -131,6 +152,13 @@ void PhysicalPortTable::Notify(OvsdbClientIdl::Op op,
             entry->ovs_binding_table_[new_bind[i].vlan] = ls_entry;
             old.erase(new_bind[i].vlan);
         }
+        count = ovsdb_wrapper_physical_port_vlan_stats_count(row);
+        struct ovsdb_wrapper_port_vlan_stats stats[count];
+        ovsdb_wrapper_physical_port_vlan_stats(row, stats);
+        entry->stats_table_.clear();
+        for (std::size_t i = 0; i < count; i++) {
+            entry->stats_table_[stats[i].vlan] = stats[i].stats;
+        }
         PhysicalPortEntry::VlanLSTable::iterator it = old.begin();
         for ( ; it != old.end(); it++) {
             if (entry->binding_table_.find(it->first) !=
@@ -155,5 +183,83 @@ KSyncEntry *PhysicalPortTable::Alloc(const KSyncEntry *key, uint32_t index) {
         static_cast<const PhysicalPortEntry *>(key);
     PhysicalPortEntry *entry = new PhysicalPortEntry(this, k_entry->name_);
     return entry;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Sandesh routines
+/////////////////////////////////////////////////////////////////////////////
+class PhysicalPortSandeshTask : public Task {
+public:
+    PhysicalPortSandeshTask(std::string resp_ctx) :
+        Task((TaskScheduler::GetInstance()->GetTaskId("Agent::KSync")), -1),
+        resp_(new OvsdbPhysicalPortResp()), resp_data_(resp_ctx) {
+    }
+    virtual ~PhysicalPortSandeshTask() {}
+    virtual bool Run() {
+        std::vector<OvsdbPhysicalPortEntry> port_list;
+        TorAgentInit *init =
+            static_cast<TorAgentInit *>(Agent::GetInstance()->agent_init());
+        OvsdbClientSession *session = init->ovsdb_client()->next_session(NULL);
+        PhysicalPortTable *table =
+            session->client_idl()->physical_port_table();
+        PhysicalPortEntry *entry =
+            static_cast<PhysicalPortEntry *>(table->Next(NULL));
+        while (entry != NULL) {
+            OvsdbPhysicalPortEntry pentry;
+            pentry.set_state(entry->StateString());
+            pentry.set_name(entry->name());
+            const PhysicalPortEntry::VlanLSTable &bindings =
+                entry->ovs_binding_table();
+            const PhysicalPortEntry::VlanStatsTable &stats_table =
+                entry->stats_table();
+            PhysicalPortEntry::VlanLSTable::const_iterator it =
+                bindings.begin();
+            std::vector<OvsdbPhysicalPortVlanInfo> vlan_list;
+            for (; it != bindings.end(); it++) {
+                OvsdbPhysicalPortVlanInfo vlan;
+                vlan.set_vlan(it->first);
+                vlan.set_logical_switch(it->second->name());
+                PhysicalPortEntry::VlanStatsTable::const_iterator stats_it =
+                    stats_table.find(it->first);
+                if (stats_it != stats_table.end()) {
+                    int64_t in_pkts, in_bytes, out_pkts, out_bytes;
+                    ovsdb_wrapper_get_logical_binding_stats(stats_it->second,
+                            &in_pkts, &in_bytes, &out_pkts, &out_bytes);
+                    vlan.set_in_pkts(in_pkts);
+                    vlan.set_in_bytes(in_bytes);
+                    vlan.set_out_pkts(out_pkts);
+                    vlan.set_out_bytes(out_bytes);
+                } else {
+                    vlan.set_in_pkts(0);
+                    vlan.set_in_bytes(0);
+                    vlan.set_out_pkts(0);
+                    vlan.set_out_bytes(0);
+                }
+                vlan_list.push_back(vlan);
+            }
+            pentry.set_vlans(vlan_list);
+            port_list.push_back(pentry);
+            entry = static_cast<PhysicalPortEntry *>(table->Next(entry));
+        }
+        resp_->set_port(port_list);
+        SendResponse();
+        return true;
+    }
+private:
+    void SendResponse() {
+        resp_->set_context(resp_data_);
+        resp_->set_more(false);
+        resp_->Response();
+    }
+
+    OvsdbPhysicalPortResp *resp_;
+    std::string resp_data_;
+    DISALLOW_COPY_AND_ASSIGN(PhysicalPortSandeshTask);
+};
+
+void OvsdbPhysicalPortReq::HandleRequest() const {
+    PhysicalPortSandeshTask *task = new PhysicalPortSandeshTask(context());
+    TaskScheduler *scheduler = TaskScheduler::GetInstance();
+    scheduler->Enqueue(task);
 }
 

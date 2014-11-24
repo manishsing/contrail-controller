@@ -5,6 +5,10 @@
 extern "C" {
 #include <ovsdb_wrapper.h>
 };
+#include <physical_devices/ovs_tor_agent/tor_agent_init.h>
+#include <ovsdb_client.h>
+#include <ovsdb_client_idl.h>
+#include <ovsdb_client_session.h>
 #include <logical_switch_ovsdb.h>
 #include <unicast_mac_remote_ovsdb.h>
 #include <physical_locator_ovsdb.h>
@@ -23,6 +27,7 @@ using OVSDB::UnicastMacRemoteTable;
 using OVSDB::VrfOvsdbObject;
 using OVSDB::OvsdbDBEntry;
 using OVSDB::OvsdbDBObject;
+using OVSDB::OvsdbClientSession;
 
 UnicastMacRemoteEntry::UnicastMacRemoteEntry(OvsdbDBObject *table,
         const std::string mac, const std::string logical_switch) :
@@ -164,6 +169,22 @@ KSyncEntry *UnicastMacRemoteEntry::UnresolvedReference() {
         return l_switch;
     }
     return NULL;
+}
+
+const std::string &UnicastMacRemoteEntry::mac() const {
+    return mac_;
+}
+
+const std::string &UnicastMacRemoteEntry::logical_switch_name() const {
+    return logical_switch_name_;
+}
+
+const std::string &UnicastMacRemoteEntry::dest_ip() const {
+    return dest_ip_;
+}
+
+bool UnicastMacRemoteEntry::self_exported_route() const {
+    return self_exported_route_;
 }
 
 void UnicastMacRemoteEntry::SendTrace(Trace event) const {
@@ -351,5 +372,67 @@ void VrfOvsdbObject::VrfNotify(DBTablePartBase *partition, DBEntryBase *e) {
         state->l2_table = new UnicastMacRemoteTable(client_idl_,
                 vrf->GetLayer2RouteTable());
     }
+}
+
+const VrfOvsdbObject::LogicalSwitchMap &
+VrfOvsdbObject::logical_switch_map() const {
+    return logical_switch_map_;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Sandesh routines
+/////////////////////////////////////////////////////////////////////////////
+class UnicastMacRemoteSandeshTask : public Task {
+public:
+    UnicastMacRemoteSandeshTask(std::string resp_ctx) :
+        Task((TaskScheduler::GetInstance()->GetTaskId("Agent::KSync")), -1),
+        resp_(new OvsdbUnicastMacRemoteResp()), resp_data_(resp_ctx) {
+    }
+    virtual ~UnicastMacRemoteSandeshTask() {}
+    virtual bool Run() {
+        std::vector<OvsdbUnicastMacRemoteEntry> macs;
+        TorAgentInit *init =
+            static_cast<TorAgentInit *>(Agent::GetInstance()->agent_init());
+        OvsdbClientSession *session = init->ovsdb_client()->next_session(NULL);
+        VrfOvsdbObject *vrf_obj = session->client_idl()->vrf_ovsdb();
+        const VrfOvsdbObject::LogicalSwitchMap ls_table =
+            vrf_obj->logical_switch_map();
+        VrfOvsdbObject::LogicalSwitchMap::const_iterator it = ls_table.begin();
+        for (; it != ls_table.end(); it++) {
+            UnicastMacRemoteTable *table = it->second->l2_table;
+            UnicastMacRemoteEntry *entry =
+                static_cast<UnicastMacRemoteEntry *>(table->Next(NULL));
+            while (entry != NULL) {
+                OvsdbUnicastMacRemoteEntry oentry;
+                oentry.set_state(entry->StateString());
+                oentry.set_mac(entry->mac());
+                oentry.set_logical_switch(entry->logical_switch_name());
+                oentry.set_dest_ip(entry->dest_ip());
+                oentry.set_self_exported(entry->self_exported_route());
+                macs.push_back(oentry);
+                entry = static_cast<UnicastMacRemoteEntry *>(table->Next(entry));
+            }
+        }
+        resp_->set_macs(macs);
+        SendResponse();
+        return true;
+    }
+private:
+    void SendResponse() {
+        resp_->set_context(resp_data_);
+        resp_->set_more(false);
+        resp_->Response();
+    }
+
+    OvsdbUnicastMacRemoteResp *resp_;
+    std::string resp_data_;
+    DISALLOW_COPY_AND_ASSIGN(UnicastMacRemoteSandeshTask);
+};
+
+void OvsdbUnicastMacRemoteReq::HandleRequest() const {
+    UnicastMacRemoteSandeshTask *task =
+        new UnicastMacRemoteSandeshTask(context());
+    TaskScheduler *scheduler = TaskScheduler::GetInstance();
+    scheduler->Enqueue(task);
 }
 

@@ -23,6 +23,7 @@ private:
 class PhysicalPortEntry : public OvsdbEntry {
 public:
     typedef std::map<int, LogicalSwitchEntry *> VlanLSTable;
+    typedef std::map<int, struct ovsdb_idl_row *> VlanStatsTable;
     PhysicalPortEntry(PhysicalPortTable *table, const char *name);
     PhysicalPortEntry(PhysicalPortTable *table, const std::string &name);
     ~PhysicalPortEntry();
@@ -33,6 +34,11 @@ public:
     void Encode(struct ovsdb_idl_txn *);
     void AddBinding(int16_t vlan, LogicalSwitchEntry *ls);
     void DeleteBinding(int16_t vlan, LogicalSwitchEntry *ls);
+
+    const std::string &name() const;
+    const VlanLSTable &ovs_binding_table() const;
+    const VlanStatsTable &stats_table() const;
+
 private:
     friend class PhysicalPortTable;
     void OverrideOvs();
@@ -40,6 +46,7 @@ private:
     struct ovsdb_idl_row *ovs_entry_;
     VlanLSTable binding_table_;
     VlanLSTable ovs_binding_table_;
+    VlanStatsTable stats_table_;
     DISALLOW_COPY_AND_ASSIGN(PhysicalPortEntry);
 };
 };

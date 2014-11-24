@@ -10,6 +10,7 @@
 
 #include <physical_devices/ovs_tor_agent/tor_agent_param.h>
 
+using OVSDB::OvsdbClientSession;
 using OVSDB::OvsdbClientTcp;
 using OVSDB::OvsdbClientTcpSession;
 using OVSDB::OvsdbClientTcpSessionReader;
@@ -40,6 +41,7 @@ TcpSession *OvsdbClientTcp::AllocSession(Socket *socket) {
 void OvsdbClientTcp::OnSessionEvent(TcpSession *session,
         TcpSession::Event event) {
     OvsdbClientTcpSession *tcp = static_cast<OvsdbClientTcpSession *>(session);
+    boost::system::error_code ec;
     switch (event) {
     case TcpSession::CONNECT_FAILED:
         /* Failed to Connect, Try Again! */
@@ -51,6 +53,8 @@ void OvsdbClientTcp::OnSessionEvent(TcpSession *session,
         tcp->OnClose();
         break;
     case TcpSession::CONNECT_COMPLETE:
+        ec = tcp->SetSocketOptions();
+        assert(ec.value() == 0);
         tcp->set_status("Established");
         tcp->OnEstablish();
         break;
@@ -73,6 +77,11 @@ uint16_t OvsdbClientTcp::port() {
 
 Ip4Address OvsdbClientTcp::tsn_ip() {
     return tsn_ip_;
+}
+
+OvsdbClientSession *OvsdbClientTcp::next_session(OvsdbClientSession *session) {
+    return static_cast<OvsdbClientSession *>(
+            static_cast<OvsdbClientTcpSession *>(session_));
 }
 
 void OvsdbClientTcp::AddSessionInfo(SandeshOvsdbClient &client){
@@ -110,10 +119,12 @@ void OvsdbClientTcpSession::OnRead(Buffer buffer) {
 }
 
 void OvsdbClientTcpSession::SendMsg(u_int8_t *buf, std::size_t len) {
+    OVSDB_PKT_TRACE(Trace, "Sending: " + std::string((char *)buf, len));
     Send(buf, len, NULL);
 }
 
 void OvsdbClientTcpSession::RecvMsg(const u_int8_t *buf, std::size_t len) {
+    OVSDB_PKT_TRACE(Trace, "Received: " + std::string((const char*)buf, len));
     queue_msg msg;
     msg.buf = (u_int8_t *)malloc(len);
     memcpy(msg.buf, buf, len);

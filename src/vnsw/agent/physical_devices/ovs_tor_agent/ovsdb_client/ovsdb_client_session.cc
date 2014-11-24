@@ -12,6 +12,7 @@
 
 #include <cstddef>
 
+using OVSDB::OvsdbClientIdl;
 using OVSDB::OvsdbClientSession;
 
 OvsdbClientSession::OvsdbClientSession(Agent *agent, OvsPeerManager *manager) :
@@ -35,4 +36,7 @@ void OvsdbClientSession::OnClose() {
     assert(0);
 }
 
+OvsdbClientIdl *OvsdbClientSession::client_idl() {
+    return &client_idl_;
+}
 

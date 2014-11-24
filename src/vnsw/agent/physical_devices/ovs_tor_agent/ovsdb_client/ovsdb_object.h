@@ -22,6 +22,7 @@ public:
     OvsdbObject(OvsdbClientIdl *idl);
     virtual ~OvsdbObject();
 
+    KSyncEntry *FindActiveEntry(KSyncEntry *key);
     OvsdbClientIdl *client_idl() { return client_idl_;}
 protected:
     OvsdbClientIdl *client_idl_;

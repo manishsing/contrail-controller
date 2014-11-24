@@ -44,6 +44,8 @@ public:
     std::string ToString() const {return "VM Interface Ksync";}
     KSyncEntry* UnresolvedReference();
 
+    const std::string &vn_name() const;
+
 private:
     friend class VMInterfaceKSyncObject;
     boost::uuids::uuid uuid_;

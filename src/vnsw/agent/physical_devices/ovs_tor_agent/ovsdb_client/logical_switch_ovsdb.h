@@ -53,6 +53,10 @@ public:
 
     void OvsdbChange();
 
+    const std::string &name() const;
+    const std::string &device_name() const;
+    int64_t vxlan_id() const;
+
     bool Sync(DBEntry*);
     bool IsLess(const KSyncEntry&) const;
     std::string ToString() const {return "Logical Switch";}

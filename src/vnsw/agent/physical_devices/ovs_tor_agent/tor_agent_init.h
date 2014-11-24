@@ -41,6 +41,7 @@ class TorAgentInit : public AgentInit {
     void ConnectToController();
 
     // Shutdown virtual methods
+    void UveShutdown();
     void WaitForIdle();
 
     // Accessor methods
@@ -52,6 +53,7 @@ class TorAgentInit : public AgentInit {
     std::auto_ptr<PhysicalDeviceManager> device_manager_;
     std::auto_ptr<OvsPeerManager> ovs_peer_manager_;
     std::auto_ptr<OVSDB::OvsdbClient> ovsdb_client_;
+    std::auto_ptr<AgentUveBase> uve_;
     DISALLOW_COPY_AND_ASSIGN(TorAgentInit);
 };
 

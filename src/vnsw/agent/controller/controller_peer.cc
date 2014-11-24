@@ -380,7 +380,8 @@ void AgentXmppChannel::ReceiveMulticastUpdate(XmlPugi *pugi) {
             nh_label >> label;
             TunnelType::TypeBmap encap =
                 GetMcastTypeBitmap(nh.tunnel_encapsulation_list);
-            olist.push_back(OlistTunnelEntry(label, addr.to_v4(), encap));
+            olist.push_back(OlistTunnelEntry(nil_uuid(), label,
+                                             addr.to_v4(), encap));
         }
 
         MulticastHandler::ModifyFabricMembers(
@@ -614,7 +615,8 @@ void AgentXmppChannel::AddMulticastEvpnRoute(string vrf_name,
         int label = item->entry.olist.next_hop[i].label;
         TunnelType::TypeBmap encap = GetEnetTypeBitmap(item->
                        entry.olist.next_hop[i].tunnel_encapsulation_list);
-        olist.push_back(OlistTunnelEntry(label, addr.to_v4(), encap));
+        olist.push_back(OlistTunnelEntry(nil_uuid(), label,
+                                         addr.to_v4(), encap));
     }
 
     CONTROLLER_TRACE(Trace, GetBgpPeerName(), "Composite",
