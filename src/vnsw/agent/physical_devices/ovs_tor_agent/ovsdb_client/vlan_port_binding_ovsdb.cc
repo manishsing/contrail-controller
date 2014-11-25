@@ -5,6 +5,10 @@
 extern "C" {
 #include <ovsdb_wrapper.h>
 };
+#include <physical_devices/ovs_tor_agent/tor_agent_init.h>
+#include <ovsdb_client.h>
+#include <ovsdb_client_idl.h>
+#include <ovsdb_client_session.h>
 #include <physical_switch_ovsdb.h>
 #include <logical_switch_ovsdb.h>
 #include <physical_port_ovsdb.h>
@@ -25,6 +29,7 @@ using OVSDB::VlanPortBindingTable;
 using OVSDB::PhysicalSwitchEntry;
 using OVSDB::PhysicalPortEntry;
 using OVSDB::LogicalSwitchEntry;
+using OVSDB::OvsdbClientSession;
 
 VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
         const AGENT::VlanLogicalPortEntry *entry) : OvsdbDBEntry(table_),
@@ -170,6 +175,9 @@ KSyncEntry *VlanPortBindingEntry::UnresolvedReference() {
                 physical_port_name_ + " vlan " + integerToString(vlan_) +
                 " to Logical Switch " + logical_switch_name_);
         return vm_intf;
+    } else if (logical_switch_name_.empty()) {
+        // update latest name after resolution.
+        logical_switch_name_ = vm_intf->vn_name();
     }
 
     if (!logical_switch_name_.empty()) {
@@ -189,6 +197,22 @@ KSyncEntry *VlanPortBindingEntry::UnresolvedReference() {
     }
 
     return NULL;
+}
+
+const std::string &VlanPortBindingEntry::logical_switch_name() const {
+    return logical_switch_name_;
+}
+
+const std::string &VlanPortBindingEntry::physical_port_name() const {
+    return physical_port_name_;
+}
+
+const std::string &VlanPortBindingEntry::physical_device_name() const {
+    return physical_device_name_;
+}
+
+uint16_t VlanPortBindingEntry::vlan() const {
+    return vlan_;
 }
 
 VlanPortBindingTable::VlanPortBindingTable(OvsdbClientIdl *idl, DBTable *table) :
@@ -224,12 +248,69 @@ KSyncDBObject::DBFilterResp VlanPortBindingTable::DBEntryFilter(
         const DBEntry *entry) {
     const AGENT::VlanLogicalPortEntry *l_port =
         static_cast<const AGENT::VlanLogicalPortEntry *>(entry);
-    if (l_port->physical_port() == NULL ||
-        l_port->physical_port()->device() == NULL) {
-        // Since we need physical port name and device name as key, ignore entry
-        // if physical port or device is not yet present.
+    // Since we need physical port name and device name as key, ignore entry
+    // if physical port or device is not yet present.
+    if (l_port->physical_port() == NULL) {
+        OVSDB_TRACE(Trace, "Ignoring Port Vlan Binding due to physical port "
+                "unavailablity Logical port = " + l_port->name());
+        return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.
+    }
+    if (l_port->physical_port()->device() == NULL) {
+        OVSDB_TRACE(Trace, "Ignoring Port Vlan Binding due to device "
+                "unavailablity Logical port = " + l_port->name());
         return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.
     }
     return DBFilterAccept;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Sandesh routines
+/////////////////////////////////////////////////////////////////////////////
+class VlanPortBindingSandeshTask : public Task {
+public:
+    VlanPortBindingSandeshTask(std::string resp_ctx) :
+        Task((TaskScheduler::GetInstance()->GetTaskId("Agent::KSync")), -1),
+        resp_(new OvsdbVlanPortBindingResp()), resp_data_(resp_ctx) {
+    }
+    virtual ~VlanPortBindingSandeshTask() {}
+    virtual bool Run() {
+        std::vector<OvsdbVlanPortBindingEntry> bindings;
+        TorAgentInit *init =
+            static_cast<TorAgentInit *>(Agent::GetInstance()->agent_init());
+        OvsdbClientSession *session = init->ovsdb_client()->next_session(NULL);
+        VlanPortBindingTable *table =
+            session->client_idl()->vlan_port_table();
+        VlanPortBindingEntry *entry =
+            static_cast<VlanPortBindingEntry *>(table->Next(NULL));
+        while (entry != NULL) {
+            OvsdbVlanPortBindingEntry oentry;
+            oentry.set_state(entry->StateString());
+            oentry.set_physical_port(entry->physical_port_name());
+            oentry.set_physical_device(entry->physical_device_name());
+            oentry.set_logical_switch(entry->logical_switch_name());
+            oentry.set_vlan(entry->vlan());
+            bindings.push_back(oentry);
+            entry = static_cast<VlanPortBindingEntry *>(table->Next(entry));
+        }
+        resp_->set_bindings(bindings);
+        SendResponse();
+        return true;
+    }
+private:
+    void SendResponse() {
+        resp_->set_context(resp_data_);
+        resp_->set_more(false);
+        resp_->Response();
+    }
+
+    OvsdbVlanPortBindingResp *resp_;
+    std::string resp_data_;
+    DISALLOW_COPY_AND_ASSIGN(VlanPortBindingSandeshTask);
+};
+
+void OvsdbVlanPortBindingReq::HandleRequest() const {
+    VlanPortBindingSandeshTask *task = new VlanPortBindingSandeshTask(context());
+    TaskScheduler *scheduler = TaskScheduler::GetInstance();
+    scheduler->Enqueue(task);
 }
 

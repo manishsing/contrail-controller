@@ -27,6 +27,7 @@ public:
     void MessageProcess(const u_int8_t *buf, std::size_t len);
     void OnEstablish();
     void OnClose();
+    OvsdbClientIdl *client_idl();
 
 private:
     friend class OvsdbClientIdl;

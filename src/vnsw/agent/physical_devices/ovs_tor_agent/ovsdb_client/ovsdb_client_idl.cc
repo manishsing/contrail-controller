@@ -28,6 +28,7 @@ extern "C" {
 #include <physical_devices/tables/device_manager.h>
 
 SandeshTraceBufferPtr OvsdbTraceBuf(SandeshTraceBufferCreate("Ovsdb", 5000));
+SandeshTraceBufferPtr OvsdbPktTraceBuf(SandeshTraceBufferCreate("Ovsdb Pkt", 5000));
 
 namespace AGENT {
 class PhysicalDeviceTable;
@@ -44,6 +45,9 @@ using OVSDB::PhysicalSwitchTable;
 using OVSDB::LogicalSwitchTable;
 using OVSDB::PhysicalPortTable;
 using OVSDB::PhysicalLocatorTable;
+using OVSDB::VlanPortBindingTable;
+using OVSDB::UnicastMacLocalOvsdb;
+using OVSDB::VrfOvsdbObject;
 
 namespace OVSDB {
 void ovsdb_wrapper_idl_callback(void *idl_base, int op,
@@ -60,13 +64,14 @@ void ovsdb_wrapper_idl_txn_ack(void *idl_base, struct ovsdb_idl_txn *txn) {
     OvsdbClientIdl *client_idl = (OvsdbClientIdl *) idl_base;
     OvsdbEntryBase *entry = client_idl->pending_txn_[txn];
     bool success = ovsdb_wrapper_is_txn_success(txn);
-    client_idl->DeleteTxn(txn);
     if (!success) {
-        OVSDB_TRACE(Error, "Transaction failed");
+        OVSDB_TRACE(Error, "Transaction failed: " +
+                std::string(ovsdb_wrapper_txn_get_error(txn)));
         // we don't handle the case where txn fails, when entry is not present
         // case of unicast_mac_remote entry.
         assert(entry != NULL);
     }
+    client_idl->DeleteTxn(txn);
     if (entry)
         entry->Ack(success);
 }
@@ -115,36 +120,47 @@ void OvsdbClientIdl::SendJsonRpc(struct jsonrpc_msg *msg) {
 }
 
 void OvsdbClientIdl::MessageProcess(const u_int8_t *buf, std::size_t len) {
-    if (parser_ == NULL) {
-        parser_ = ovsdb_wrapper_json_parser_create(0);
-    }
-    ovsdb_wrapper_json_parser_feed(parser_, (const char *)buf, len);
-
-    /* If we have complete JSON, attempt to parse it as JSON-RPC. */
-    if (ovsdb_wrapper_json_parser_is_done(parser_)) {
-        struct json *json = ovsdb_wrapper_json_parser_finish(parser_);
-        parser_ = NULL;
-        struct jsonrpc_msg *msg;
-        char *error = ovsdb_wrapper_jsonrpc_msg_from_json(json, &msg);
-        if (error) {
-            free(error);
-            assert(0);
-            //return;
+    std::size_t used = 0;
+    // Multiple json message may be clubbed together, need to keep reading
+    // the buffer till whole message is consumed.
+    while (used != len) {
+        if (parser_ == NULL) {
+            parser_ = ovsdb_wrapper_json_parser_create(0);
         }
+        const u_int8_t *pkt = buf + used;
+        std::size_t pkt_len = len - used;
+        std::size_t read;
+        read = ovsdb_wrapper_json_parser_feed(parser_, (const char *)pkt,
+                                              pkt_len);
+        OVSDB_PKT_TRACE(Trace, "Processed: " + std::string((const char *)pkt, read));
+        used +=read;
 
-        if (ovsdb_wrapper_msg_echo_req(msg)) {
-            /* Echo request.  Send reply. */
-            struct jsonrpc_msg *reply;
-            reply = ovsdb_wrapper_jsonrpc_create_reply(msg);
-            SendJsonRpc(reply);
-            //jsonrpc_session_send(s, reply);
-        } else if (ovsdb_wrapper_msg_echo_reply(msg)) {
-            /* It's a reply to our echo request.  Suppress it. */
-        } else {
-            ovsdb_wrapper_idl_msg_process(idl_, msg);
-            return;
+        /* If we have complete JSON, attempt to parse it as JSON-RPC. */
+        if (ovsdb_wrapper_json_parser_is_done(parser_)) {
+            struct json *json = ovsdb_wrapper_json_parser_finish(parser_);
+            parser_ = NULL;
+            struct jsonrpc_msg *msg;
+            char *error = ovsdb_wrapper_jsonrpc_msg_from_json(json, &msg);
+            if (error) {
+                assert(0);
+                free(error);
+                //continue;
+            }
+
+            if (ovsdb_wrapper_msg_echo_req(msg)) {
+                /* Echo request.  Send reply. */
+                struct jsonrpc_msg *reply;
+                reply = ovsdb_wrapper_jsonrpc_create_reply(msg);
+                SendJsonRpc(reply);
+                //jsonrpc_session_send(s, reply);
+            } else if (ovsdb_wrapper_msg_echo_reply(msg)) {
+                /* It's a reply to our echo request.  Suppress it. */
+            } else {
+                ovsdb_wrapper_idl_msg_process(idl_, msg);
+                continue;
+            }
+            ovsdb_wrapper_jsonrpc_msg_destroy(msg);
         }
-        ovsdb_wrapper_jsonrpc_msg_destroy(msg);
     }
 }
 
@@ -189,5 +205,17 @@ PhysicalPortTable *OvsdbClientIdl::physical_port_table() {
 
 PhysicalLocatorTable *OvsdbClientIdl::physical_locator_table() {
     return physical_locator_table_.get();
+}
+
+VlanPortBindingTable *OvsdbClientIdl::vlan_port_table() {
+    return vlan_port_table_.get();
+}
+
+UnicastMacLocalOvsdb *OvsdbClientIdl::unicast_mac_local_ovsdb() {
+    return unicast_mac_local_ovsdb_.get();
+}
+
+VrfOvsdbObject *OvsdbClientIdl::vrf_ovsdb() {
+    return vrf_ovsdb_.get();
 }
 

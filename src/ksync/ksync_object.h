@@ -108,6 +108,8 @@ public:
     void Delete(KSyncEntry *entry);
     // Query function. Key is in entry
     KSyncEntry *Find(const KSyncEntry *key);
+    // Get Next Function.
+    KSyncEntry *Next(const KSyncEntry *entry);
     // Query KSyncEntry for key in entry. Create temporary entry if not present
     KSyncEntry *GetReference(const KSyncEntry *key);
 

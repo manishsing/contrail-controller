@@ -2931,7 +2931,7 @@ void DeleteBgpPeer(Peer *peer) {
 void FillEvpnNextHop(BgpPeer *peer, std::string vrf_name,
                      uint32_t label, uint32_t bmap) {
     TunnelOlist evpn_olist_map;
-    evpn_olist_map.push_back(OlistTunnelEntry(label,
+    evpn_olist_map.push_back(OlistTunnelEntry(nil_uuid(), label,
                                               IpAddress::from_string("8.8.8.8").to_v4(),
                                               bmap));
     MulticastHandler::ModifyEvpnMembers(peer, vrf_name,

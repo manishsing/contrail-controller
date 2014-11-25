@@ -710,6 +710,17 @@ bool AgentRoute::ReComputeMulticastPaths(AgentPath *path, bool del) {
         return false;
     }
 
+    //HACK: subnet route uses multicast NH. During IPAM delete
+    //subnet discard is deleted. Consider this as delete of all
+    //paths. Though this can be handled via multicast module
+    //which can also issue delete of all peers, however
+    //this is a temporary code as subnet route will not use
+    //multicast NH.
+    bool delete_all = false;
+    if (path->is_subnet_discard() && del) {
+        delete_all = true;
+    }
+
     Agent *agent =
         (static_cast<InetUnicastAgentRouteTable *> (get_table()))->agent();
     std::vector<AgentPath *> delete_paths;
@@ -735,6 +746,10 @@ bool AgentRoute::ReComputeMulticastPaths(AgentPath *path, bool del) {
         it != GetPathList().end(); it++) {
         AgentPath *it_path =
             static_cast<AgentPath *>(it.operator->());
+
+        if (delete_all && (it_path->peer() != agent->multicast_peer()))
+            continue;
+
         //Handle deletions
         if (del && (path->peer() == it_path->peer())) {
             continue;

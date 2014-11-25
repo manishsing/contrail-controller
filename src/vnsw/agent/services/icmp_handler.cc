@@ -66,8 +66,7 @@ void IcmpHandler::SendResponse(VmInterface *vm_intf) {
     char icmp_payload[icmp_len_];
     memcpy(icmp_payload, icmp_, icmp_len_);
 
-    // Retain the agent-header before ethernet header
-    uint16_t len = EncapHeaderLen();
+    uint16_t len = 0;
 
     // Form ICMP Packet with following
     // EthHdr - IP Header - ICMP Header

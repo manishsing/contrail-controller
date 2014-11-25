@@ -56,7 +56,7 @@ void VrouterUveEntryBase::DispatchVrouterMsg(const VrouterAgent &uve) {
 
 void VrouterUveEntryBase::VmWalkDone(DBTableBase *base, StringVectorPtr list) {
     VrouterAgent vrouter_agent;
-    vrouter_agent.set_name(agent_->host_name());
+    vrouter_agent.set_name(agent_->agent_name());
     vrouter_agent.set_virtual_machine_list(*(list.get()));
     DispatchVrouterMsg(vrouter_agent);
 }
@@ -106,7 +106,7 @@ void VrouterUveEntryBase::VmNotify(DBTablePartBase *partition, DBEntryBase *e) {
 
 void VrouterUveEntryBase::VnWalkDone(DBTableBase *base, StringVectorPtr list) {
     VrouterAgent vrouter_agent;
-    vrouter_agent.set_name(agent_->host_name());
+    vrouter_agent.set_name(agent_->agent_name());
     vrouter_agent.set_connected_networks(*(list.get()));
     DispatchVrouterMsg(vrouter_agent);
 }
@@ -156,7 +156,7 @@ void VrouterUveEntryBase::InterfaceWalkDone(DBTableBase *base,
                                         StringVectorPtr err_if_list,
                                         StringVectorPtr nova_if_list) {
     VrouterAgent vrouter_agent;
-    vrouter_agent.set_name(agent_->host_name());
+    vrouter_agent.set_name(agent_->agent_name());
     vrouter_agent.set_interface_list(*(if_list.get()));
     vrouter_agent.set_error_intf_list(*(err_if_list.get()));
     vrouter_agent.set_no_config_intf_list(*(nova_if_list.get()));
@@ -366,7 +366,7 @@ void VrouterUveEntryBase::SendVrouterUve() {
     VrouterAgent vrouter_agent;
     bool changed = false;
     static bool first = true, build_info = false;
-    vrouter_agent.set_name(agent_->host_name());
+    vrouter_agent.set_name(agent_->agent_name());
     Ip4Address rid = agent_->router_id();
     vector<string> ip_list;
     vector<string> dns_list;

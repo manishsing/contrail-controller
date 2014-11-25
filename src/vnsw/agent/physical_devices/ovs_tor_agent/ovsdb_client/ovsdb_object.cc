@@ -20,6 +20,15 @@ OvsdbObject::OvsdbObject(OvsdbClientIdl *idl) : KSyncObject(),
 OvsdbObject::~OvsdbObject() {
 }
 
+KSyncEntry *OvsdbObject::FindActiveEntry(KSyncEntry *key) {
+    KSyncEntry *entry = Find(key);
+    if (entry != NULL && entry->GetState() != KSyncEntry::TEMP &&
+            !entry->IsDeleted()) {
+        return entry;
+    }
+    return NULL;
+}
+
 OvsdbDBObject::OvsdbDBObject(OvsdbClientIdl *idl) : KSyncDBObject(),
     client_idl_(idl), walkid_(DBTableWalker::kInvalidWalkerId) {
 }

@@ -82,11 +82,11 @@ bool OvsdbDBEntry::Change() {
 }
 
 bool OvsdbDBEntry::Delete() {
-    PostDelete();
     OvsdbDBObject *object = static_cast<OvsdbDBObject*>(GetObject());
     struct ovsdb_idl_txn *txn = object->client_idl_->CreateTxn(this);
     DeleteMsg(txn);
     struct jsonrpc_msg *msg = ovsdb_wrapper_idl_txn_encode(txn);
+    PostDelete();
     if (msg == NULL) {
         object->client_idl()->DeleteTxn(txn);
         return true;

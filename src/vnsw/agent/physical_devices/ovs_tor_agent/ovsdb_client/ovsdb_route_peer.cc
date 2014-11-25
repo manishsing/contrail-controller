@@ -53,13 +53,7 @@ bool OvsPeer::AddOvsRoute(const boost::uuids::uuid &vn_uuid,
     return true;
 }
 
-bool OvsPeer::DeleteOvsRoute(const boost::uuids::uuid &vn_uuid,
-                             const MacAddress &mac) {
-    Agent *agent = peer_manager_->agent();
-    VnEntry *vn = agent->vn_table()->Find(vn_uuid);
-    if (vn == NULL)
-        return false;
-
+bool OvsPeer::DeleteOvsRoute(const VnEntry *vn, const MacAddress &mac) {
     VrfEntry *vrf = vn->GetVrf();
     if (vrf == NULL)
         return false;

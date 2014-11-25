@@ -12,9 +12,16 @@
 #include <agent_types.h>
 
 extern SandeshTraceBufferPtr OvsdbTraceBuf;
+extern SandeshTraceBufferPtr OvsdbPktTraceBuf;
+
 #define OVSDB_TRACE(obj, ...)\
 do {\
     Ovsdb##obj::TraceMsg(OvsdbTraceBuf, __FILE__, __LINE__, __VA_ARGS__);\
+} while(false);
+
+#define OVSDB_PKT_TRACE(obj, ...)\
+do {\
+    Ovsdb##obj::TraceMsg(OvsdbPktTraceBuf, __FILE__, __LINE__, __VA_ARGS__);\
 } while(false);
 
 class OvsPeer;
@@ -83,6 +90,9 @@ public:
     LogicalSwitchTable *logical_switch_table();
     PhysicalPortTable *physical_port_table();
     PhysicalLocatorTable *physical_locator_table();
+    VlanPortBindingTable *vlan_port_table();
+    UnicastMacLocalOvsdb *unicast_mac_local_ovsdb();
+    VrfOvsdbObject *vrf_ovsdb();
 
 private:
     friend void ovsdb_wrapper_idl_callback(void *, int, struct ovsdb_idl_row *);
