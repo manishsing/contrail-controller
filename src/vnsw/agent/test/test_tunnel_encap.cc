@@ -159,7 +159,7 @@ public:
         client->WaitForIdle();
 
         TunnelOlist olist_map;
-        olist_map.push_back(OlistTunnelEntry(3000, 
+        olist_map.push_back(OlistTunnelEntry(nil_uuid(), 3000, 
                             IpAddress::from_string("8.8.8.8").to_v4(),
                             TunnelType::MplsType()));
         MulticastHandler::ModifyFabricMembers(Agent::GetInstance()->

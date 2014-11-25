@@ -31,7 +31,7 @@ bool Options::Parse(EventManager &evm, int argc, char *argv[]) {
 
 // Initialize dns's command line option tags with appropriate default
 // values. Options can from a config file as well. By default, we read
-// options from /etc/contrail/dns.conf
+// options from /etc/contrail/contrail-dns.conf
 void Options::Initialize(EventManager &evm,
                          opt::options_description &cmdline_options) {
     boost::system::error_code error;
@@ -48,7 +48,7 @@ void Options::Initialize(EventManager &evm,
     // Command line only options.
     generic.add_options()
         ("conf_file", opt::value<string>()->default_value(
-                                                    "/etc/contrail/dns.conf"),
+                                                    "/etc/contrail/contrail-dns.conf"),
              "Configuration file")
          ("help", "help message")
         ("version", "Display version information")
@@ -70,6 +70,22 @@ void Options::Initialize(EventManager &evm,
         ("DEFAULT.dns_config_file",
              opt::value<string>()->default_value("dns_config.xml"),
              "DNS Configuration file")
+
+        ("DEFAULT.named_config_file",
+             opt::value<string>()->default_value("contrail-named.conf"),
+             "Named Configuration file")
+        ("DEFAULT.named_config_directory",
+             opt::value<string>()->default_value("/etc/contrail/dns"),
+             "Named Configuration directory")
+        ("DEFAULT.named_log_file",
+             opt::value<string>()->default_value("/var/log/contrail/contrail-named.log"),
+             "Named log file")
+        ("DEFAULT.rndc_config_file",
+             opt::value<string>()->default_value("contrail-rndc.conf"),
+             "Rndc Configuration file")
+        ("DEFAULT.rndc_secret",
+             opt::value<string>()->default_value("xvysmOR8lnUQRBcunkC6vg=="),
+             "RNDC secret")
 
         ("DEFAULT.hostip", opt::value<string>()->default_value(host_ip),
              "IP address of DNS Server")
@@ -205,6 +221,14 @@ void Options::Process(int argc, char *argv[],
         !collector_server_list_[0].compare(default_collector_server_list_[0])) {
         collectors_configured_ = false;
     }
+
+    GetOptValue<string>(var_map, named_config_file_,
+                        "DEFAULT.named_config_file");
+    GetOptValue<string>(var_map, named_config_dir_,
+                        "DEFAULT.named_config_directory");
+    GetOptValue<string>(var_map, named_log_file_, "DEFAULT.named_log_file");
+    GetOptValue<string>(var_map, rndc_config_file_, "DEFAULT.rndc_config_file");
+    GetOptValue<string>(var_map, rndc_secret_, "DEFAULT.rndc_secret");
 
     GetOptValue<string>(var_map, host_ip_, "DEFAULT.hostip");
     GetOptValue<string>(var_map, hostname_, "DEFAULT.hostname");

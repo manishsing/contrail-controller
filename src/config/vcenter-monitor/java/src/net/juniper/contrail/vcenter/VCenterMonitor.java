@@ -207,6 +207,8 @@ class VCenterMonitorTask implements Runnable {
     private static Logger s_logger = Logger.getLogger(VCenterMonitorTask.class);
     private VCenterDB vcenterDB;
     private VncDB vncDB;
+    private boolean AddPortSyncAtPluginStart = true;
+    private static short iteration = 0;
     
     public VCenterMonitorTask(String vcenterURL, String vcenterUsername,
             String vcenterPassword, String vcenterDcName, String vcenterDvsName,
@@ -254,6 +256,17 @@ class VCenterMonitorTask implements Runnable {
 
             if (cmp == 0) {
                 // Match found, advance Vmware and Vnc iters
+                if (AddPortSyncAtPluginStart == true) {
+                    VmwareVirtualMachineInfo vmwareVmInfo = vmwareItem.getValue();
+                    vncDB.syncAddPortPerVirtualMachine(
+                            vnUuid, vmwareVmUuid,
+                            vmwareVmInfo.getMacAddress(),
+                            vmwareVmInfo.getName(),
+                            vmwareVmInfo.getVrouterIpAddress(),
+                            vmwareVmInfo.getHostName(),
+                            vmwareNetworkInfo.getIsolatedVlanId(),
+                            vmwareNetworkInfo.getPrimaryVlanId());
+                }
                 vncItem = vncIter.hasNext() ? vncIter.next() : null;
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
             } else if (cmp > 0){
@@ -267,7 +280,7 @@ class VCenterMonitorTask implements Runnable {
                         vmwareVmInfo.getMacAddress(),
                         vmwareVmInfo.getName(),
                         vmwareVmInfo.getVrouterIpAddress(),
-                        vmwareVmInfo.getHostName(), 
+                        vmwareVmInfo.getHostName(),
                         vmwareNetworkInfo.getIsolatedVlanId(),
                         vmwareNetworkInfo.getPrimaryVlanId());
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
@@ -299,7 +312,10 @@ class VCenterMonitorTask implements Runnable {
                 vcenterDB.populateVirtualNetworkInfo();
         SortedMap<String, VncVirtualNetworkInfo> vncVirtualNetworkInfos =
                 vncDB.populateVirtualNetworkInfo();
-        s_logger.info("VNs vmware size: " + vmwareVirtualNetworkInfos.size() + ", vnc size: " + vncVirtualNetworkInfos.size());
+        s_logger.info("VNs vmware size: "
+                + ((vmwareVirtualNetworkInfos != null) ? vmwareVirtualNetworkInfos.size() : 0)
+                + ", vnc size: "
+                + ((vncVirtualNetworkInfos != null) ? vncVirtualNetworkInfos.size() : 0) );
 
         Iterator<Entry<String, VmwareVirtualNetworkInfo>> vmwareIter = null;
         if (vmwareVirtualNetworkInfos != null && vmwareVirtualNetworkInfos.size() > 0 && vmwareVirtualNetworkInfos.entrySet() != null) {
@@ -326,16 +342,30 @@ class VCenterMonitorTask implements Runnable {
             // Do Vmware and Vnc networks match?
             String vmwareVnUuid = vmwareItem.getKey();
             String vncVnUuid = vncItem.getKey();
-            if (!vmwareVnUuid.equals(vncVnUuid)) {
-                // Delete Vnc network
-                vncDB.DeleteVirtualNetwork(vncVnUuid);
-                vncItem = vncIter.hasNext() ? vncIter.next() : null;
-            } else {
+            Integer cmp = vmwareVnUuid.compareTo(vncVnUuid);
+            if (cmp == 0) {
                 // Sync
                 syncVirtualMachines(vncVnUuid, vmwareItem.getValue(),
                         vncItem.getValue());
                 // Advance
                 vncItem = vncIter.hasNext() ? vncIter.next() : null;
+                vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
+            } else if (cmp > 0){
+                // Delete Vnc virtual network
+                vncDB.DeleteVirtualNetwork(vncVnUuid);
+                vncItem = vncIter.hasNext() ? vncIter.next() : null;
+            } else if (cmp < 0){
+                // Create VMWare virtual network in VNC
+                VmwareVirtualNetworkInfo vnInfo = vmwareItem.getValue();
+                SortedMap<String, VmwareVirtualMachineInfo> vmInfos = vnInfo.getVmInfo();
+                String subnetAddr = vnInfo.getSubnetAddress();
+                String subnetMask = vnInfo.getSubnetMask();
+                String gatewayAddr = vnInfo.getGatewayAddress();
+                String vmwareVnName = vnInfo.getName();
+                short isolatedVlanId = vnInfo.getIsolatedVlanId();
+                short primaryVlanId = vnInfo.getPrimaryVlanId();
+                vncDB.CreateVirtualNetwork(vmwareVnUuid, vmwareVnName, subnetAddr,
+                        subnetMask, gatewayAddr, isolatedVlanId, primaryVlanId, vmInfos);
                 vmwareItem = vmwareIter.hasNext() ? vmwareIter.next() : null;
             }
         }
@@ -364,7 +394,21 @@ class VCenterMonitorTask implements Runnable {
     @Override
     public void run() {
         try {
-            syncVirtualNetworks();
+            if (iteration == 0) {
+                // 16 sec timeout. Sync VN/VM/VMI/InstanceIp etc.
+                syncVirtualNetworks();
+
+                // When syncVirtualNetwrorks is run the first time, it also does
+                // addPort to vrouter agent for existing VMIs.
+                // Clear the flag  on first run of syncVirtualNetworks.
+                AddPortSyncAtPluginStart = false;
+            } else {
+                // 2 second timeout. run KeepAlive with vRouer Agent.
+                vncDB.vrouterAgentPeriodicConnectionCheck();
+            }
+            iteration++;
+            if (iteration == 8) // 16 sec for poll
+                iteration = 0;
         } catch (Exception e) {
             s_logger.error("Error while syncVirtualNetworks: " + e); 
             e.printStackTrace();
@@ -406,7 +450,7 @@ public class VCenterMonitor {
     private static ScheduledExecutorService scheduledTaskExecutor = 
             Executors.newScheduledThreadPool(1);
     private static Logger s_logger = Logger.getLogger(VCenterMonitor.class);
-    private static String _configurationFile = "vcenter-plugin.properties";
+    private static String _configurationFile = "/etc/contrail/contrail-vcenter-plugin.conf";
     private static String _vcenterURL        = "https://10.84.24.111/sdk";
     private static String _vcenterUsername   = "admin";
     private static String _vcenterPassword   = "Contrail123!";
@@ -459,7 +503,7 @@ public class VCenterMonitor {
         VCenterMonitorTask monitorTask = new VCenterMonitorTask(_vcenterURL, 
                 _vcenterUsername, _vcenterPassword, _vcenterDcName,
                 _vcenterDvsName, _apiServerAddress, _apiServerPort);
-        scheduledTaskExecutor.scheduleWithFixedDelay(monitorTask, 0, 30,
+        scheduledTaskExecutor.scheduleWithFixedDelay(monitorTask, 0, 2,
                 TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(
                 new ExecutorServiceShutdownThread(scheduledTaskExecutor));

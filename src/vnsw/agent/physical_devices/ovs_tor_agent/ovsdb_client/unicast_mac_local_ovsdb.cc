@@ -5,6 +5,7 @@
 extern "C" {
 #include <ovsdb_wrapper.h>
 };
+#include <cmn/agent.h>
 #include <oper/vn.h>
 #include <physical_devices/ovs_tor_agent/tor_agent_init.h>
 #include <physical_devices/tables/physical_device_vn.h>

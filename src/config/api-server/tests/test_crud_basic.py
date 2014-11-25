@@ -630,8 +630,7 @@ class TestListUpdate(test_case.ApiServerTestCase):
 class TestCrud(test_case.ApiServerTestCase):
     def test_create(self):
         test_obj = self._create_test_object()
-        ident_name = self.get_obj_imid(test_obj)
-        self.assertThat(FakeIfmapClient._graph, Contains(ident_name))
+        self.assertTill(self.ifmap_has_ident, obj=test_obj)
 
 class TestVncCfgApiServer(test_case.ApiServerTestCase):
     def test_fq_name_to_id_http_post(self):
@@ -719,6 +718,19 @@ class TestVncCfgApiServer(test_case.ApiServerTestCase):
 
         finally:
             api_server._db_conn._msgbus._obj_update_q.put = orig_rabbitq_put
+
+    def test_err_on_ifmap_publish(self):
+        api_server = test_common.vnc_cfg_api_server.server
+        orig_call_async_result = api_server._db_conn._ifmap_db._mapclient.call_async_result
+        def err_call_async_result(*args, **kwargs):
+            # restore orig method and return error to check handling
+            api_server._db_conn._ifmap_db._mapclient.call_async_result = orig_call_async_result
+            publish_err_xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><ns3:Envelope xmlns:ns2="http://www.trustedcomputinggroup.org/2010/IFMAP/2" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope"><ns3:Body><ns2:response><errorResult errorCode="AccessDenied"><errorString>Existing SSRC</errorString></errorResult></ns2:response></ns3:Body></ns3:Envelope>'
+            return publish_err_xml
+
+        api_server._db_conn._ifmap_db._mapclient.call_async_result = err_call_async_result
+        test_obj = self._create_test_object()
+        self.assertTill(self.ifmap_has_ident, obj=test_obj)
  
     def test_handle_trap_on_exception(self):
         api_server = test_common.vnc_cfg_api_server.server
@@ -730,12 +742,12 @@ class TestVncCfgApiServer(test_case.ApiServerTestCase):
             raise Exception("fake vn read exception")
 
         try:
-            orig_config_log_error = api_server.config_log_error
-            api_server.config_log_error = exception_on_log_error
+            orig_config_log = api_server.config_log
+            api_server.config_log = exception_on_log_error
             with ExpectedException(NoIdError):
                 self._vnc_lib.virtual_network_read(fq_name=['foo', 'bar', 'baz'])
         finally:
-            api_server.config_log_error = orig_config_log_error
+            api_server.config_log = orig_config_log
 
         try:
             orig_vn_read = api_server._db_conn._cassandra_db._cassandra_virtual_network_read
@@ -853,34 +865,39 @@ class TestVncCfgApiServer(test_case.ApiServerTestCase):
                     virtual_network_refs=[vn_fixt.getObj()]))
     # end test_floatingip_as_instanceip
 
-    def test_name_with_blacklist_char(self):
-        vn_name = self.id()+'-vn<1>'
+    def test_name_with_reserved_xml_char(self):
+        vn_name = self.id()+'-&vn<1>'
         vn_obj = VirtualNetwork(vn_name)
-        self._add_detail('Creating network with name %s expecting failure' %(vn_name))
-        with ExpectedException(BadRequest) as e:
-            self._vnc_lib.virtual_network_create(vn_obj)
+        # fq_name, fq_name_str has non-escape val, ifmap-id has escaped val
+        ifmap_id = cfgm_common.imid.get_ifmap_id_from_fq_name(vn_obj.get_type(),
+                       vn_obj.get_fq_name())
+        self.assertIsNot(re.search("&amp;vn&lt;1&gt;", ifmap_id), None)
+        fq_name_str = cfgm_common.imid.get_fq_name_str_from_ifmap_id(ifmap_id)
+        self.assertIsNone(re.search("&amp;vn&lt;1&gt;", fq_name_str))
+
+        self._add_detail('Creating network with name %s expecting success' %(vn_name))
+        self._vnc_lib.virtual_network_create(vn_obj)
+        self.assertTill(self.ifmap_has_ident, obj=vn_obj)
+        ident_elem = FakeIfmapClient._graph[ifmap_id]['ident']
+        ident_str = etree.tostring(ident_elem)
+        mch = re.search("&amp;vn&lt;1&gt;", ident_str)
+        self.assertIsNot(mch, None)
+        self._vnc_lib.virtual_network_delete(id=vn_obj.uuid)
 
         vn_name = self.id()+'-vn'
         vn_obj = VirtualNetwork(vn_name)
         self._add_detail('Creating network with name %s expecting success' %(vn_name))
         self._vnc_lib.virtual_network_create(vn_obj)
         self.assertTill(self.ifmap_has_ident, obj=vn_obj)
-
-        rt_name = self.id()+'-route-target<1>'
-        rt_obj = RouteTarget(rt_name)
-        self._add_detail('Creating network with name %s expecting failure' %(rt_name))
-        with ExpectedException(BadRequest) as e:
-            self._vnc_lib.route_target_create(rt_obj)
+        self._vnc_lib.virtual_network_delete(id=vn_obj.uuid)
 
         rt_name = self.id()+'-route-target:1'
         rt_obj = RouteTarget(rt_name)
         self._add_detail('Creating network with name %s expecting success' %(rt_name))
         self._vnc_lib.route_target_create(rt_obj)
         self.assertTill(self.ifmap_has_ident, obj=rt_obj)
-
-        self._vnc_lib.virtual_network_delete(id=vn_obj.uuid)
         self._vnc_lib.route_target_delete(id=rt_obj.uuid)
-    # end test_name_with_blacklist_char
+    # end test_name_with_reserved_xml_char
 
 # end class TestVncCfgApiServer
 
@@ -899,6 +916,9 @@ class TestLocalAuth(test_case.ApiServerTestCase):
                 self._app = app
             # end __init__
             def __call__(self, env, start_response):
+                # in multi-tenancy mode only admin role admitted
+                # by api-server till full rbac support
+                env['HTTP_X_ROLE'] = 'admin'
                 return self._app(env, start_response)
             # end __call__
             def get_admin_token(self):

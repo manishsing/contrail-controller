@@ -27,6 +27,14 @@ using std::string;
 //////////////////////////////////////////////////////////////////////////////
 // PhysicalDeviceVnEntry routines
 //////////////////////////////////////////////////////////////////////////////
+PhysicalDeviceVnEntry::PhysicalDeviceVnEntry
+(const boost::uuids::uuid &device_uuid, const boost::uuids::uuid &vn_uuid) :
+        device_uuid_(device_uuid), vn_uuid_(vn_uuid), device_(), vn_() {
+}
+
+PhysicalDeviceVnEntry::~PhysicalDeviceVnEntry() {
+}
+
 bool PhysicalDeviceVnEntry::IsLess(const DBEntry &rhs) const {
     const PhysicalDeviceVnEntry &a =
         static_cast<const PhysicalDeviceVnEntry &>(rhs);

@@ -17,6 +17,7 @@ class IFMapDependencyManager;
 namespace AGENT {
 struct PhysicalDeviceVnKey;
 struct PhysicalDeviceVnData;
+struct PhysicalDeviceEntry;
 
 struct PhysicalDeviceVnKey : public AgentKey {
     explicit PhysicalDeviceVnKey(const boost::uuids::uuid &dev_uuid,
@@ -37,9 +38,8 @@ class PhysicalDeviceVnEntry : AgentRefCount<PhysicalDeviceVnEntry>,
     public AgentDBEntry {
  public:
     PhysicalDeviceVnEntry(const boost::uuids::uuid &device_uuid,
-                          const boost::uuids::uuid &vn_uuid) :
-        device_uuid_(device_uuid), vn_uuid_(vn_uuid), device_(), vn_() { }
-    virtual ~PhysicalDeviceVnEntry() { }
+                          const boost::uuids::uuid &vn_uuid);
+    virtual ~PhysicalDeviceVnEntry();
 
     virtual bool IsLess(const DBEntry &rhs) const;
     virtual void SetKey(const DBRequestKey *key);
