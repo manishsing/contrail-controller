@@ -16,11 +16,9 @@ extern "C" {
 #include <vm_interface_ksync.h>
 
 #include <oper/vn.h>
-#include <oper/interface.h>
-#include <oper/vm_interface.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
-#include <physical_devices/tables/logical_port.h>
+#include <oper/interface_common.h>
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 #include <ovsdb_types.h>
 
 using OVSDB::OvsdbDBEntry;
@@ -32,10 +30,13 @@ using OVSDB::LogicalSwitchEntry;
 using OVSDB::OvsdbClientSession;
 
 VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
-        const AGENT::VlanLogicalPortEntry *entry) : OvsdbDBEntry(table_),
-    logical_switch_name_(), physical_port_name_(entry->physical_port()->name()),
-    physical_device_name_(entry->physical_port()->device()->name()),
-    vlan_(entry->vlan()) {
+        const VlanLogicalInterface *entry) : OvsdbDBEntry(table_),
+    logical_switch_name_(), physical_port_name_(entry->physical_interface()->name()),
+    physical_device_name_(""), vlan_(entry->vlan()) {
+    RemotePhysicalInterface *phy_intf = dynamic_cast<RemotePhysicalInterface *>
+        (entry->physical_interface());
+    assert(phy_intf);
+    physical_device_name_ = phy_intf->physical_device()->name();
 }
 
 VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
@@ -104,8 +105,8 @@ void VlanPortBindingEntry::DeleteMsg(struct ovsdb_idl_txn *txn) {
 }
 
 bool VlanPortBindingEntry::Sync(DBEntry *db_entry) {
-    AGENT::VlanLogicalPortEntry *entry =
-        static_cast<AGENT::VlanLogicalPortEntry *>(db_entry);
+    VlanLogicalInterface *entry =
+        static_cast<VlanLogicalInterface *>(db_entry);
     std::string ls_name;
     boost::uuids::uuid vmi_uuid;
     bool change = false;
@@ -234,8 +235,8 @@ KSyncEntry *VlanPortBindingTable::Alloc(const KSyncEntry *key, uint32_t index) {
 }
 
 KSyncEntry *VlanPortBindingTable::DBToKSyncEntry(const DBEntry* db_entry) {
-    const AGENT::VlanLogicalPortEntry *entry =
-        static_cast<const AGENT::VlanLogicalPortEntry *>(db_entry);
+    const VlanLogicalInterface *entry =
+        static_cast<const VlanLogicalInterface *>(db_entry);
     VlanPortBindingEntry *key = new VlanPortBindingEntry(this, entry);
     return static_cast<KSyncEntry *>(key);
 }
@@ -246,16 +247,19 @@ OvsdbDBEntry *VlanPortBindingTable::AllocOvsEntry(struct ovsdb_idl_row *row) {
 
 KSyncDBObject::DBFilterResp VlanPortBindingTable::DBEntryFilter(
         const DBEntry *entry) {
-    const AGENT::VlanLogicalPortEntry *l_port =
-        static_cast<const AGENT::VlanLogicalPortEntry *>(entry);
+    const VlanLogicalInterface *l_port =
+        static_cast<const VlanLogicalInterface *>(entry);
     // Since we need physical port name and device name as key, ignore entry
     // if physical port or device is not yet present.
-    if (l_port->physical_port() == NULL) {
+    RemotePhysicalInterface *phy_intf = dynamic_cast<RemotePhysicalInterface *>
+        (l_port->physical_interface());
+    if (phy_intf == NULL) {
         OVSDB_TRACE(Trace, "Ignoring Port Vlan Binding due to physical port "
                 "unavailablity Logical port = " + l_port->name());
         return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.
     }
-    if (l_port->physical_port()->device() == NULL) {
+
+    if (phy_intf->physical_device() == NULL) {
         OVSDB_TRACE(Trace, "Ignoring Port Vlan Binding due to device "
                 "unavailablity Logical port = " + l_port->name());
         return DBFilterIgnore; // TODO(Prabhjot) check if Delete is required.

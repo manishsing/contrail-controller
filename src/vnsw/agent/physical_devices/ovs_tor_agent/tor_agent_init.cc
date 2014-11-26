@@ -26,7 +26,6 @@
 
 #include <cfg/cfg_init.h>
 #include <controller/controller_init.h>
-#include <physical_devices/tables/device_manager.h>
 
 #include <physical_devices/ovs_tor_agent/tor_agent_init.h>
 #include <physical_devices/ovs_tor_agent/tor_agent_param.h>
@@ -74,8 +73,6 @@ void TorAgentInit::CreatePeers() {
 }
 
 void TorAgentInit::CreateModules() {
-    device_manager_.reset(new PhysicalDeviceManager(agent()));
-    agent()->set_device_manager(device_manager_.get());
     ovsdb_client_.reset(OvsdbClient::Allocate(agent(),
                 static_cast<TorAgentParam *>(agent_param()),
                 ovs_peer_manager()));
@@ -84,17 +81,14 @@ void TorAgentInit::CreateModules() {
 }
 
 void TorAgentInit::CreateDBTables() {
-    device_manager_->CreateDBTables(agent()->db());
 }
 
 void TorAgentInit::RegisterDBClients() {
-    device_manager_->RegisterDBClients();
     ovsdb_client_->RegisterClients();
     uve_->RegisterDBClients();
 }
 
 void TorAgentInit::InitModules() {
-    device_manager_->Init();
     uve_->Init();
 }
 
@@ -116,10 +110,6 @@ void TorAgentInit::WaitForIdle() {
 /****************************************************************************
  * Access routines
  ****************************************************************************/
-PhysicalDeviceManager *TorAgentInit::device_manager() const {
-    return device_manager_.get();
-}
-
 OvsPeerManager *TorAgentInit::ovs_peer_manager() const {
     return ovs_peer_manager_.get();
 }

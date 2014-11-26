@@ -847,13 +847,13 @@ public:
     static void DeleteNH(const uuid &intf_uuid, bool policy, uint8_t flags);
     static void DeleteVmInterfaceNHReq(const uuid &intf_uuid);
     static void CreatePacketInterfaceNh(const string &ifname);
-    static void CreatePhysicalInterfaceNh(const string &ifname,
-                                          const MacAddress &mac);
-    static void DeletePhysicalInterfaceNh(const string &ifname);
     static void DeleteHostPortReq(const string &ifname);
     static void CreateInetInterfaceNextHop(const string &ifname,
                                            const string &vrf_name);
     static void DeleteInetInterfaceNextHop(const string &ifname);
+    static void CreatePhysicalInterfaceNh(const string &ifname,
+                                          const MacAddress &mac);
+    static void DeletePhysicalInterfaceNh(const string &ifname);
 
 private:
     InterfaceRef interface_;

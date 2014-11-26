@@ -20,7 +20,6 @@
 #include <oper/route_common.h>
 #include <filter/acl.h>
 #include <controller/controller_init.h>
-#include <physical_devices/tables/device_manager.h>
 
 #include "agent_init.h"
 
@@ -155,11 +154,6 @@ void AgentInit::CreateModulesBase() {
         agent_->set_controller(controller_.get());
     }
 
-    if (agent_->tsn_enabled()) {
-        device_manager_.reset(new PhysicalDeviceManager(agent()));
-        agent_->set_device_manager(device_manager_.get());
-    }
-
     CreateModules();
 }
 
@@ -173,10 +167,6 @@ void AgentInit::CreateDBTablesBase() {
     }
 
     CreateDBTables();
-
-    if (agent_->tsn_enabled()) {
-        device_manager_->CreateDBTables(agent_->db());
-    }
 }
 
 void AgentInit::RegisterDBClientsBase() {
@@ -189,10 +179,6 @@ void AgentInit::RegisterDBClientsBase() {
     }
 
     RegisterDBClients();
-
-    if (agent_->tsn_enabled()) {
-        device_manager_->RegisterDBClients();
-    }
 }
 
 void AgentInit::InitModulesBase() {
@@ -205,10 +191,6 @@ void AgentInit::InitModulesBase() {
     }
 
     InitModules();
-
-    if (agent_->tsn_enabled()) {
-        device_manager_->Init();
-    }
 }
 
 void AgentInit::CreateVrfBase() {

@@ -128,8 +128,9 @@ bool AgentUtXmlValidate::Run() {
     for (AgentUtXmlValidationList::iterator it = node_list_.begin();
          it != node_list_.end(); it++) {
         TestClient::WaitForIdle();
-        cout << "Validating " << (*it)->ToString() << endl;
-        WAIT_FOR(100, 1000, ((*it)->Validate() == true));
+        AgentUtXmlValidationNode *node = *it;
+        cout << "Validating " << node->ToString() << endl;
+        WAIT_FOR(1000, 1000, (node->Validate() == true));
     }
 
     return true;

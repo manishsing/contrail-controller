@@ -638,10 +638,12 @@ struct VmInterfaceData : public InterfaceData {
         OS_OPER_STATE
     };
 
-    VmInterfaceData(Type type) : InterfaceData(), type_(type) {
+    VmInterfaceData(IFMapNode *node, Type type) :
+        InterfaceData(node), type_(type) {
         VmPortInit();
     }
     virtual ~VmInterfaceData() { }
+
     virtual VmInterface *OnAdd(const InterfaceTable *table,
                                const VmInterfaceKey *key) const {
         return NULL;
@@ -660,7 +662,7 @@ struct VmInterfaceData : public InterfaceData {
 // Structure used when type=IP_ADDR. Used to update IP-Address of VM-Interface
 // The IP Address is picked up from the DHCP Snoop table
 struct VmInterfaceIpAddressData : public VmInterfaceData {
-    VmInterfaceIpAddressData() : VmInterfaceData(IP_ADDR) { }
+    VmInterfaceIpAddressData() : VmInterfaceData(NULL, IP_ADDR) { }
     virtual ~VmInterfaceIpAddressData() { }
     virtual bool OnResync(const InterfaceTable *table, VmInterface *vmi,
                           bool *sg_changed, bool *ecmp_changed,
@@ -670,7 +672,7 @@ struct VmInterfaceIpAddressData : public VmInterfaceData {
 // Structure used when type=OS_OPER_STATE Used to update interface os oper-state
 // The current oper-state is got by querying the device
 struct VmInterfaceOsOperStateData : public VmInterfaceData {
-    VmInterfaceOsOperStateData() : VmInterfaceData(OS_OPER_STATE) { }
+    VmInterfaceOsOperStateData() : VmInterfaceData(NULL, OS_OPER_STATE) { }
     virtual ~VmInterfaceOsOperStateData() { }
     virtual bool OnResync(const InterfaceTable *table, VmInterface *vmi,
                           bool *sg_changed, bool *ecmp_changed,
@@ -680,7 +682,7 @@ struct VmInterfaceOsOperStateData : public VmInterfaceData {
 // Structure used when type=MIRROR. Used to update IP-Address of VM-Interface
 struct VmInterfaceMirrorData : public VmInterfaceData {
     VmInterfaceMirrorData(bool mirror_enable, const std::string &analyzer_name):
-        VmInterfaceData(MIRROR), mirror_enable_(mirror_enable),
+        VmInterfaceData(NULL, MIRROR), mirror_enable_(mirror_enable),
         analyzer_name_(analyzer_name) {
     }
     virtual ~VmInterfaceMirrorData() { }
@@ -694,10 +696,10 @@ struct VmInterfaceMirrorData : public VmInterfaceData {
 
 // Definition for structures when request queued from IFMap config.
 struct VmInterfaceConfigData : public VmInterfaceData {
-    VmInterfaceConfigData() :
-        VmInterfaceData(CONFIG), addr_(0), ip6_addr_(), vm_mac_(""), cfg_name_(""),
-        vm_uuid_(), vm_name_(), vn_uuid_(), vrf_name_(""), fabric_port_(true),
-        need_linklocal_ip_(false), layer2_forwarding_(true),
+    VmInterfaceConfigData(IFMapNode *node) :
+        VmInterfaceData(node, CONFIG), addr_(0), ip6_addr_(), vm_mac_(""),
+        cfg_name_(""), vm_uuid_(), vm_name_(), vn_uuid_(), vrf_name_(""),
+        fabric_port_(true), need_linklocal_ip_(false), layer2_forwarding_(true),
         layer3_forwarding_(true), mirror_enable_(false), ecmp_(false),
         dhcp_enable_(true), analyzer_name_(""),
         local_preference_(VmInterface::INVALID), oper_dhcp_options_(),

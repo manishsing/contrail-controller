@@ -9,7 +9,6 @@
 #include <cmn/agent_factory.h>
 #include <init/agent_param.h>
 #include <cfg/cfg_init.h>
-#include <physical_devices/ovs_tor_agent/ovsdb_client/ovsdb_route_peer.h>
 
 #include <oper/operdb_init.h>
 #include <ksync/ksync_init.h>
@@ -18,12 +17,12 @@
 #include <uve/test/agent_uve_test.h>
 #include "test/test_init.h"
 #include <test/test_agent_init.h>
-#include "test_ovs_agent_init.h"
+#include "test_xml_agent_init.h"
 
-TestOvsAgentInit::TestOvsAgentInit() : TestAgentInit() {
+TestXmlAgentInit::TestXmlAgentInit() : TestAgentInit() {
 }
 
-TestOvsAgentInit::~TestOvsAgentInit() {
+TestXmlAgentInit::~TestXmlAgentInit() {
 }
 
 /****************************************************************************
@@ -32,33 +31,22 @@ TestOvsAgentInit::~TestOvsAgentInit() {
 // Create the basic modules for agent operation.
 // Optional modules or modules that have different implementation are created
 // by init module
-void TestOvsAgentInit::CreateModules() {
+void TestXmlAgentInit::CreateModules() {
     TestAgentInit::CreateModules();
 }
 
-void TestOvsAgentInit::CreateDBTables() {
+void TestXmlAgentInit::CreateDBTables() {
     TestAgentInit::CreateDBTables();
 }
 
-void TestOvsAgentInit::RegisterDBClients() {
+void TestXmlAgentInit::RegisterDBClients() {
     TestAgentInit::RegisterDBClients();
 }
 
-void TestOvsAgentInit::CreatePeers() {
-    ovs_peer_manager_.reset(new OvsPeerManager(agent()));
-}
-
-/****************************************************************************
- * Access routines
- ****************************************************************************/
-OvsPeerManager *TestOvsAgentInit::ovs_peer_manager() const {
-    return ovs_peer_manager_.get();
-}
-
-TestClient *OvsTestInit(const char *init_file, bool ksync_init) {
-    TestClient *client = new TestClient(new TestOvsAgentInit());
-    TestOvsAgentInit *init =
-        static_cast<TestOvsAgentInit *>(client->agent_init());
+TestClient *PhysicalDeviceTestInit(const char *init_file, bool ksync_init) {
+    TestClient *client = new TestClient(new TestXmlAgentInit());
+    TestXmlAgentInit *init =
+        static_cast<TestXmlAgentInit *>(client->agent_init());
     Agent *agent = client->agent();
 
     AgentParam *param = client->param();

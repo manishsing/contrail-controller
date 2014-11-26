@@ -32,8 +32,6 @@
 
 #include <cmn/agent_factory.h>
 
-using namespace AGENT;
-
 const std::string Agent::null_string_ = "";
 const std::string Agent::fabric_vn_name_ =
     "default-domain:default-project:ip-fabric";
@@ -359,6 +357,7 @@ Agent::Agent() :
     nh_table_(NULL), uc_rt_table_(NULL), mc_rt_table_(NULL), vrf_table_(NULL),
     vm_table_(NULL), vn_table_(NULL), sg_table_(NULL), mpls_table_(NULL),
     acl_table_(NULL), mirror_table_(NULL), vrf_assign_table_(NULL),
+    physical_device_table_(NULL), physical_device_vn_table_(NULL),
     mirror_cfg_table_(NULL), intf_mirror_cfg_table_(NULL),
     intf_cfg_table_(NULL), router_id_(0), prefix_len_(0), 
     gateway_id_(0), compute_node_ip_(0), xs_cfg_addr_(""), xs_idx_(0),

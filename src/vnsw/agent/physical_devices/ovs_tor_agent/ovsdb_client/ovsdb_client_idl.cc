@@ -25,17 +25,12 @@ extern "C" {
 #include <unicast_mac_remote_ovsdb.h>
 #include <vm_interface_ksync.h>
 
-#include <physical_devices/tables/device_manager.h>
-
 SandeshTraceBufferPtr OvsdbTraceBuf(SandeshTraceBufferCreate("Ovsdb", 5000));
 SandeshTraceBufferPtr OvsdbPktTraceBuf(SandeshTraceBufferCreate("Ovsdb Pkt", 5000));
 
-namespace AGENT {
 class PhysicalDeviceTable;
-class PhysicalPortTable;
-class LogicalPortTable;
+class InterfaceTable;
 class PhysicalDeviceVnTable;
-}
 
 using OVSDB::OvsdbClientIdl;
 using OVSDB::OvsdbClientSession;
@@ -92,11 +87,11 @@ OvsdbClientIdl::OvsdbClientIdl(OvsdbClientSession *session, Agent *agent,
                 (DBTable *)agent->interface_table()));
     physical_switch_table_.reset(new PhysicalSwitchTable(this));
     logical_switch_table_.reset(new LogicalSwitchTable(this,
-               (DBTable *)agent->device_manager()->physical_device_vn_table()));
+               (DBTable *)agent->physical_device_vn_table()));
     physical_port_table_.reset(new PhysicalPortTable(this));
     physical_locator_table_.reset(new PhysicalLocatorTable(this));
     vlan_port_table_.reset(new VlanPortBindingTable(this,
-                (DBTable *)agent->device_manager()->logical_port_table()));
+                (DBTable *)agent->interface_table()));
     unicast_mac_local_ovsdb_.reset(new UnicastMacLocalOvsdb(this,
                 route_peer()));
     vrf_ovsdb_.reset(new VrfOvsdbObject(this, (DBTable *)agent->vrf_table()));

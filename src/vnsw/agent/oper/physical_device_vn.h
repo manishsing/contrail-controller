@@ -1,23 +1,18 @@
 /*
  * Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
  */
-#ifndef SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_VN_H_
-#define SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_VN_H_
+#ifndef SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_VN_H_
+#define SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_VN_H_
 
 /////////////////////////////////////////////////////////////////////////////
 // Manages DB Table of "Physical Device and Virtual-Network" membership. The
 // table is built based on the IFMap schema
 /////////////////////////////////////////////////////////////////////////////
+#include <cmn/agent_cmn.h>
 #include <cmn/agent.h>
-#include <physical_devices/tables/device_manager.h>
 #include <string>
 
 class IFMapDependencyManager;
-
-namespace AGENT {
-struct PhysicalDeviceVnKey;
-struct PhysicalDeviceVnData;
-struct PhysicalDeviceEntry;
 
 struct PhysicalDeviceVnKey : public AgentKey {
     explicit PhysicalDeviceVnKey(const boost::uuids::uuid &dev_uuid,
@@ -34,23 +29,24 @@ struct PhysicalDeviceVnData : public AgentData {
     virtual ~PhysicalDeviceVnData() { }
 };
 
-class PhysicalDeviceVnEntry : AgentRefCount<PhysicalDeviceVnEntry>,
+class PhysicalDeviceVn : AgentRefCount<PhysicalDeviceVn>,
     public AgentDBEntry {
  public:
-    PhysicalDeviceVnEntry(const boost::uuids::uuid &device_uuid,
-                          const boost::uuids::uuid &vn_uuid);
-    virtual ~PhysicalDeviceVnEntry();
+    PhysicalDeviceVn(const boost::uuids::uuid &device_uuid,
+                          const boost::uuids::uuid &vn_uuid) :
+        device_uuid_(device_uuid), vn_uuid_(vn_uuid), device_(), vn_() { }
+    virtual ~PhysicalDeviceVn() { }
 
     virtual bool IsLess(const DBEntry &rhs) const;
     virtual void SetKey(const DBRequestKey *key);
     virtual std::string ToString() const;
     uint32_t GetRefCount() const {
-        return AgentRefCount<PhysicalDeviceVnEntry>::GetRefCount();
+        return AgentRefCount<PhysicalDeviceVn>::GetRefCount();
     }
     DBEntryBase::KeyPtr GetDBRequestKey() const;
 
     const boost::uuids::uuid &device_uuid() const { return device_uuid_; }
-    PhysicalDeviceEntry *device() const { return device_.get(); }
+    PhysicalDevice *device() const { return device_.get(); }
 
     const boost::uuids::uuid &vn_uuid() const { return vn_uuid_; }
     VnEntry *vn() const { return vn_.get(); }
@@ -64,9 +60,9 @@ class PhysicalDeviceVnEntry : AgentRefCount<PhysicalDeviceVnEntry>,
     boost::uuids::uuid device_uuid_;
     boost::uuids::uuid vn_uuid_;
 
-    PhysicalDeviceEntryRef device_;
+    PhysicalDeviceRef device_;
     VnEntryRef vn_;
-    DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceVnEntry);
+    DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceVn);
 };
 
 class PhysicalDeviceVnTable : public AgentDBTable {
@@ -101,11 +97,6 @@ class PhysicalDeviceVnTable : public AgentDBTable {
     void IterateConfig(const Agent *agent, const char *type, IFMapNode *node,
                        AgentKey *key, AgentData *data,
                        const boost::uuids::uuid &dev_uuid);
-    PhysicalDeviceTable *physical_device_table() const {
-        return physical_device_table_;
-    }
-    VnTable *vn_table() const { return vn_table_; }
-    void RegisterDBClients(IFMapDependencyManager *dep);
     static DBTableBase *CreateTable(DB *db, const std::string &name);
 
     void ConfigEventHandler(DBEntry *entry);
@@ -114,13 +105,9 @@ class PhysicalDeviceVnTable : public AgentDBTable {
     uint32_t config_version() const { return config_version_; }
 
  private:
-    PhysicalDeviceTable *physical_device_table_;
-    VnTable *vn_table_;
     ConfigTree config_tree_;
     uint32_t config_version_;
     DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceVnTable);
 };
 
-};  // namespace AGENT
-
-#endif  // SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_VN_H_
+#endif  // SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_VN_H_

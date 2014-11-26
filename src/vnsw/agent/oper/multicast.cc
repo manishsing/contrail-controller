@@ -15,10 +15,10 @@
 #include <oper/multicast.h>
 #include <oper/mirror_table.h>
 #include <oper/mpls.h>
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 #include <controller/controller_init.h>
 #include <controller/controller_route_path.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
 
 #include <sandesh/sandesh_types.h>
 #include <sandesh/sandesh_constants.h>
@@ -26,10 +26,6 @@
 #include <sandesh/sandesh_trace.h>
 
 using namespace std;
-using AGENT::PhysicalDeviceVnTable;
-using AGENT::PhysicalDeviceTable;
-using AGENT::PhysicalDeviceVnEntry;
-using AGENT::PhysicalDeviceEntry;
 
 #define INVALID_PEER_IDENTIFIER ControllerPeerPath::kInvalidPeerIdentifier
 
@@ -61,11 +57,11 @@ void MulticastHandler::Register() {
         boost::bind(&MulticastHandler::ModifyVmInterface, _1, _2));
     if (Agent::GetInstance()->tsn_enabled()) {
         physical_device_vn_listener_id_ =
-            agent_->device_manager()->physical_device_vn_table()->
+            agent_->physical_device_vn_table()->
             Register(boost::bind(&MulticastHandler::ModifyTor,
                                  _1, _2));
         physical_device_listener_id_ =
-            agent_->device_manager()->device_table()->
+            agent_->physical_device_table()->
             Register(boost::bind(&MulticastHandler::ModifyPhysicalDevice,
                                  _1, _2));
     }
@@ -179,8 +175,8 @@ void MulticastHandler::ModifyVN(DBTablePartBase *partition, DBEntryBase *e)
     MulticastHandler::GetInstance()->HandleVxLanChange(vn);
 }
 
-bool IsTorDeleted(const PhysicalDeviceVnEntry *device_vn,
-                  const PhysicalDeviceEntry *physical_device,
+bool IsTorDeleted(const PhysicalDeviceVn *device_vn,
+                  const PhysicalDevice *physical_device,
                   const VnEntry *vn, const VrfEntry *vrf) {
     if (device_vn->IsDeleted() || !physical_device || !vn || !vrf)
         return true;
@@ -274,9 +270,9 @@ void DeleteTorFromAllMulticastObject(MulticastHandler *mc_handler,
 }
 
 void HandleTorRoute(MulticastHandler *mc_handler,
-                    const PhysicalDeviceVnEntry *device_vn_entry)
+                    const PhysicalDeviceVn *device_vn_entry)
 {
-    const PhysicalDeviceEntry *physical_device = device_vn_entry->device();
+    const PhysicalDevice *physical_device = device_vn_entry->device();
     const VnEntry *device_vn = device_vn_entry->vn();
     const uuid &device_uuid = device_vn_entry->device_uuid();
     uint32_t vxlan_id = device_vn->GetVxLanId();
@@ -369,8 +365,8 @@ void HandleTorRoute(MulticastHandler *mc_handler,
 
 void MulticastHandler::ModifyTor(DBTablePartBase *partition, DBEntryBase *e)
 {
-    const PhysicalDeviceVnEntry *device_vn =
-        static_cast<const PhysicalDeviceVnEntry *>(e);
+    const PhysicalDeviceVn *device_vn =
+        static_cast<const PhysicalDeviceVn *>(e);
 
     HandleTorRoute(MulticastHandler::GetInstance(), device_vn);
 }
@@ -379,8 +375,7 @@ void MulticastHandler::ModifyPhysicalDevice(DBTablePartBase *partition,
                                             DBEntryBase *e)
 {
     MulticastHandler *handler = MulticastHandler::GetInstance();
-    const PhysicalDeviceEntry *device =
-        static_cast<const PhysicalDeviceEntry *>(e);
+    const PhysicalDevice *device = static_cast<const PhysicalDevice *>(e);
 
     //Take IP out of it
     const uuid &device_uuid = device->uuid();
@@ -407,21 +402,19 @@ void MulticastHandler::WalkDone() {
 
 bool MulticastHandler::TorWalker(DBTablePartBase *partition,
                                  DBEntryBase *entry) {
-    PhysicalDeviceVnEntry *physical_vn_device =
-        static_cast<PhysicalDeviceVnEntry *>(entry);
+    PhysicalDeviceVn *physical_vn_device =
+        static_cast<PhysicalDeviceVn *>(entry);
     HandleTorRoute(this, physical_vn_device);
     return true;
 }
 
 void MulticastHandler::HandleTor(const VnEntry *vn) 
 {
-    if (Agent::GetInstance()->tsn_enabled() == false) {
+    if (agent_->tsn_enabled() == false) {
         return;
     }
 
-    if ((Agent::GetInstance()->device_manager() == NULL) ||
-        (Agent::GetInstance()->device_manager()->physical_device_vn_table()
-         == NULL)) {
+    if (agent_->physical_device_vn_table() == NULL) {
         return;
     }
     //std::map<uuid, DBTableWalker::WalkId>::iterator it =
@@ -433,8 +426,7 @@ void MulticastHandler::HandleTor(const VnEntry *vn)
     //    walker->WalkCancel(it->second);
     DBTableWalker::WalkId walk_id = DBTableWalker::kInvalidWalkerId;
     //Start a walk on VN table
-    walk_id = walker->WalkTable(Agent::GetInstance()->device_manager()->
-                      physical_device_vn_table(), NULL,
+    walk_id = walker->WalkTable(agent_->physical_device_vn_table(), NULL,
                       boost::bind(&MulticastHandler::TorWalker, this, _1,
                                   _2),
                       boost::bind(&MulticastHandler::WalkDone, this));

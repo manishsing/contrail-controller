@@ -150,6 +150,9 @@ AgentUtXmlTest::GetConfigCreateFn(const std::string &name) {
 AgentUtXmlTest::AgentUtXmlTestValidateCreateFn
 AgentUtXmlTest::GetValidateCreateFn(const std::string &name) {
     AgentUtXmlTestValidateFactory::iterator iter = validate_factory_.find(name);
+    if (iter == validate_factory_.end()) {
+        assert(0);
+    }
     return iter->second;
 }
 
@@ -243,7 +246,7 @@ static bool CheckConfigNode(const string &node_name, const xml_node &node,
     if (!attr) {
         cout << "Attribute \"name\" not found for " << node_name
             << ". Skipping..." << endl;
-        return false;;
+        return false;
     }
 
     *name = attr.as_string();

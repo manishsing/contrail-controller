@@ -1,11 +1,14 @@
 /*
  * Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
  */
-#ifndef vnsw_agent_physical_interface_hpp
-#define vnsw_agent_physical_interface_hpp
+#ifndef src_vnsw_agent_oper_physical_interface_hpp
+#define src_vnsw_agent_oper_physical_interface_hpp
+
+struct PhysicalInterfaceData;
 
 /////////////////////////////////////////////////////////////////////////////
-// Implementation of Physical Ports
+// Implementation of Physical Ports local to the device
+// Does not have reference to physical-device since they are local devices
 // Can be Ethernet Ports or LAG Ports
 // Name of port is used as key
 /////////////////////////////////////////////////////////////////////////////
@@ -14,6 +17,7 @@ public:
     enum SubType {
         FABRIC,     // Physical port connecting to fabric network
         VMWARE,     // For vmware, port connecting to contrail-vm-portgroup
+        CONFIG,     // Interface created from config
         INVALID
     };
 
@@ -22,17 +26,18 @@ public:
         RAW_IP          // No L2 header. Packets sent as raw-ip
     };
 
-    PhysicalInterface(const std::string &name, VrfEntry *vrf, SubType subtype,
-                      EncapType encap_type, bool no_arp);
+    PhysicalInterface(const std::string &name);
     virtual ~PhysicalInterface();
 
-    bool CmpInterface(const DBEntry &rhs) const;
+    virtual bool CmpInterface(const DBEntry &rhs) const;
+    virtual std::string ToString() const;
+    virtual KeyPtr GetDBRequestKey() const;
 
-    std::string ToString() const { return "ETH <" + name() + ">"; }
-    KeyPtr GetDBRequestKey() const;
-    virtual void Add();
+    virtual void PostAdd();
     virtual bool Delete(const DBRequest *req);
-    void PostAdd();
+    virtual bool OnChange(const InterfaceTable *table,
+                          const PhysicalInterfaceData *data);
+    virtual void ConfigEventHandler(IFMapNode *node);
 
     SubType subtype() const { return subtype_; }
     // Lets kernel know if physical interface is to be kept after agent exits or
@@ -52,6 +57,8 @@ public:
                        EncapType encap, bool no_arp);
     static void DeleteReq(InterfaceTable *table, const std::string &ifname);
     static void Delete(InterfaceTable *table, const std::string &ifname);
+
+    friend class PhysicalInterfaceKey;
 private:
     bool persistent_;
     SubType subtype_;
@@ -61,7 +68,7 @@ private:
 };
 
 struct PhysicalInterfaceData : public InterfaceData {
-    PhysicalInterfaceData(const std::string &vrf_name,
+    PhysicalInterfaceData(IFMapNode *node, const std::string &vrf_name,
                           PhysicalInterface::SubType subtype,
                           PhysicalInterface::EncapType encap,
                           bool no_arp);
@@ -80,4 +87,4 @@ struct PhysicalInterfaceKey : public InterfaceKey {
     InterfaceKey *Clone() const;
 };
 
-#endif // vnsw_agent_physical_interface_hpp
+#endif // src_vnsw_agent_oper_physical_interface_hpp

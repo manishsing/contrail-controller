@@ -553,7 +553,7 @@ AddPhysicalInterface(Agent *agent, IFMapNode *node) {
 
 // Virtual Machine Interface is added or deleted into oper DB from Nova 
 // messages. The Config notify is used only to change interface.
-bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
+bool InterfaceTable::VmiIFNodeToReq(IFMapNode *node, DBRequest &req) {
     // Get interface UUID
     VirtualMachineInterface *cfg = static_cast <VirtualMachineInterface *>
         (node->GetObject());
@@ -570,7 +570,7 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
         if (interface_sub_type == VmInterface::NOVA) {
             req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
             req.key.reset(new VmInterfaceKey(AgentKey::RESYNC, u, ""));
-            req.data.reset(new VmInterfaceConfigData());
+            req.data.reset(new VmInterfaceConfigData(NULL));
             return true;
         } else {
             VmInterface::Delete(this, u, VmInterface::CONFIG);
@@ -593,7 +593,7 @@ bool InterfaceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
                                  cfg->display_name());
     }
 
-    VmInterfaceConfigData *data = new VmInterfaceConfigData();
+    VmInterfaceConfigData *data = new VmInterfaceConfigData(NULL);
     data->ifmap_node_ = node;
     //Extract the local preference
     if (cfg->IsPropertySet(VirtualMachineInterface::PROPERTIES)) {
@@ -1121,7 +1121,7 @@ bool VmInterfaceConfigData::OnDelete(const InterfaceTable *table,
         return true;
 
     vmi->ResetConfigurer(VmInterface::CONFIG);
-    VmInterfaceConfigData data;
+    VmInterfaceConfigData data(NULL);
     vmi->Resync(table, &data);
     if (ifmap_node_ != NULL)
         table->operdb()->dependency_manager()->ResetObject(ifmap_node_);
@@ -1349,7 +1349,7 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
 // VmInterfaceNovaData routines
 /////////////////////////////////////////////////////////////////////////////
 VmInterfaceNovaData::VmInterfaceNovaData() :
-    VmInterfaceData(NOVA),
+    VmInterfaceData(NULL, NOVA),
     ipv4_addr_(),
     ipv6_addr_(),
     mac_addr_(),
@@ -1368,7 +1368,7 @@ VmInterfaceNovaData::VmInterfaceNovaData(const Ip4Address &ipv4_addr,
                                          const std::string &parent,
                                          uint16_t tx_vlan_id,
                                          uint16_t rx_vlan_id) :
-    VmInterfaceData(NOVA),
+    VmInterfaceData(NULL, NOVA),
     ipv4_addr_(ipv4_addr),
     ipv6_addr_(ipv6_addr),
     mac_addr_(mac_addr),
@@ -1406,7 +1406,7 @@ bool VmInterfaceNovaData::OnDelete(const InterfaceTable *table,
         return true;
 
     vmi->ResetConfigurer(VmInterface::CONFIG);
-    VmInterfaceConfigData data;
+    VmInterfaceConfigData data(NULL);
     vmi->Resync(table, &data);
     vmi->ResetConfigurer(VmInterface::EXTERNAL);
     return true;
@@ -3400,8 +3400,9 @@ void VmInterface::NovaAdd(InterfaceTable *table, const uuid &intf_uuid,
     req.key.reset(new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, intf_uuid,
                                      os_name));
 
-    req.data.reset(new VmInterfaceNovaData(addr, ip6, mac, vm_name, nil_uuid(),
-                                           parent, tx_vlan_id, rx_vlan_id));
+    req.data.reset(new VmInterfaceNovaData(addr, ip6, mac, vm_name,
+                                           nil_uuid(), parent, tx_vlan_id,
+                                           rx_vlan_id));
     table->Enqueue(&req);
 }
 
@@ -3412,7 +3413,7 @@ void VmInterface::Delete(InterfaceTable *table, const uuid &intf_uuid,
     req.key.reset(new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, intf_uuid, ""));
 
     if (configurer == VmInterface::CONFIG) {
-        req.data.reset(new VmInterfaceConfigData());
+        req.data.reset(new VmInterfaceConfigData(NULL));
     } else if (configurer == VmInterface::EXTERNAL) {
         req.data.reset(new VmInterfaceNovaData());
     } else {

@@ -1,15 +1,16 @@
 /*
  * Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
  */
-#ifndef SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_H_
-#define SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_H_
+#ifndef SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_H_
+#define SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_H_
 
-#include <physical_devices/tables/device_manager.h>
+#include <cmn/agent_cmn.h>
+#include <cmn/agent.h>
+#include <agent_types.h>
 #include <string>
 
 class IFMapDependencyManager;
 
-namespace AGENT {
 struct PhysicalDeviceKey : public AgentKey {
     explicit PhysicalDeviceKey(const boost::uuids::uuid &id) :
         AgentKey(), uuid_(id) { }
@@ -37,7 +38,7 @@ struct PhysicalDeviceData : public AgentData {
     IFMapNode *ifmap_node_;
 };
 
-class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
+class PhysicalDevice : AgentRefCount<PhysicalDevice>,
     public AgentDBEntry {
  public:
     typedef enum {
@@ -45,17 +46,17 @@ class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
         OVS
     } ManagementProtocol;
 
-    explicit PhysicalDeviceEntry(const boost::uuids::uuid &id) :
+    explicit PhysicalDevice(const boost::uuids::uuid &id) :
         uuid_(id), name_(""), vendor_(""), ip_(), protocol_(INVALID),
         ifmap_node_(NULL) { }
-    virtual ~PhysicalDeviceEntry() { }
+    virtual ~PhysicalDevice() { }
 
     virtual bool IsLess(const DBEntry &rhs) const;
     virtual KeyPtr GetDBRequestKey() const;
     virtual void SetKey(const DBRequestKey *key);
     virtual std::string ToString() const;
     uint32_t GetRefCount() const {
-        return AgentRefCount<PhysicalDeviceEntry>::GetRefCount();
+        return AgentRefCount<PhysicalDevice>::GetRefCount();
     }
 
     bool Copy(const PhysicalDeviceTable *table, const PhysicalDeviceData *data);
@@ -80,7 +81,7 @@ class PhysicalDeviceEntry : AgentRefCount<PhysicalDeviceEntry>,
     IpAddress management_ip_;
     ManagementProtocol protocol_;
     IFMapNode *ifmap_node_;
-    DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceEntry);
+    DISALLOW_COPY_AND_ASSIGN(PhysicalDevice);
 };
 
 class PhysicalDeviceTable : public AgentDBTable {
@@ -98,7 +99,7 @@ class PhysicalDeviceTable : public AgentDBTable {
     virtual bool Delete(DBEntry *entry, const DBRequest *req);
     virtual bool IFNodeToReq(IFMapNode *node, DBRequest &req);
 
-    PhysicalDeviceEntry *Find(const boost::uuids::uuid &u);
+    PhysicalDevice *Find(const boost::uuids::uuid &u);
 
     void ConfigEventHandler(DBEntry *entry);
     void RegisterDBClients(IFMapDependencyManager *dep);
@@ -107,6 +108,5 @@ class PhysicalDeviceTable : public AgentDBTable {
  private:
     DISALLOW_COPY_AND_ASSIGN(PhysicalDeviceTable);
 };
-};  // namespace AGENT
 
-#endif  // SRC_VNSW_AGENT_PHYSICAL_DEVICES_TABLES_PHYSICAL_DEVICE_H_
+#endif  // SRC_VNSW_AGENT_OPER_PHYSICAL_DEVICE_H_

@@ -12,48 +12,35 @@
 #include <oper/agent_sandesh.h>
 #include <oper/vn.h>
 #include <oper/ifmap_dependency_manager.h>
-
-#include <physical_devices/tables/physical_devices_types.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
-
-using AGENT::PhysicalDeviceVnEntry;
-using AGENT::PhysicalDeviceVnTable;
-using AGENT::PhysicalDeviceVnKey;
-using AGENT::PhysicalDeviceVnData;
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 
 using std::string;
+using boost::assign::map_list_of;
+using boost::assign::list_of;
 
 //////////////////////////////////////////////////////////////////////////////
-// PhysicalDeviceVnEntry routines
+// PhysicalDeviceVn routines
 //////////////////////////////////////////////////////////////////////////////
-PhysicalDeviceVnEntry::PhysicalDeviceVnEntry
-(const boost::uuids::uuid &device_uuid, const boost::uuids::uuid &vn_uuid) :
-        device_uuid_(device_uuid), vn_uuid_(vn_uuid), device_(), vn_() {
-}
-
-PhysicalDeviceVnEntry::~PhysicalDeviceVnEntry() {
-}
-
-bool PhysicalDeviceVnEntry::IsLess(const DBEntry &rhs) const {
-    const PhysicalDeviceVnEntry &a =
-        static_cast<const PhysicalDeviceVnEntry &>(rhs);
+bool PhysicalDeviceVn::IsLess(const DBEntry &rhs) const {
+    const PhysicalDeviceVn &a =
+        static_cast<const PhysicalDeviceVn &>(rhs);
     if (device_uuid_ != a.device_uuid_) {
         return (device_uuid_ < a.device_uuid_);
     }
     return (vn_uuid_ < a.vn_uuid_);
 }
 
-string PhysicalDeviceVnEntry::ToString() const {
+string PhysicalDeviceVn::ToString() const {
     return UuidToString(device_uuid_) + ":" + UuidToString(vn_uuid_);
 }
 
-DBEntryBase::KeyPtr PhysicalDeviceVnEntry::GetDBRequestKey() const {
+DBEntryBase::KeyPtr PhysicalDeviceVn::GetDBRequestKey() const {
     PhysicalDeviceVnKey *key = new PhysicalDeviceVnKey(device_uuid_, vn_uuid_);
     return DBEntryBase::KeyPtr(key);
 }
 
-void PhysicalDeviceVnEntry::SetKey(const DBRequestKey *k) {
+void PhysicalDeviceVn::SetKey(const DBRequestKey *k) {
     const PhysicalDeviceVnKey *key =
         static_cast<const PhysicalDeviceVnKey *>(k);
 
@@ -61,18 +48,18 @@ void PhysicalDeviceVnEntry::SetKey(const DBRequestKey *k) {
     vn_uuid_ = key->vn_uuid_;
 }
 
-bool PhysicalDeviceVnEntry::Copy(PhysicalDeviceVnTable *table,
+bool PhysicalDeviceVn::Copy(PhysicalDeviceVnTable *table,
                                  const PhysicalDeviceVnData *data) {
     bool ret = false;
 
-    PhysicalDeviceEntry *dev =
-        table->physical_device_table()->Find(device_uuid_);
+    PhysicalDevice *dev =
+        table->agent()->physical_device_table()->Find(device_uuid_);
     if (dev != device_.get()) {
         device_.reset(dev);
         ret = true;
     }
 
-    VnEntry *vn = table->vn_table()->Find(vn_uuid_);
+    VnEntry *vn = table->agent()->vn_table()->Find(vn_uuid_);
     if (vn != vn_.get()) {
         vn_.reset(vn);
         ret = true;
@@ -89,7 +76,7 @@ std::auto_ptr<DBEntry> PhysicalDeviceVnTable::AllocEntry(const DBRequestKey *k)
     const PhysicalDeviceVnKey *key =
         static_cast<const PhysicalDeviceVnKey *>(k);
 
-    PhysicalDeviceVnEntry *entry = new PhysicalDeviceVnEntry(key->device_uuid_,
+    PhysicalDeviceVn *entry = new PhysicalDeviceVn(key->device_uuid_,
                                                              key->vn_uuid_);
     return std::auto_ptr<DBEntry>(static_cast<DBEntry *>(entry));
 }
@@ -100,7 +87,7 @@ DBEntry *PhysicalDeviceVnTable::Add(const DBRequest *req) {
     PhysicalDeviceVnData *data =
         static_cast<PhysicalDeviceVnData *>(req->data.get());
 
-    PhysicalDeviceVnEntry *entry = new PhysicalDeviceVnEntry(key->device_uuid_,
+    PhysicalDeviceVn *entry = new PhysicalDeviceVn(key->device_uuid_,
                                                              key->vn_uuid_);
     entry->Copy(this, data);
     entry->SendObjectLog(AgentLogEvent::ADD);
@@ -108,7 +95,7 @@ DBEntry *PhysicalDeviceVnTable::Add(const DBRequest *req) {
 }
 
 bool PhysicalDeviceVnTable::OnChange(DBEntry *e, const DBRequest *req) {
-    PhysicalDeviceVnEntry *entry = static_cast<PhysicalDeviceVnEntry *>(e);
+    PhysicalDeviceVn *entry = static_cast<PhysicalDeviceVn *>(e);
     PhysicalDeviceVnData *data =
         static_cast<PhysicalDeviceVnData *>(req->data.get());
     bool ret = entry->Copy(this, data);
@@ -117,7 +104,7 @@ bool PhysicalDeviceVnTable::OnChange(DBEntry *e, const DBRequest *req) {
 }
 
 bool PhysicalDeviceVnTable::Delete(DBEntry *e, const DBRequest *req) {
-    PhysicalDeviceVnEntry *entry = static_cast<PhysicalDeviceVnEntry *>(e);
+    PhysicalDeviceVn *entry = static_cast<PhysicalDeviceVn *>(e);
     entry->SendObjectLog(AgentLogEvent::DELETE);
     return true;
 }
@@ -129,16 +116,11 @@ DBTableBase *PhysicalDeviceVnTable::CreateTable(DB *db,
     return table;
 }
 
-void PhysicalDeviceVnTable::RegisterDBClients(IFMapDependencyManager *dep) {
-    physical_device_table_ = agent()->device_manager()->device_table();
-    vn_table_ = agent()->vn_table();
-}
-
 //////////////////////////////////////////////////////////////////////////////
 // Config handling routines
 //////////////////////////////////////////////////////////////////////////////
 /*
- * There is no IFMapNode for PhysicalDeviceVnEntry. We act on physical-router
+ * There is no IFMapNode for PhysicalDeviceVn. We act on physical-router
  * notification to build the PhysicalDeviceVnTable.
  *
  * From a physical-router run iterate thru the links given below,
@@ -249,14 +231,14 @@ class AgentPhysicalDeviceVnSandesh : public AgentSandesh {
     DBTable *AgentGetTable() {
         Agent *agent = Agent::GetInstance();
         return static_cast<DBTable *>
-            (agent->device_manager()->physical_device_vn_table());
+            (agent->physical_device_vn_table());
     }
     void Alloc() {
         resp_ = new SandeshPhysicalDeviceVnListResp();
     }
 };
 
-static void SetPhysicalDeviceVnSandeshData(const PhysicalDeviceVnEntry *entry,
+static void SetPhysicalDeviceVnSandeshData(const PhysicalDeviceVn *entry,
                                            SandeshPhysicalDeviceVn *data) {
     data->set_device_uuid(UuidToString(entry->device_uuid()));
     if (entry->device()) {
@@ -272,7 +254,7 @@ static void SetPhysicalDeviceVnSandeshData(const PhysicalDeviceVnEntry *entry,
     }
 }
 
-bool PhysicalDeviceVnEntry::DBEntrySandesh(Sandesh *resp, std::string &name)
+bool PhysicalDeviceVn::DBEntrySandesh(Sandesh *resp, std::string &name)
     const {
     SandeshPhysicalDeviceVnListResp *port_resp =
         static_cast<SandeshPhysicalDeviceVnListResp *>(resp);
@@ -296,7 +278,7 @@ void SandeshPhysicalDeviceVnReq::HandleRequest() const {
     sand->DoSandesh();
 }
 
-void PhysicalDeviceVnEntry::SendObjectLog(AgentLogEvent::type event) const {
+void PhysicalDeviceVn::SendObjectLog(AgentLogEvent::type event) const {
     PhysicalDeviceVnObjectLogInfo info;
 
     string str;
@@ -381,7 +363,7 @@ void SandeshConfigPhysicalDeviceVnReq::HandleRequest() const {
     Agent *agent = Agent::GetInstance();
     ConfigPhysicalDeviceVnSandesh *task =
         new ConfigPhysicalDeviceVnSandesh
-        (agent, agent->device_manager()->physical_device_vn_table(),
+        (agent, agent->physical_device_vn_table(),
          get_device(), context());
     agent->task_scheduler()->Enqueue(task);
 }

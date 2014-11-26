@@ -8,7 +8,7 @@ import sys
 Import('AgentEnv')
 env = AgentEnv.Clone()
 
-env.SConscript('tables/SConscript', exports='AgentEnv', duplicate=0)
+#env.SConscript('tables/SConscript', exports='AgentEnv', duplicate=0)
 env.SConscript('ovs_tor_agent/SConscript', exports='AgentEnv', duplicate=0)
 env.SConscript('tsn/SConscript', exports='AgentEnv', duplicate=0)
-env.SConscript('test/SConscript', exports='AgentEnv', duplicate=0)
+#env.SConscript('test/SConscript', exports='AgentEnv', duplicate=0)

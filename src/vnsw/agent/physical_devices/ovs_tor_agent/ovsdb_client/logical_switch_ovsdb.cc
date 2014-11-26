@@ -14,11 +14,10 @@ extern "C" {
 #include <physical_locator_ovsdb.h>
 
 #include <oper/vn.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 #include <ovsdb_types.h>
 
-using namespace AGENT;
 using OVSDB::LogicalSwitchEntry;
 using OVSDB::LogicalSwitchTable;
 using OVSDB::OvsdbDBEntry;
@@ -27,7 +26,7 @@ using OVSDB::OvsdbClient;
 using OVSDB::OvsdbClientSession;
 
 LogicalSwitchEntry::LogicalSwitchEntry(OvsdbDBObject *table,
-        const AGENT::PhysicalDeviceVnEntry *entry) : OvsdbDBEntry(table),
+        const PhysicalDeviceVn *entry) : OvsdbDBEntry(table),
         name_(UuidToString(entry->vn()->GetUuid())), mcast_local_row_(NULL),
         mcast_remote_row_(NULL), old_mcast_remote_row_(NULL) {
     vxlan_id_ = entry->vn()->GetVxLanId();
@@ -127,8 +126,8 @@ int64_t LogicalSwitchEntry::vxlan_id() const {
 }
 
 bool LogicalSwitchEntry::Sync(DBEntry *db_entry) {
-    PhysicalDeviceVnEntry *entry =
-        static_cast<PhysicalDeviceVnEntry *>(db_entry);
+    PhysicalDeviceVn *entry =
+        static_cast<PhysicalDeviceVn *>(db_entry);
     bool change = false;
     if (vxlan_id_ != entry->vn()->GetVxLanId()) {
         vxlan_id_ = entry->vn()->GetVxLanId();
@@ -282,8 +281,8 @@ KSyncEntry *LogicalSwitchTable::Alloc(const KSyncEntry *key, uint32_t index) {
 }
 
 KSyncEntry *LogicalSwitchTable::DBToKSyncEntry(const DBEntry* db_entry) {
-    const PhysicalDeviceVnEntry *entry =
-        static_cast<const PhysicalDeviceVnEntry *>(db_entry);
+    const PhysicalDeviceVn *entry =
+        static_cast<const PhysicalDeviceVn *>(db_entry);
     LogicalSwitchEntry *key = new LogicalSwitchEntry(this, entry);
     return static_cast<KSyncEntry *>(key);
 }

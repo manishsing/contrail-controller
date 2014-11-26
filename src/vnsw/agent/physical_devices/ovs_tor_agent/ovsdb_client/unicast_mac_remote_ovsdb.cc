@@ -21,7 +21,6 @@ extern "C" {
 #include <oper/layer2_route.h>
 #include <ovsdb_types.h>
 
-using namespace AGENT;
 using OVSDB::UnicastMacRemoteEntry;
 using OVSDB::UnicastMacRemoteTable;
 using OVSDB::VrfOvsdbObject;

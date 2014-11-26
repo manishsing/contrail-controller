@@ -13,26 +13,22 @@
 #include <oper/operdb_init.h>
 #include <oper/ifmap_dependency_manager.h>
 
-#include <physical_devices/tables/physical_devices_types.h>
-#include <physical_devices/tables/device_manager.h>
-#include <physical_devices/tables/physical_device.h>
-#include <physical_devices/tables/physical_device_vn.h>
+#include <oper/physical_device.h>
+#include <oper/physical_device_vn.h>
 
 #include <vector>
 #include <string>
 
-using AGENT::PhysicalDeviceEntry;
-using AGENT::PhysicalDeviceTable;
-using AGENT::PhysicalDeviceKey;
-using AGENT::PhysicalDeviceData;
 using std::string;
+using boost::assign::map_list_of;
+using boost::assign::list_of;
 
 /////////////////////////////////////////////////////////////////////////////
-// PhysicalDeviceEntry routines
+// PhysicalDevice routines
 /////////////////////////////////////////////////////////////////////////////
-static string ToString(PhysicalDeviceEntry::ManagementProtocol proto) {
+static string ToString(PhysicalDevice::ManagementProtocol proto) {
     switch (proto) {
-    case PhysicalDeviceEntry::OVS:
+    case PhysicalDevice::OVS:
         return "OVS";
         break;
 
@@ -43,34 +39,34 @@ static string ToString(PhysicalDeviceEntry::ManagementProtocol proto) {
     return "INVALID";
 }
 
-static PhysicalDeviceEntry::ManagementProtocol FromString(const string &proto) {
+static PhysicalDevice::ManagementProtocol FromString(const string &proto) {
     if (strcasecmp(proto.c_str(), "ovs"))
-        return PhysicalDeviceEntry::OVS;
+        return PhysicalDevice::OVS;
 
-    return PhysicalDeviceEntry::INVALID;
+    return PhysicalDevice::INVALID;
 }
 
-bool PhysicalDeviceEntry::IsLess(const DBEntry &rhs) const {
-    const PhysicalDeviceEntry &a =
-        static_cast<const PhysicalDeviceEntry &>(rhs);
+bool PhysicalDevice::IsLess(const DBEntry &rhs) const {
+    const PhysicalDevice &a =
+        static_cast<const PhysicalDevice &>(rhs);
     return (uuid_ < a.uuid_);
 }
 
-string PhysicalDeviceEntry::ToString() const {
+string PhysicalDevice::ToString() const {
     return UuidToString(uuid_);
 }
 
-DBEntryBase::KeyPtr PhysicalDeviceEntry::GetDBRequestKey() const {
+DBEntryBase::KeyPtr PhysicalDevice::GetDBRequestKey() const {
     PhysicalDeviceKey *key = new PhysicalDeviceKey(uuid_);
     return DBEntryBase::KeyPtr(key);
 }
 
-void PhysicalDeviceEntry::SetKey(const DBRequestKey *key) {
+void PhysicalDevice::SetKey(const DBRequestKey *key) {
     const PhysicalDeviceKey *k = static_cast<const PhysicalDeviceKey *>(key);
     uuid_ = k->uuid_;
 }
 
-bool PhysicalDeviceEntry::Copy(const PhysicalDeviceTable *table,
+bool PhysicalDevice::Copy(const PhysicalDeviceTable *table,
                                const PhysicalDeviceData *data) {
     bool ret = false;
 
@@ -127,7 +123,7 @@ bool PhysicalDeviceEntry::Copy(const PhysicalDeviceTable *table,
 std::auto_ptr<DBEntry> PhysicalDeviceTable::AllocEntry(const DBRequestKey *k)
     const {
     const PhysicalDeviceKey *key = static_cast<const PhysicalDeviceKey *>(k);
-    PhysicalDeviceEntry *dev = new PhysicalDeviceEntry(key->uuid_);
+    PhysicalDevice *dev = new PhysicalDevice(key->uuid_);
     return std::auto_ptr<DBEntry>(static_cast<DBEntry *>(dev));
 }
 
@@ -135,14 +131,14 @@ DBEntry *PhysicalDeviceTable::Add(const DBRequest *req) {
     PhysicalDeviceKey *key = static_cast<PhysicalDeviceKey *>(req->key.get());
     PhysicalDeviceData *data = static_cast<PhysicalDeviceData *>
         (req->data.get());
-    PhysicalDeviceEntry *dev = new PhysicalDeviceEntry(key->uuid_);
+    PhysicalDevice *dev = new PhysicalDevice(key->uuid_);
     dev->Copy(this, data);
     dev->SendObjectLog(AgentLogEvent::ADD);
     return dev;
 }
 
 bool PhysicalDeviceTable::OnChange(DBEntry *entry, const DBRequest *req) {
-    PhysicalDeviceEntry *dev = static_cast<PhysicalDeviceEntry *>(entry);
+    PhysicalDevice *dev = static_cast<PhysicalDevice *>(entry);
     PhysicalDeviceData *data = static_cast<PhysicalDeviceData *>
         (req->data.get());
     bool ret = dev->Copy(this, data);
@@ -151,16 +147,16 @@ bool PhysicalDeviceTable::OnChange(DBEntry *entry, const DBRequest *req) {
 }
 
 bool PhysicalDeviceTable::Delete(DBEntry *entry, const DBRequest *req) {
-    PhysicalDeviceEntry *dev = static_cast<PhysicalDeviceEntry *>(entry);
+    PhysicalDevice *dev = static_cast<PhysicalDevice *>(entry);
     dev->SendObjectLog(AgentLogEvent::DELETE);
     if (dev->ifmap_node_)
         agent()->oper_db()->dependency_manager()->ResetObject(dev->ifmap_node_);
     return true;
 }
 
-PhysicalDeviceEntry *PhysicalDeviceTable::Find(const boost::uuids::uuid &u) {
+PhysicalDevice *PhysicalDeviceTable::Find(const boost::uuids::uuid &u) {
     PhysicalDeviceKey key(u);
-    return static_cast<PhysicalDeviceEntry *>(FindActiveEntry(&key));
+    return static_cast<PhysicalDevice *>(FindActiveEntry(&key));
 }
 
 DBTableBase *PhysicalDeviceTable::CreateTable(DB *db, const std::string &name) {
@@ -173,7 +169,7 @@ DBTableBase *PhysicalDeviceTable::CreateTable(DB *db, const std::string &name) {
 // Config handling
 /////////////////////////////////////////////////////////////////////////////
 void PhysicalDeviceTable::ConfigEventHandler(DBEntry *entry) {
-    PhysicalDeviceEntry *dev = static_cast<PhysicalDeviceEntry *>(entry);
+    PhysicalDevice *dev = static_cast<PhysicalDevice *>(entry);
     DBRequest req;
     if (IFNodeToReq(dev->ifmap_node_, req) == true) {
         Enqueue(&req);
@@ -181,6 +177,14 @@ void PhysicalDeviceTable::ConfigEventHandler(DBEntry *entry) {
 }
 
 void PhysicalDeviceTable::RegisterDBClients(IFMapDependencyManager *dep) {
+    typedef IFMapDependencyTracker::PropagateList PropagateList;
+    typedef IFMapDependencyTracker::ReactionMap ReactionMap;
+
+    ReactionMap device_react = map_list_of<std::string, PropagateList>
+        ("self", list_of("self"))
+        ("physical-router-physical-interface", list_of("self"));
+    dep->RegisterReactionMap("physical-router", device_react);
+
     dep->Register("physical-router",
                   boost::bind(&PhysicalDeviceTable::ConfigEventHandler, this,
                               _1));
@@ -214,7 +218,7 @@ bool PhysicalDeviceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
     req.key.reset(BuildKey(router));
     if (node->IsDeleted()) {
         req.oper = DBRequest::DB_ENTRY_DELETE;
-        agent()->device_manager()->physical_device_vn_table()->ConfigUpdate(node);
+        agent()->physical_device_vn_table()->ConfigUpdate(node);
         return true;
     }
 
@@ -224,7 +228,7 @@ bool PhysicalDeviceTable::IFNodeToReq(IFMapNode *node, DBRequest &req) {
     // physical-router vn entry is processed below
     Enqueue(&req);
 
-    agent()->device_manager()->physical_device_vn_table()->ConfigUpdate(node);
+    agent()->physical_device_vn_table()->ConfigUpdate(node);
     // Return false since DBRequest already enqueued above.
     return false;
 }
@@ -240,14 +244,14 @@ class DeviceSandesh : public AgentSandesh {
  private:
     DBTable *AgentGetTable() {
         return static_cast<DBTable *>
-            (Agent::GetInstance()->device_manager()->device_table());
+            (Agent::GetInstance()->physical_device_table());
     }
     void Alloc() {
         resp_ = new SandeshDeviceListResp();
     }
 };
 
-static void SetDeviceSandeshData(const PhysicalDeviceEntry *entry,
+static void SetDeviceSandeshData(const PhysicalDevice *entry,
                                       SandeshDevice *data) {
     data->set_uuid(UuidToString(entry->uuid()));
     data->set_fq_name(entry->fq_name());
@@ -257,7 +261,7 @@ static void SetDeviceSandeshData(const PhysicalDeviceEntry *entry,
     data->set_management_protocol(ToString(entry->protocol()));
 }
 
-bool PhysicalDeviceEntry::DBEntrySandesh(Sandesh *resp, std::string &name)
+bool PhysicalDevice::DBEntrySandesh(Sandesh *resp, std::string &name)
     const {
     SandeshDeviceListResp *dev_resp =
         static_cast<SandeshDeviceListResp *> (resp);
@@ -281,7 +285,7 @@ void SandeshDeviceReq::HandleRequest() const {
     sand->DoSandesh();
 }
 
-void PhysicalDeviceEntry::SendObjectLog(AgentLogEvent::type event) const {
+void PhysicalDevice::SendObjectLog(AgentLogEvent::type event) const {
     DeviceObjectLogInfo info;
 
     string str;

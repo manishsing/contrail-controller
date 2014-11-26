@@ -29,10 +29,8 @@ public:
     void CreateDBTables();
     void RegisterDBClients();
 
-    PhysicalDeviceManager *device_manager() const;
     OvsPeerManager *ovs_peer_manager() const;
 private:
-    std::auto_ptr<PhysicalDeviceManager> device_manager_;
     std::auto_ptr<OvsPeerManager> ovs_peer_manager_;
     DISALLOW_COPY_AND_ASSIGN(TestOvsAgentInit);
 };
