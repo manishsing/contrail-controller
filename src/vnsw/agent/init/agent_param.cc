@@ -877,10 +877,6 @@ void AgentParam::LogConfig() const {
         << "/" << vhost_.plen_);
     LOG(DEBUG, "vhost gateway               : " << vhost_.gw_.to_string());
     LOG(DEBUG, "Ethernet port               : " << eth_port_);
-    LOG(DEBUG, "Ethernet Encap Type         : " << eth_port_encap_type_);
-    if (eth_port_no_arp_) {
-    LOG(DEBUG, "Ethernet No-ARP             : " << "TRUE");
-    }
     LOG(DEBUG, "XMPP Server-1               : " << xmpp_server_1_);
     LOG(DEBUG, "XMPP Server-2               : " << xmpp_server_2_);
     LOG(DEBUG, "DNS Server-1                : " << dns_server_1_);
@@ -928,6 +924,13 @@ void AgentParam::LogConfig() const {
 
     if (enable_tsn_) {
     LOG(DEBUG, "TSN Agent mode              : Enabled");
+    }
+}
+
+void AgentParam::PostValidateLogConfig() const {
+    LOG(DEBUG, "Ethernet Port Encap Type    : " << eth_port_encap_type_);
+    if (eth_port_no_arp_) {
+    LOG(DEBUG, "Ethernet Port No-ARP        : " << "TRUE");
     }
 }
 

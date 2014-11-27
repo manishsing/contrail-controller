@@ -89,6 +89,8 @@ int AgentInit::Start() {
         return ret;
     }
 
+    agent_param_->PostValidateLogConfig();
+
     int task_id = agent_->task_scheduler()->GetTaskId("db::DBTable");
     trigger_.reset(new TaskTrigger(boost::bind(&AgentInit::InitBase, this),
                                    task_id, 0));

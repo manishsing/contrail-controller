@@ -506,11 +506,13 @@ TEST_F(UveVnUveTest, FlowCount_2) {
     util_.CreateRemoteRoute("vrf5", remote_vm4_ip, remote_router_ip, 8, "vn3",
                             peer_);
 
+    VmInterface *intf = VmInterfaceGet(input[0].intf_id);
+    EXPECT_TRUE(intf != NULL);
     TestFlow flow[] = {
         //Send an ICMP flow from remote VM in vn3 to local VM in vn5
         {
             TestFlowPkt(Address::INET, remote_vm4_ip, vm1_ip, 1, 0, 0, "vrf5",
-                        remote_router_ip, 16),
+                        remote_router_ip, intf->label()),
             { 
                 new VerifyVn("vn3", "vn5"),
             }
@@ -518,7 +520,7 @@ TEST_F(UveVnUveTest, FlowCount_2) {
         //Send a TCP flow from remote VM in vn3 to local VM in vn5
         {
             TestFlowPkt(Address::INET, remote_vm4_ip, vm1_ip, IPPROTO_TCP,
-                        1006, 1007, "vrf5", remote_router_ip, 16),
+                        1006, 1007, "vrf5", remote_router_ip, intf->label()),
             {
                 new VerifyVn("vn3", "vn5"),
             }

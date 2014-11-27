@@ -148,6 +148,7 @@ public:
               const std::string &program_name);
 
     void LogConfig() const;
+    void PostValidateLogConfig() const;
     void InitVhostAndXenLLPrefix();
     void set_test_mode(bool mode);
     bool test_mode() const { return test_mode_; }

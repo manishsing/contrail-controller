@@ -110,11 +110,11 @@ public:
             WAIT_FOR(1000, 1000, ((oper_if_count) == 
                                 Agent::GetInstance()->interface_table()->Size()));
         }
-        WAIT_FOR(1000, 1000, ((num_ports * 2)==
-                            Agent::GetInstance()->mpls_table()->Size()));
+        WAIT_FOR(1000, 1000, ((((num_ports * 2) + agent_->vn_table()->Size()) ==
+                            (Agent::GetInstance()->mpls_table()->Size()))));
         if (!ksync_init_) {
-            WAIT_FOR(1000, 1000, ((num_ports * 2) ==
-                                  (uint32_t)KSyncSockTypeMap::MplsCount()));
+            WAIT_FOR(1000, 1000, (((num_ports * 2) + agent_->vn_table()->Size()) == 
+                                  (uint32_t)(KSyncSockTypeMap::MplsCount())));
             if (if_count) {
                 WAIT_FOR(1000, 1000, ((num_ports + if_count) == 
                                     (uint32_t)KSyncSockTypeMap::IfCount()));
@@ -205,6 +205,11 @@ public:
         WAIT_FOR(1000, 1000, (Agent::GetInstance()->nexthop_table()->FindActiveEntry(&key) == NULL));
     }
 
+    void SetUp() {
+        agent_ = Agent::GetInstance();
+    }
+
+    Agent *agent_;
     static bool ksync_init_;
 };
 
@@ -296,8 +301,11 @@ TEST_F(KStateTest, MplsDumpTest) {
     client->KStateResponseWait(1);
     mpls_count = TestKStateBase::fetched_count_;
     
+    uint32_t old_vn_count = agent_->vn_table()->Size();
     CreatePorts(0, 0, 0);
-    TestMplsKState::Init(-1, true, mpls_count + MAX_TEST_MPLS);
+    uint32_t vn_count = agent_->vn_table()->Size() - old_vn_count;
+    CreatePorts(0, 0, 0);
+    TestMplsKState::Init(-1, true, mpls_count + vn_count + MAX_TEST_MPLS);
     client->WaitForIdle(3);
     client->KStateResponseWait(1);
 
@@ -311,10 +319,13 @@ TEST_F(KStateTest, MplsGetTest) {
     client->KStateResponseWait(1);
     mpls_count = TestKStateBase::fetched_count_;
 
+    uint32_t old_vn_count = agent_->vn_table()->Size();
     CreatePorts(0, 0, 0);
+    uint32_t vn_count = agent_->vn_table()->Size() - old_vn_count;
     for (int i = 0; i < MAX_TEST_FD; i++) {
         //TODO Why this 8 needed?
-        TestMplsKState::Init(MplsTable::kStartLabel + mpls_count + i + 8);
+        TestMplsKState::Init(MplsTable::kStartLabel + mpls_count + vn_count +
+                             i + 8);
         client->WaitForIdle();
         client->KStateResponseWait(1);
     }

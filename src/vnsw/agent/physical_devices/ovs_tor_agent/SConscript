@@ -22,9 +22,6 @@ env.Prepend(LIBS = [
                     'openvswitch',
                     'vnswinit'
                    ])
-env.Append(LIBS = [
-                   'physical_devices'
-                  ])
 
 env.Append(LIBS = ['ssl', 'crypto'])
 

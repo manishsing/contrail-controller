@@ -71,7 +71,6 @@ buildinfo_dep_libs += MapBuildAgentLib([
     'openstack/libnova_ins_thrift.a',
     'oper/libvnswoperdb.a',
     'pkt/libpkt.a', 'diag/libdiag.a',
-    'physical_devices/tables/libphysical_devices.a',
     'physical_devices/tsn/libtsn.a',
     'services/libagent_services.a',
     'uve/libstatsuve.a'

@@ -15,10 +15,8 @@ env = AgentEnv.Clone()
 # test specific modifications
 AgentEnv.MakeTestEnv(env)
 
-env.Append(LIBPATH = [ '../../../tables' ])
 env.Append(LIBPATH = ['./'])
 env.Append(LIBPATH = ['../'])
-env.Append(LIBS = [ 'physical_devices'])
 env.Append(LIBS = [ 'control_node_mock'])
 env.Prepend(LIBS = [ 'test_ovs_agent_init'])
 env.Prepend(LIBS = [ 'ovsdbclient', 'openvswitch'])
@@ -27,7 +25,7 @@ env.Library('test_ovs_agent_init', 'test_ovs_agent_init.cc')
 
 agent_suite = []
 flaky_agent_suite = []
-test_ovs_route = AgentEnv.MakeTestCmd(env, 'test_ovs_route', agent_suite)
+test_ovs_route = AgentEnv.MakeTestCmd(env, 'test_ovs_route', flaky_agent_suite)
 
 flaky_test = env.TestSuite('agent-flaky-test', flaky_agent_suite)
 env.Alias('ovsdb_client:flaky_test', flaky_test)

@@ -165,7 +165,6 @@ class VNController;
 class AgentSignal;
 class ServiceInstanceTable;
 class LoadbalancerTable;
-class PhysicalDeviceManager;
 class Agent;
 
 extern void RouterIdDepInit(Agent *agent);
@@ -664,10 +663,6 @@ public:
     VNController *controller() const;
     void set_controller(VNController *val);
 
-    // Physical Device Manager
-    PhysicalDeviceManager *device_manager() const;
-    void set_device_manager(PhysicalDeviceManager *dev_mgmt);
-
     // Miscellaneous
     EventManager *event_manager() const {return event_mgr_;}
     void set_event_manager(EventManager *evm) {
@@ -775,7 +770,6 @@ private:
     OperDB *oper_db_;
     DiagTable *diag_table_;
     VNController *controller_;
-    PhysicalDeviceManager *device_manager_;
 
     EventManager *event_mgr_;
     AgentXmppChannel *agent_xmpp_channel_[MAX_XMPP_SERVERS];
