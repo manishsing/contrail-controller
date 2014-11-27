@@ -31,11 +31,12 @@ using OVSDB::OvsdbClientSession;
 
 VlanPortBindingEntry::VlanPortBindingEntry(VlanPortBindingTable *table,
         const VlanLogicalInterface *entry) : OvsdbDBEntry(table_),
-    logical_switch_name_(), physical_port_name_(entry->physical_interface()->name()),
+    logical_switch_name_(), physical_port_name_(),
     physical_device_name_(""), vlan_(entry->vlan()) {
     RemotePhysicalInterface *phy_intf = dynamic_cast<RemotePhysicalInterface *>
         (entry->physical_interface());
     assert(phy_intf);
+    physical_port_name_ = phy_intf->display_name();
     physical_device_name_ = phy_intf->physical_device()->name();
 }
 
@@ -248,7 +249,11 @@ OvsdbDBEntry *VlanPortBindingTable::AllocOvsEntry(struct ovsdb_idl_row *row) {
 KSyncDBObject::DBFilterResp VlanPortBindingTable::DBEntryFilter(
         const DBEntry *entry) {
     const VlanLogicalInterface *l_port =
-        static_cast<const VlanLogicalInterface *>(entry);
+        dynamic_cast<const VlanLogicalInterface *>(entry);
+    if (l_port == NULL) {
+        // Ignore entries other than VLanLogicalInterface.
+        return DBFilterIgnore;
+    }
     // Since we need physical port name and device name as key, ignore entry
     // if physical port or device is not yet present.
     RemotePhysicalInterface *phy_intf = dynamic_cast<RemotePhysicalInterface *>
