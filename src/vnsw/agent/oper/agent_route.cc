@@ -746,7 +746,7 @@ bool AgentRoute::ReComputeMulticastPaths(AgentPath *path, bool del) {
 
     //Delete path label
     if (del) {
-        MplsLabel::DeleteReq(path->label());
+        MplsLabel::DeleteReq(agent, path->label());
     }
 
     for (Route::PathList::iterator it = GetPathList().begin();
@@ -901,17 +901,19 @@ bool AgentRoute::ReComputeMulticastPaths(AgentPath *path, bool del) {
                                                      nh);
         }
         //Add new label
-        MplsLabel::CreateMcastLabelReq(fabric_peer_path->label(),
+        MplsLabel::CreateMcastLabelReq(agent,
+                                       fabric_peer_path->label(),
                                        Composite::L2COMP,
                                        component_nh_list,
                                        vrf()->GetName());
         //Delete Old label, in case label has changed for same peer.
         if (old_fabric_mpls_label != fabric_peer_path->label()) {
-            MplsLabel::DeleteReq(old_fabric_mpls_label);
+            MplsLabel::DeleteReq(agent, old_fabric_mpls_label);
         }
     }
     if (evpn_peer_path) {
-        MplsLabel::CreateMcastLabelReq(evpn_peer_path->label(),
+        MplsLabel::CreateMcastLabelReq(agent,
+                                       evpn_peer_path->label(),
                                        Composite::L2COMP,
                                        component_nh_list,
                                        vrf()->GetName());

@@ -13,6 +13,7 @@
 #include "controller/controller_ifmap.h"
 #include "controller/controller_vrf_export.h"
 #include "controller/controller_init.h"
+#include "oper/operdb_init.h"
 #include "oper/vrf.h"
 #include "oper/nexthop.h"
 #include "oper/mirror_table.h"
@@ -161,9 +162,10 @@ void AgentXmppChannel::ReceiveEvpnUpdate(XmlPugi *pugi) {
                     //traverses the subnet route in VRF to issue delete of peer
                     //for them as well.
                     TunnelOlist olist;
-                    MulticastHandler::ModifyEvpnMembers(bgp_peer_id(),
-                                                        vrf_name, olist,
-                                                        ethernet_tag,
+                    agent_->oper_db()->multicast()->
+                        ModifyEvpnMembers(bgp_peer_id(),
+                                          vrf_name, olist,
+                                          ethernet_tag,
                              ControllerPeerPath::kInvalidPeerIdentifier);
                 } else {
                     rt_table->DeleteReq(bgp_peer_id(), vrf_name, mac, ethernet_tag,
@@ -305,11 +307,11 @@ void AgentXmppChannel::ReceiveMulticastUpdate(XmlPugi *pugi) {
                 }
 
                 //Retract with invalid identifier
-                MulticastHandler::ModifyFabricMembers(agent_->
-                                              multicast_tree_builder_peer(),
-                                              vrf, g_addr.to_v4(),
-                                              s_addr.to_v4(), 0, olist,
-                                  ControllerPeerPath::kInvalidPeerIdentifier);
+                agent_->oper_db()->multicast()->
+                    ModifyFabricMembers(agent_->multicast_tree_builder_peer(),
+                                        vrf, g_addr.to_v4(),
+                                        s_addr.to_v4(), 0, olist,
+                                        ControllerPeerPath::kInvalidPeerIdentifier);
             }
         }
         return;
@@ -384,7 +386,7 @@ void AgentXmppChannel::ReceiveMulticastUpdate(XmlPugi *pugi) {
                                              addr.to_v4(), encap));
         }
 
-        MulticastHandler::ModifyFabricMembers(
+        agent_->oper_db()->multicast()->ModifyFabricMembers(
                 agent_->multicast_tree_builder_peer(),
                 vrf, g_addr.to_v4(), s_addr.to_v4(),
                 item->entry.nlri.source_label, olist,
@@ -621,10 +623,11 @@ void AgentXmppChannel::AddMulticastEvpnRoute(string vrf_name,
 
     CONTROLLER_TRACE(Trace, GetBgpPeerName(), "Composite",
                      "add evpn multicast route");
-    MulticastHandler::ModifyEvpnMembers(bgp_peer_id(), vrf_name, olist,
-                                        item->entry.nlri.ethernet_tag,
-                                        agent_->controller()->
-                                        multicast_sequence_number());
+    agent_->oper_db()->multicast()->
+        ModifyEvpnMembers(bgp_peer_id(), vrf_name, olist,
+                          item->entry.nlri.ethernet_tag,
+                          agent_->controller()->
+                          multicast_sequence_number());
 }
 
 void AgentXmppChannel::AddEvpnRoute(std::string vrf_name,

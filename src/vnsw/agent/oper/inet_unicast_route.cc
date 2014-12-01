@@ -341,7 +341,7 @@ AgentPath *InetUnicastRouteEntry::AllocateEcmpPath(Agent *agent,
                                            agent, path);
 
     //Make MPLS label point to Composite NH
-    MplsLabel::CreateEcmpLabel(label, Composite::LOCAL_ECMP, component_nh_list,
+    MplsLabel::CreateEcmpLabel(agent, label, Composite::LOCAL_ECMP, component_nh_list,
                                vrf()->GetName());
 
     RouteInfo rt_info;
@@ -395,7 +395,7 @@ bool InetUnicastRouteEntry::EcmpDeletePath(AgentPath *path) {
         // There is single path of type LOCAL_VM_PORT_PEER. Delete the ECMP path
         remove(ecmp);
         //Enqueue MPLS label delete request
-        MplsLabel::Delete(ecmp->label());
+        MplsLabel::Delete(agent, ecmp->label());
         delete ecmp;
     } else if (count > 1) {
         // Remove Component-NH for the path being deleted
@@ -520,7 +520,7 @@ void InetUnicastRouteEntry::AppendEcmpPath(Agent *agent, AgentPath *path) {
                                nh_req, agent, ecmp_path);
 
     //Make MPLS label point to composite NH
-    MplsLabel::CreateEcmpLabel(ecmp_path->label(), Composite::LOCAL_ECMP,
+    MplsLabel::CreateEcmpLabel(agent, ecmp_path->label(), Composite::LOCAL_ECMP,
                                component_nh_key_list, vrf()->GetName());
 
     RouteInfo rt_info;
@@ -559,7 +559,7 @@ void InetUnicastRouteEntry::DeleteComponentNH(Agent *agent, AgentPath *path) {
                                nh_req, agent, ecmp_path);
 
     //Make MPLS label point to composite NH
-    MplsLabel::CreateEcmpLabel(ecmp_path->label(), Composite::LOCAL_ECMP,
+    MplsLabel::CreateEcmpLabel(agent, ecmp_path->label(), Composite::LOCAL_ECMP,
                                component_nh_key_list, vrf()->GetName());
 
     RouteInfo rt_info;

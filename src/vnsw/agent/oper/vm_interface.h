@@ -412,7 +412,6 @@ public:
     static void SubnetSync(InterfaceTable *table, IFMapNode *node);
     static void LogicalPortSync(InterfaceTable *table, IFMapNode *node);
     static void PhysicalPortSync(InterfaceTable *table, IFMapNode *node);
-    static void VmSync(InterfaceTable *table, IFMapNode *node);
 
     void AllocL2MplsLabel(bool force_update, bool policy_change);
     void DeleteL2MplsLabel();

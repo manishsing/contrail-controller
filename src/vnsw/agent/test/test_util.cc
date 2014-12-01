@@ -2937,17 +2937,19 @@ void FillEvpnNextHop(BgpPeer *peer, std::string vrf_name,
     evpn_olist_map.push_back(OlistTunnelEntry(nil_uuid(), label,
                                               IpAddress::from_string("8.8.8.8").to_v4(),
                                               bmap));
-    MulticastHandler::ModifyEvpnMembers(peer, vrf_name,
-                                        evpn_olist_map, 0);
+    Agent::GetInstance()->oper_db()->multicast()->
+        ModifyEvpnMembers(peer, vrf_name,
+                          evpn_olist_map, 0);
     client->WaitForIdle();
 }
 
 void FlushEvpnNextHop(BgpPeer *peer, std::string vrf_name,
                       uint32_t tag) {
     TunnelOlist evpn_olist_map;
-    MulticastHandler::ModifyEvpnMembers(peer, vrf_name,
-                                        evpn_olist_map, tag,
-                                        ControllerPeerPath::kInvalidPeerIdentifier);
+    Agent::GetInstance()->oper_db()->multicast()->
+        ModifyEvpnMembers(peer, vrf_name,
+                          evpn_olist_map, tag,
+                          ControllerPeerPath::kInvalidPeerIdentifier);
     client->WaitForIdle();
 }
 
