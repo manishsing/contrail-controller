@@ -247,16 +247,13 @@ void InetInterface::ActivateHostInterface() {
                         vn_name_);
     }
 
-    const PhysicalInterface *physical_intf =
-        static_cast<const PhysicalInterface *>(xconnect_.get());
-    if (physical_intf && physical_intf->no_arp() == false) {
-        // Add receive-route for broadcast address
-        Inet4MulticastAgentRouteTable *mc_rt_table = 
-            static_cast<Inet4MulticastAgentRouteTable *> 
-            (VrfTable::GetInstance()->GetInet4MulticastRouteTable(vrf()->GetName()));
-        mc_rt_table->AddVHostRecvRoute(vrf()->GetName(), name_,
-                                       Ip4Address(0xFFFFFFFF), false);
-    }
+    // Add receive-route for broadcast address
+    Inet4MulticastAgentRouteTable *mc_rt_table =
+        static_cast<Inet4MulticastAgentRouteTable *>
+        (VrfTable::GetInstance()->GetInet4MulticastRouteTable(vrf()->GetName()));
+    mc_rt_table->AddVHostRecvRoute(vrf()->GetName(), name_,
+                                   Ip4Address(0xFFFFFFFF), false);
+
     ReceiveNHKey nh_key(new InetInterfaceKey(name_), false);
     flow_key_nh_ = static_cast<const NextHop *>(
             agent->nexthop_table()->FindActiveEntry(&nh_key));
@@ -278,16 +275,12 @@ void InetInterface::DeActivateHostInterface() {
         DeleteDefaultRoute(agent, uc_rt_table, vrf(), gw_);
     }
 
-    const PhysicalInterface *physical_intf =
-        static_cast<const PhysicalInterface *>(xconnect_.get());
-    if (physical_intf && physical_intf->no_arp() == false) {
-        Inet4MulticastAgentRouteTable *mc_rt_table = 
-            static_cast<Inet4MulticastAgentRouteTable *> 
-            (VrfTable::GetInstance()->GetInet4MulticastRouteTable(vrf()->GetName()));
-        // Add receive-route for broadcast address
-        mc_rt_table->Delete(vrf()->GetName(), Ip4Address(0), 
-                            Ip4Address(0xFFFFFFFF));
-    }
+    Inet4MulticastAgentRouteTable *mc_rt_table =
+        static_cast<Inet4MulticastAgentRouteTable *>
+        (VrfTable::GetInstance()->GetInet4MulticastRouteTable(vrf()->GetName()));
+    // Add receive-route for broadcast address
+    mc_rt_table->Delete(vrf()->GetName(), Ip4Address(0),
+                        Ip4Address(0xFFFFFFFF));
 
     // Delete receive nexthops
     ReceiveNH::Delete(agent->nexthop_table(), name_);
