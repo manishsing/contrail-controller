@@ -103,7 +103,7 @@ void InetInterface::ActivateSimpleGateway() {
         // Allocate MPLS Label 
         label_ = agent->mpls_table()->AllocLabel();
         // Create MPLS entry pointing to virtual host interface-nh
-        MplsLabel::CreateInetInterfaceLabel(label_, name(), false,
+        MplsLabel::CreateInetInterfaceLabel(agent, label_, name(), false,
                                             InterfaceNHFlags::INET4);
 
     }
@@ -136,7 +136,7 @@ void InetInterface::DeActivateSimpleGateway() {
     InterfaceNH::DeleteInetInterfaceNextHop(name());
 
     // Delete MPLS Label
-    MplsLabel::DeleteReq(label_);
+    MplsLabel::DeleteReq(agent, label_);
     label_ = MplsTable::kInvalidLabel;
     flow_key_nh_ = NULL;
 }

@@ -123,7 +123,6 @@ bool VmTable::IFNodeToReq(IFMapNode *node, DBRequest &req){
     CfgUuidSet(id_perms.uuid.uuid_mslong, id_perms.uuid.uuid_lslong, u);
     string virtual_router_type = "none";
 
-    VmInterface::VmSync(agent()->interface_table(), node);
     VmKey *key = new VmKey(u);
     VmData *data = NULL;
     if (node->IsDeleted()) {

@@ -77,7 +77,9 @@ void PhysicalDeviceManager::RegisterDBClients() {
         ("physical-interface-logical-interface",
          list_of("physical-router-physical-interface"))
         ("logical-interface-virtual-machine-interface",
-         list_of("physical-interface-logical-interface"));
+         list_of("physical-interface-logical-interface"))
+        ("logical-interface-virtual-machine-interface",
+         list_of("self"));
     mgr->RegisterReactionMap("logical-interface", logical_port_react);
 
     device_table_->RegisterDBClients(mgr);

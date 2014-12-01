@@ -1710,14 +1710,14 @@ void VmInterface::AllocL3MplsLabel(bool force_update, bool policy_change) {
         return;
 
     bool new_entry = false;
+    Agent *agent = static_cast<InterfaceTable *>(get_table())->agent();
     if (label_ == MplsTable::kInvalidLabel) {
-        Agent *agent = static_cast<InterfaceTable *>(get_table())->agent();
         label_ = agent->mpls_table()->AllocLabel();
         new_entry = true;
     }
 
     if (force_update || policy_change || new_entry)
-        MplsLabel::CreateVPortLabel(label_, GetUuid(), policy_enabled_,
+        MplsLabel::CreateVPortLabel(agent, label_, GetUuid(), policy_enabled_,
                                     InterfaceNHFlags::INET4);
 }
 
@@ -1727,7 +1727,8 @@ void VmInterface::DeleteL3MplsLabel() {
         return;
     }
 
-    MplsLabel::Delete(label_);
+    Agent *agent = static_cast<InterfaceTable *>(get_table())->agent();
+    MplsLabel::Delete(agent, label_);
     label_ = MplsTable::kInvalidLabel;
 }
 
@@ -1741,8 +1742,9 @@ void VmInterface::AllocL2MplsLabel(bool force_update,
         new_entry = true;
     }
 
+    Agent *agent = static_cast<InterfaceTable *>(get_table())->agent();
     if (force_update || policy_change || new_entry)
-        MplsLabel::CreateVPortLabel(l2_label_, GetUuid(), false,
+        MplsLabel::CreateVPortLabel(agent, l2_label_, GetUuid(), false,
                                     InterfaceNHFlags::LAYER2);
 }
 
@@ -1752,7 +1754,8 @@ void VmInterface::DeleteL2MplsLabel() {
         return;
     }
 
-    MplsLabel::Delete(l2_label_);
+    Agent *agent = static_cast<InterfaceTable *>(get_table())->agent();
+    MplsLabel::Delete(agent, l2_label_);
     l2_label_ = MplsTable::kInvalidLabel;
 }
 
@@ -2898,7 +2901,8 @@ void VmInterface::ServiceVlan::Activate(VmInterface *interface,
     if (label_ == MplsTable::kInvalidLabel) {
         VlanNH::Create(interface->GetUuid(), tag_, vrf_name_, smac_, dmac_);
         label_ = table->agent()->mpls_table()->AllocLabel();
-        MplsLabel::CreateVlanNh(label_, interface->GetUuid(), tag_);
+        MplsLabel::CreateVlanNh(table->agent(), label_,
+                                interface->GetUuid(), tag_);
         VrfAssignTable::CreateVlanReq(interface->GetUuid(), vrf_name_, tag_);
     }
 
@@ -2919,7 +2923,9 @@ void VmInterface::ServiceVlan::DeActivate(VmInterface *interface) const {
     if (label_ != MplsTable::kInvalidLabel) {
         VrfAssignTable::DeleteVlanReq(interface->GetUuid(), tag_);
         interface->ServiceVlanRouteDel(*this);
-        MplsLabel::Delete(label_);
+        Agent *agent =
+            static_cast<InterfaceTable *>(interface->get_table())->agent();
+        MplsLabel::Delete(agent, label_);
         label_ = MplsTable::kInvalidLabel;
         VlanNH::Delete(interface->GetUuid(), tag_);
         vrf_ = NULL;
@@ -3280,34 +3286,6 @@ void VmInterface::VnSync(InterfaceTable *table, IFMapNode *node) {
             DBRequest req;
             if (table->IFNodeToReq(adj_node, req) == true) {
                 LOG(DEBUG, "VN change sync for Port " << adj_node->name());
-                table->Enqueue(&req);
-            }
-        }
-    }
-}
-
-//TBD replace it with ifmap dependancy manager
-void VmInterface::VmSync(InterfaceTable *table, IFMapNode *node) {
-    CfgListener *cfg_listener = table->agent()->cfg_listener();
-    if (cfg_listener->SkipNode(node)) {
-        return;
-    }
-    // Walk the node to get neighbouring interface
-    DBGraph *graph =
-        static_cast<IFMapAgentTable *> (node->table())->GetGraph();
-    for (DBGraphVertex::adjacency_iterator iter = node->begin(graph);
-         iter != node->end(graph); ++iter) {
-
-        IFMapNode *adj_node = static_cast<IFMapNode *>(iter.operator->());
-        if (cfg_listener->SkipNode(adj_node)) {
-            continue;
-        }
-
-        if (adj_node->table() ==
-            table->agent()->cfg()->cfg_vm_interface_table()) {
-            DBRequest req;
-            if (table->IFNodeToReq(adj_node, req) == true) {
-                LOG(DEBUG, "VM change sync for Port " << adj_node->name());
                 table->Enqueue(&req);
             }
         }

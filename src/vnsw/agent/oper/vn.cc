@@ -331,14 +331,15 @@ bool VnTable::ChangeHandler(DBEntry *entry, const DBRequest *req) {
         if (!vrf) {
             DeleteAllIpamRoutes(vn);
             if (vn->table_label()) {
-                MplsLabel::Delete(vn->table_label());
+                MplsLabel::Delete(agent(), vn->table_label());
                 vn->set_table_label(0);
             }
         }
         vn->vrf_ = vrf;
         if (vrf) {
             vn->set_table_label(Agent::GetInstance()->mpls_table()->AllocLabel());
-            MplsLabel::CreateTableLabel(vn->table_label(), data->vrf_name_, false);
+            MplsTable::CreateTableLabel(agent(), vn->table_label(),
+                                        data->vrf_name_, false);
         }
         ret = true;
     }
@@ -380,7 +381,7 @@ bool VnTable::Delete(DBEntry *entry, const DBRequest *req) {
     VnEntry *vn = static_cast<VnEntry *>(entry);
     DeleteAllIpamRoutes(vn);
     if (vn->table_label()) {
-        MplsLabel::Delete(vn->table_label());
+        MplsLabel::Delete(agent(), vn->table_label());
         vn->set_table_label(0);
     }
     vn->SendObjectLog(AgentLogEvent::DELETE);
