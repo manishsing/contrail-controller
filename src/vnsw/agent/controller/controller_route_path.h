@@ -211,6 +211,15 @@ private:
     DISALLOW_COPY_AND_ASSIGN(ControllerVlanNhRoute);
 };
 
+/*
+ * ClonedLocalPath would be used to pick nexthop from the
+ * local peer, instead of nexthop pointed by mpls label.
+ * Currently it gets used in gateway interface. In case of
+ * gateway interface, label exported by agent would point
+ * to table nexthop, and the prefix route of gateway
+ * interface would point resolve nexthop, so that ARP resolution
+ * can be triggered when packet hits the subnet route.
+ */
 class ClonedLocalPath : public AgentRouteData {
 public:
     ClonedLocalPath(uint64_t seq, const AgentXmppChannel *channel,

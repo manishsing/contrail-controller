@@ -99,7 +99,6 @@ struct VnSandeshData {
     9: bool layer2_forwarding;
     10: bool ipv4_forwarding;
     11: bool admin_state;
-    12: i32 table_label;
 }
 
 struct SgSandeshData {
@@ -253,6 +252,7 @@ struct VrfSandeshData {
     5: string source;                        // config or gateway
     6: i32 uc6index (link="Inet6UcRouteReq"); // VRF Index INET6 UC Table
     7: string vn (link="VnListReq");          // VN-Name
+    8: i32 table_label;                      //Label for route lookup on this vrf
 }
 
 struct MplsSandeshData {

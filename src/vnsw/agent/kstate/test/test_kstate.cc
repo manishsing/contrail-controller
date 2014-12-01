@@ -107,13 +107,15 @@ public:
         WaitForVrf(input, 0, true);
         if (if_count) {
 	    unsigned int oper_if_count = num_ports + if_count;
-            WAIT_FOR(1000, 1000, ((oper_if_count) == 
+            WAIT_FOR(1000, 1000, ((oper_if_count) ==
                                 Agent::GetInstance()->interface_table()->Size()));
         }
-        WAIT_FOR(1000, 1000, ((((num_ports * 2) + agent_->vn_table()->Size()) ==
+        //Table label would not be allocated for fabric vrf
+        WAIT_FOR(1000, 1000, ((((num_ports * 2) + agent_->vrf_table()->Size() - 1) ==
                             (Agent::GetInstance()->mpls_table()->Size()))));
         if (!ksync_init_) {
-            WAIT_FOR(1000, 1000, (((num_ports * 2) + agent_->vn_table()->Size()) == 
+            //Table label would not be allocated for fabric vrf
+            WAIT_FOR(1000, 1000, (((num_ports * 2) + agent_->vrf_table()->Size() - 1) ==
                                   (uint32_t)(KSyncSockTypeMap::MplsCount())));
             if (if_count) {
                 WAIT_FOR(1000, 1000, ((num_ports + if_count) == 

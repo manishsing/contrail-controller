@@ -226,28 +226,25 @@ bool ControllerInetInterfaceRoute::IsPeerValid() const {
 bool ClonedLocalPath::AddChangePath(Agent *agent, AgentPath *path,
                                     const AgentRoute *rt) {
     bool ret = false;
-    const AgentPath *local_path = rt->FindLocalVmPortPath();
 
-    path->ChangeNH(agent, NULL);
+    MplsLabel *mpls = agent->mpls_table()->FindMplsLabel(mpls_label_);
+    if (!mpls) {
+        return ret;
+    }
+
+    //Do a route lookup in native VRF
+    assert(mpls->nexthop()->GetType() == NextHop::VRF);
+    const VrfNH *vrf_nh = static_cast<const VrfNH *>(mpls->nexthop());
+    const InetUnicastRouteEntry *uc_rt =
+        static_cast<const InetUnicastRouteEntry *>(rt);
+    const AgentRoute *mpls_vrf_uc_rt =
+        vrf_nh->GetVrf()->GetUcRoute(uc_rt->addr());
+    if (mpls_vrf_uc_rt == NULL) {
+        return ret;
+    }
+    AgentPath *local_path = mpls_vrf_uc_rt->FindLocalVmPortPath();
     if (!local_path) {
-        MplsLabel *mpls = agent->mpls_table()->FindMplsLabel(mpls_label_);
-        if (!mpls) {
-            return false;
-        }
-
-        //Do a route lookup in native VRF
-        assert(mpls->nexthop()->GetType() == NextHop::VRF);
-        const VrfNH *vrf_nh = static_cast<const VrfNH *>(mpls->nexthop());
-        const InetUnicastRouteEntry *uc_rt =
-            static_cast<const InetUnicastRouteEntry *>(rt);
-        const AgentRoute *rt = vrf_nh->GetVrf()->GetUcRoute(uc_rt->addr());
-        if (rt == NULL) {
-            return false;
-        }
-        local_path = rt->FindLocalVmPortPath();
-        if (!local_path) {
-            return false;
-        }
+        return ret;
     }
 
     if (path->dest_vn_name() != vn_) {

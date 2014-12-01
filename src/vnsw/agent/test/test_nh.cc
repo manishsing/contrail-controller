@@ -2133,13 +2133,14 @@ TEST_F(CfgTest, Nexthop_invalid_vrf) {
     client->WaitForIdle();
     client->Reset();
 
-    InetInterfaceKey vhost_intf_key(agent_->vhost_interface()->name());
+    InetInterfaceKey *vhost_intf_key =
+        new InetInterfaceKey(agent_->vhost_interface()->name());
     //ARP NH
     DBRequest arp_nh_req;
     arp_nh_req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
     arp_nh_req.key.reset(new ArpNHKey("vrf11", Ip4Address::from_string("11.11.11.11"), 
                                       false));
-    arp_nh_req.data.reset(new ArpNHData(&vhost_intf_key));
+    arp_nh_req.data.reset(new ArpNHData(vhost_intf_key));
     agent_->nexthop_table()->Enqueue(&arp_nh_req);
     client->WaitForIdle();
     ArpNHKey find_arp_nh_key("vrf11", Ip4Address::from_string("11.11.11.11"),

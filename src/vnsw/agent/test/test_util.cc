@@ -2705,6 +2705,9 @@ int MplsToVrfId(int label) {
             if (intf && intf->GetServiceVlanVrf(nh1->GetVlanTag())) {
                 vrf = intf->GetServiceVlanVrf(nh1->GetVlanTag())->vrf_id();
             }
+        } else if (nh->GetType() == NextHop::VRF) {
+            const VrfNH *vrf_nh = static_cast<const VrfNH *>(nh);
+            vrf = vrf_nh->GetVrf()->vrf_id();
         } else {
             assert(0);
         }

@@ -2624,7 +2624,7 @@ TEST_F(IntfTest, InstanceIpDelete) {
     client->Reset();
 }
 
-TEST_F(IntfTest, DISABLED_VcpeIntfAdd) {
+TEST_F(IntfTest, DISABLED_GwIntfAdd) {
     struct PortInfo input1[] = {
         {"vnet8", 8, "8.1.1.1", "00:00:00:01:01:01", 1, 1}
     };
@@ -2648,11 +2648,11 @@ TEST_F(IntfTest, DISABLED_VcpeIntfAdd) {
     //and the route points to table NH
     Ip4Address addr = Ip4Address::from_string("8.1.1.0");
     InetUnicastRouteEntry *rt = RouteGet("vrf1", addr, 24);
-    const VnEntry *vn = VnGet(1);
+    const VrfEntry *vrf = VrfGet("vrf1", false);
     EXPECT_TRUE(rt != NULL);
-    EXPECT_TRUE(vn != NULL);
-    if (rt && vn) {
-        EXPECT_TRUE(rt->GetActiveLabel() == vn->table_label());
+    EXPECT_TRUE(vrf != NULL);
+    if (rt && vrf) {
+        EXPECT_TRUE(rt->GetActiveLabel() == vrf->table_label());
         EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE);
     }
    
@@ -2671,7 +2671,7 @@ TEST_F(IntfTest, DISABLED_VcpeIntfAdd) {
     client->Reset();
 }
 
-TEST_F(IntfTest, DISABLED_VcpeSubnetChange) {
+TEST_F(IntfTest, DISABLED_GwSubnetChange) {
     struct PortInfo input1[] = {
         {"vnet8", 8, "8.1.1.1", "00:00:00:01:01:01", 1, 1}
     };
@@ -2695,11 +2695,11 @@ TEST_F(IntfTest, DISABLED_VcpeSubnetChange) {
     //and the route points to table NH
     Ip4Address addr = Ip4Address::from_string("8.1.1.0");
     InetUnicastRouteEntry *rt = RouteGet("vrf1", addr, 24);
-    const VnEntry *vn = VnGet(1);
+    const VrfEntry *vrf = VrfGet("vrf1", false);
     EXPECT_TRUE(rt != NULL);
-    EXPECT_TRUE(vn != NULL);
-    if (rt && vn) {
-        EXPECT_TRUE(rt->GetActiveLabel() == vn->table_label());
+    EXPECT_TRUE(vrf != NULL);
+    if (rt && vrf) {
+        EXPECT_TRUE(rt->GetActiveLabel() == vrf->table_label());
         EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE);
     }
 
@@ -2708,11 +2708,11 @@ TEST_F(IntfTest, DISABLED_VcpeSubnetChange) {
     EXPECT_FALSE(RouteFind("vrf1", "8.1.1.0", 24));
     addr = Ip4Address::from_string("9.1.1.0");
     rt = RouteGet("vrf1", addr, 24);
-    vn = VnGet(1);
+    vrf = VrfGet("vrf1", false);
     EXPECT_TRUE(rt != NULL);
-    EXPECT_TRUE(vn != NULL);
-    if (rt && vn) {
-        EXPECT_TRUE(rt->GetActiveLabel() == vn->table_label());
+    EXPECT_TRUE(vrf != NULL);
+    if (rt && vrf) {
+        EXPECT_TRUE(rt->GetActiveLabel() == vrf->table_label());
         EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE);
     }
 

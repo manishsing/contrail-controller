@@ -187,10 +187,6 @@ public:
     bool layer2_forwarding() const {return layer2_forwarding_;};
     bool layer3_forwarding() const {return layer3_forwarding_;};
     bool admin_state() const {return admin_state_;}
-    uint32_t table_label() const { return table_label_;}
-    void set_table_label(uint32_t label) {
-        table_label_ = label;
-    }
 
     AgentDBTable *DBToTable() const;
     uint32_t GetRefCount() const {

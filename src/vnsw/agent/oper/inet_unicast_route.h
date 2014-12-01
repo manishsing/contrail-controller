@@ -222,7 +222,9 @@ public:
     static InetUnicastRouteEntry *FindResolveRoute(const string &vrf_name, 
                                                    const Ip4Address &ip);
     static void CheckAndAddArpReq(const string &vrf_name, const Ip4Address &ip,
-                                  const Interface *intf);
+                                  const Interface *intf,
+                                  const std::string &vn_name,
+                                  const SecurityGroupList &sg);
     static void AddArpReq(const string &route_vrf_name,
                           const Ip4Address &ip,
                           const string &nh_vrf_name,

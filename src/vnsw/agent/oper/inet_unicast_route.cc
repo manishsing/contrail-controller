@@ -412,7 +412,6 @@ bool InetUnicastRouteEntry::ReComputePathAdd(AgentPath *path) {
     if (local_path && local_path->is_subnet_discard()) {
         return ReComputeMulticastPaths(path, false);
     }
-
     // ECMP path are managed by route module. Update ECMP path with
     // addition of new path
     return EcmpAddPath(path);
@@ -1138,7 +1137,9 @@ InetUnicastAgentRouteTable::ArpRoute(DBRequest::DBOperation op,
 void
 InetUnicastAgentRouteTable::CheckAndAddArpReq(const string &vrf_name,
                                               const Ip4Address &ip,
-                                              const Interface *intf) {
+                                              const Interface *intf,
+                                              const std::string &vn_name,
+                                              const SecurityGroupList &sg) {
 
     if (ip == Agent::GetInstance()->router_id() ||
         !IsIp4SubnetMember(ip, Agent::GetInstance()->router_id(),
@@ -1147,7 +1148,7 @@ InetUnicastAgentRouteTable::CheckAndAddArpReq(const string &vrf_name,
         // Currently, default GW Arp is added during init
         return;
     }
-    //AddArpReq(vrf_name, ip, intf->vrf()->GetName(), intf);
+    AddArpReq(vrf_name, ip, intf->vrf()->GetName(), intf, false, vn_name, sg);
 }
 
 void InetUnicastAgentRouteTable::AddResolveRoute(const Peer *peer,
@@ -1161,7 +1162,7 @@ void InetUnicastAgentRouteTable::AddResolveRoute(const Peer *peer,
                                                  const SecurityGroupList
                                                  &sg_list) {
     Agent *agent = Agent::GetInstance();
-    ResolveNH::Create(&intf, policy);
+    ResolveNH::CreateReq(&intf, policy);
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new InetUnicastRouteKey(peer, vrf_name, ip,
                                           plen));

@@ -524,33 +524,6 @@ bool VmInterface::IsConfigurerSet(VmInterface::Configurer type) {
     return ((configurer_ & (1 << type)) != 0);
 }
 
-static bool
-AddPhysicalInterface(Agent *agent, IFMapNode *node) {
-    bool ret = false;
-
-    IFMapNode *physical_node = agent->cfg_listener()->
-        FindAdjacentIFMapNode(agent, node, "physical-router");
-    if (!physical_node) {
-        return ret;
-    }
-
-    autogen::PhysicalRouter *physical_router =
-        static_cast <autogen::PhysicalRouter *>(physical_node->GetObject());
-    if (physical_router->display_name() == agent->host_name()) {
-        autogen::PhysicalInterface *physical_interface =
-            static_cast <autogen::PhysicalInterface *>(node->GetObject());
-        InterfaceTable *intf_table = agent->interface_table();
-        ::PhysicalInterface::Create(intf_table,
-                physical_interface->display_name(),
-                agent->fabric_vrf_name(),
-                ::PhysicalInterface::FABRIC, ::PhysicalInterface::ETHERNET,
-                false);
-        ret = true;
-    }
-
-    return ret;
-}
-
 // Virtual Machine Interface is added or deleted into oper DB from Nova 
 // messages. The Config notify is used only to change interface.
 bool InterfaceTable::VmiIFNodeToReq(IFMapNode *node, DBRequest &req) {
@@ -719,7 +692,7 @@ bool InterfaceTable::VmiIFNodeToReq(IFMapNode *node, DBRequest &req) {
         IFMapNode *physical_node = agent_->cfg_listener()->
             FindAdjacentIFMapNode(agent_, logical_node, "physical-interface");
         //Add physical interface
-        if (physical_node && AddPhysicalInterface(agent_, physical_node)) {
+        if (physical_node) {
             autogen::PhysicalInterface *physical_interface =
                 static_cast <autogen::PhysicalInterface *>(
                         physical_node->GetObject());
@@ -729,9 +702,11 @@ bool InterfaceTable::VmiIFNodeToReq(IFMapNode *node, DBRequest &req) {
 
     if (!data->subnet_.is_unspecified() &&
         data->parent_ != agent_->NullString()) {
-        interface_sub_type = VmInterface::VCPE;
+        interface_sub_type = VmInterface::GATEWAY;
+        data->rx_vlan_id_ = 0;
+        data->tx_vlan_id_ = 0;
         delete key;
-        //Add request for a VMI of type VCPE
+        //Add request for a VMI of type gateway
         key = new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, u,
                                  cfg->display_name());
     }
@@ -1177,12 +1152,6 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
 
     // Read ifindex for the interface
     if (table) {
-        if (os_index_ == kInvalidIndex) {
-            GetOsParams(table->agent());
-            if (os_index_ != kInvalidIndex)
-                ret = true;
-        }
-
         VnEntry *vn = table->FindVnRef(data->vn_uuid_);
         if (vn_.get() != vn) {
             vn_ = vn;
@@ -1322,9 +1291,13 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
         ret = true;
     }
 
-    if (sub_type_ == VCPE) {
-        rx_vlan_id_ = data->rx_vlan_id_;
-        tx_vlan_id_ = data->tx_vlan_id_;
+    if (sub_type_ == GATEWAY) {
+        if (rx_vlan_id_ != data->rx_vlan_id_) {
+            rx_vlan_id_ = data->rx_vlan_id_;
+        }
+        if (tx_vlan_id_ != data->tx_vlan_id_) {
+            tx_vlan_id_ = data->tx_vlan_id_;
+        }
     }
 
     if (data->parent_ != Agent::NullString()) {
@@ -1340,6 +1313,14 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
         ifmap_node_ = data->ifmap_node_;
         if (ifmap_node_)
             table->operdb()->dependency_manager()->SetObject(ifmap_node_, this);
+    }
+
+    if (table) {
+        if (os_index_ == kInvalidIndex) {
+            GetOsParams(table->agent());
+            if (os_index_ != kInvalidIndex)
+                ret = true;
+        }
     }
 
     return ret;
@@ -1576,7 +1557,7 @@ bool VmInterface::IsActive()  const {
         return true;
     }
 
-    if (subnet_.is_unspecified() && os_index_ == kInvalidIndex)
+    if (os_index_ == kInvalidIndex)
         return false;
 
     return mac_set_;
@@ -1994,7 +1975,7 @@ void VmInterface::UpdateResolveRoute(bool old_ipv4_active, bool force_update,
 
         InetUnicastAgentRouteTable::AddResolveRoute(peer_.get(), vrf_->GetName(),
                 Address::GetIp4SubnetAddress(subnet_, subnet_plen_),
-                subnet_plen_, vm_intf_key, vn_->table_label(),
+                subnet_plen_, vm_intf_key, vrf_->table_label(),
                 policy_enabled_, vn_->GetName(), sg_id_list);
     }
 }
@@ -2422,7 +2403,7 @@ void VmInterface::ResolveRoute(const std::string &vrf_name, const Ip4Address &ad
 
     InetUnicastAgentRouteTable::AddResolveRoute(peer_.get(), vrf_name,
             Address::GetIp4SubnetAddress(addr, plen),
-            plen, vm_intf_key, vn_->table_label(),
+            plen, vm_intf_key, vrf_->table_label(),
             policy, dest_vn, sg_id_list);
 }
 
@@ -2670,7 +2651,7 @@ void VmInterface::StaticRoute::Activate(VmInterface *interface,
             InetUnicastAgentRouteTable::AddGatewayRoute(interface->peer_.get(),
                     vrf_, addr_.to_v4(),
                     plen_, gw_.to_v4(), interface->vn_->GetName(),
-                    interface->vn_->table_label(),
+                    interface->vrf_->table_label(),
                     sg_id_list);
         } else {
             interface->AddRoute(vrf_, addr_, plen_,

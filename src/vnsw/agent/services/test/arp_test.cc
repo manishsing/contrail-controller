@@ -647,7 +647,7 @@ TEST_F(ArpTest, ArpReqOnVmInterface_2) {
 
 //Test to check update on resolve route, would result
 //in arp routes also getting updated
-TEST_F(ArpTest, SubnetResolveWithoutPolicy) {
+TEST_F(ArpTest, DISABLED_SubnetResolveWithoutPolicy) {
   struct PortInfo input1[] = {
         {"vnet8", 8, "8.1.1.1", "00:00:00:01:01:01", 1, 1}
     };
@@ -697,7 +697,7 @@ TEST_F(ArpTest, SubnetResolveWithoutPolicy) {
 
 //Test to check update on resolve route, would result
 //in arp routes also getting updated
-TEST_F(ArpTest, SubnetResolveWithPolicy) {
+TEST_F(ArpTest, DISABLED_SubnetResolveWithPolicy) {
   struct PortInfo input1[] = {
         {"vnet8", 8, "8.1.1.1", "00:00:00:01:01:01", 1, 1}
     };
@@ -748,7 +748,7 @@ TEST_F(ArpTest, SubnetResolveWithPolicy) {
 
 //Verify that ARP route gets updated with policy
 //when interface policy changes
-TEST_F(ArpTest, SubnetResolveWithPolicyUpdate) {
+TEST_F(ArpTest, DISABLED_SubnetResolveWithPolicyUpdate) {
   struct PortInfo input1[] = {
         {"vnet8", 8, "8.1.1.1", "00:00:00:01:01:01", 1, 1}
     };
@@ -816,7 +816,7 @@ TEST_F(ArpTest, SubnetResolveWithPolicyUpdate) {
 
 //Test to check update on resolve route, would result
 //in arp routes also getting updated
-TEST_F(ArpTest, SubnetResolveWithSg) {
+TEST_F(ArpTest, DISABLED_SubnetResolveWithSg) {
   struct PortInfo input1[] = {
         {"vnet8", 8, "8.1.1.1", "00:00:00:01:01:01", 1, 1}
     };

@@ -330,16 +330,8 @@ bool VnTable::ChangeHandler(DBEntry *entry, const DBRequest *req) {
     if (vrf != old_vrf) {
         if (!vrf) {
             DeleteAllIpamRoutes(vn);
-            if (vn->table_label()) {
-                MplsLabel::Delete(vn->table_label());
-                vn->set_table_label(0);
-            }
         }
         vn->vrf_ = vrf;
-        if (vrf) {
-            vn->set_table_label(Agent::GetInstance()->mpls_table()->AllocLabel());
-            MplsLabel::CreateTableLabel(vn->table_label(), data->vrf_name_, false);
-        }
         ret = true;
     }
 
@@ -379,10 +371,6 @@ bool VnTable::ChangeHandler(DBEntry *entry, const DBRequest *req) {
 bool VnTable::Delete(DBEntry *entry, const DBRequest *req) {
     VnEntry *vn = static_cast<VnEntry *>(entry);
     DeleteAllIpamRoutes(vn);
-    if (vn->table_label()) {
-        MplsLabel::Delete(vn->table_label());
-        vn->set_table_label(0);
-    }
     vn->SendObjectLog(AgentLogEvent::DELETE);
     return true;
 }
@@ -914,7 +902,6 @@ bool VnEntry::DBEntrySandesh(Sandesh *sresp, std::string &name)  const {
         data.set_ipv4_forwarding(layer3_forwarding());
         data.set_layer2_forwarding(layer2_forwarding());
         data.set_admin_state(admin_state());
-        data.set_table_label(table_label());
 
         std::vector<VnSandeshData> &list =
             const_cast<std::vector<VnSandeshData>&>(resp->get_vn_list());

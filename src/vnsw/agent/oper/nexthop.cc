@@ -744,21 +744,12 @@ bool TunnelNH::Change(const DBRequest *req) {
         rt_table->AddUnresolvedNH(this);
         const ResolveNH *nh =
             static_cast<const ResolveNH *>(rt->GetActiveNextHop());
-        SecurityGroupList sg_list;
-        std::string vn = "";
-        if (nh->interface()->type() == Interface::VM_INTERFACE) {
-            const VmInterface *vm_intf =
-                static_cast<const VmInterface *>(nh->interface());
-            vm_intf->CopySgIdList(&sg_list);
-            if (vm_intf->vn()) {
-                vn = vm_intf->vn()->GetName();
-            }
-        }
         InetUnicastAgentRouteTable::AddArpReq(GetVrf()->GetName(), dip_,
                                               nh->interface()->vrf()->GetName(),
                                               nh->interface(),
                                               nh->PolicyEnabled(),
-                                              vn, sg_list);
+                                              rt->GetActivePath()->dest_vn_name(),
+                                              rt->GetActivePath()->sg_list());
         rt = NULL;
     } else {
         valid = rt->GetActiveNextHop()->IsValid();
@@ -866,21 +857,12 @@ bool MirrorNH::Change(const DBRequest *req) {
         rt_table->AddUnresolvedNH(this);
         const ResolveNH *nh =
             static_cast<const ResolveNH *>(rt->GetActiveNextHop());
-        SecurityGroupList sg_list;
-        std::string vn = "";
-        if (nh->interface()->type() == Interface::VM_INTERFACE) {
-            const VmInterface *vm_intf =
-                static_cast<const VmInterface *>(nh->interface());
-            vm_intf->CopySgIdList(&sg_list);
-            if (vm_intf->vn()) {
-                vn = vm_intf->vn()->GetName();
-            }
-        }
         InetUnicastAgentRouteTable::AddArpReq(GetVrf()->GetName(), dip_,
                                               nh->interface()->vrf()->GetName(),
                                               nh->interface(),
                                               nh->PolicyEnabled(),
-                                              vn, sg_list);
+                                              rt->GetActivePath()->dest_vn_name(),
+                                              rt->GetActivePath()->sg_list());
         rt = NULL;
     } else {
         valid = rt->GetActiveNextHop()->IsValid();
@@ -1010,6 +992,13 @@ void ResolveNH::Create(const InterfaceKey *intf, bool policy) {
     req.key.reset(new ResolveNHKey(intf, policy));
     req.data.reset(new ResolveNHData());
     NextHopTable::GetInstance()->Process(req);
+}
+
+void ResolveNH::CreateReq(const InterfaceKey *intf, bool policy) {
+    DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    req.key.reset(new ResolveNHKey(intf, policy));
+    req.data.reset(new ResolveNHData());
+    NextHopTable::GetInstance()->Enqueue(&req);
 }
 
 /////////////////////////////////////////////////////////////////////////////

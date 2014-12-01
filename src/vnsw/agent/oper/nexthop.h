@@ -608,6 +608,7 @@ public:
         return true;
     }
     static void Create(const InterfaceKey *intf, bool policy);
+    static void CreateReq(const InterfaceKey *intf, bool policy);
     const Interface* interface() const { return interface_.get();}
 private:
     InterfaceConstRef interface_;

@@ -894,9 +894,9 @@ void AgentXmppChannel::AddRemoteRoute(string vrf_name, IpAddress prefix_addr,
             break;
             }
         case NextHop::VRF: {
-            //In case of TOR/vCPE with a logical interface vlan1,
-            //example subnet 1.1.1.0/24 may be reachable on logical
-            //interface vlan1. Path added by local vm peer would point to
+            //In case of gateway interface with example subnet
+            //1.1.1.0/24 may be reachable on this gateway inteface,
+            //Path added by local vm peer would point to
             //resolve NH, so that if any path hits this route, ARP resolution
             //can begin, and the label exported for this route would point to
             //table nexthop.

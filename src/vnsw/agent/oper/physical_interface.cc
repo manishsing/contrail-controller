@@ -126,7 +126,8 @@ Interface *PhysicalInterfaceKey::AllocEntry(const InterfaceTable *table,
     intf->encap_type_ = phy_data->encap_type_;
     intf->no_arp_ = phy_data->no_arp_;
     intf->subtype_ = phy_data->subtype_;
-    if (intf->subtype_ == PhysicalInterface::VMWARE) {
+    if (intf->subtype_ == PhysicalInterface::VMWARE ||
+        intf->subtype_ == PhysicalInterface::CONFIG) {
         intf->persistent_ = true;
     }
 

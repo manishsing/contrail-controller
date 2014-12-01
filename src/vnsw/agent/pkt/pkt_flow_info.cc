@@ -234,7 +234,7 @@ static bool NhDecode(const NextHop *nh, const PktInfo *pkt, PktFlowInfo *info,
         if (in->intf_->type() == Interface::VM_INTERFACE) {
             const VmInterface *vm_intf =
                 static_cast<const VmInterface *>(in->intf_);
-            if (vm_intf->sub_type() == VmInterface::VCPE) {
+            if (vm_intf->sub_type() == VmInterface::GATEWAY) {
                 out->nh_ = arp_nh->id();
             } else {
                 out->nh_ = arp_nh->GetInterface()->flow_key_nh()->id();

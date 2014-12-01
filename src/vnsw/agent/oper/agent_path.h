@@ -233,7 +233,7 @@ private:
 class ResolveRoute : public AgentRouteData {
 public:
     ResolveRoute(const InterfaceKey *key, bool policy, const uint32_t label,
-                 const string &vn_name, const SecurityGroupList &sg_list) :
+                 const std::string &vn_name, const SecurityGroupList &sg_list) :
         AgentRouteData(false), intf_key_(key->Clone()), policy_(policy),
         label_(label), dest_vn_name_(vn_name), path_sg_list_(sg_list) {}
     virtual ~ResolveRoute() { }

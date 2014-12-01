@@ -37,7 +37,7 @@ public:
         NONE,
         TOR,
         NOVA,
-        VCPE
+        GATEWAY
     };
 
     struct ListEntry {
