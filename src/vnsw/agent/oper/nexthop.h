@@ -446,6 +446,12 @@ class DiscardNHKey : public NextHopKey {
 public:
     DiscardNHKey() : NextHopKey(NextHop::DISCARD, false) { };
     virtual ~DiscardNHKey() { };
+    virtual bool NextHopKeyIsLess(const NextHopKey &rhs) const {
+        // There is single DiscardNH. There is no field to compare
+        return false;
+    }
+
+private:
 
     virtual NextHop *AllocEntry() const;
 private:
