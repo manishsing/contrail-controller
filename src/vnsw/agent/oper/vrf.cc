@@ -118,7 +118,8 @@ void VrfEntry::PostAdd() {
 
     if (table->agent()->fabric_vrf_name() != name_) {
         set_table_label(table->agent()->mpls_table()->AllocLabel());
-        MplsTable::CreateTableLabel(agent(), table_label(), name_, false);
+        MplsTable::CreateTableLabel(table->agent(), table_label(), name_,
+                                    false);
     }
 }
 
@@ -320,7 +321,7 @@ bool VrfTable::Delete(DBEntry *entry, const DBRequest *req) {
     VrfEntry *vrf = static_cast<VrfEntry *>(entry);
     vrf->vn_.reset(NULL);
     if (vrf->table_label() != MplsTable::kInvalidLabel) {
-        MplsTable::Delete(agent(), vrf->table_label());
+        MplsLabel::Delete(agent(), vrf->table_label());
         vrf->set_table_label(MplsTable::kInvalidLabel);
     }
     vrf->deleter_->Delete();
