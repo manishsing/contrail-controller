@@ -57,7 +57,7 @@ KSyncEntry *KSyncObject::Find(const KSyncEntry *key) {
     return NULL;
 }
 
-KSyncEntry *KSyncObject::Next(const KSyncEntry *entry) {
+KSyncEntry *KSyncObject::Next(const KSyncEntry *entry) const {
     Tree::const_iterator it;
     if (entry == NULL) {
         it = tree_.begin();
@@ -213,6 +213,8 @@ void KSyncDBObject::Notify(DBTablePartBase *partition, DBEntryBase *e) {
     KSyncDBEntry *ksync = static_cast<KSyncDBEntry *>(state);
     DBFilterResp resp = DBFilterAccept;
 
+    // Trigger DB Filter callback only for ADD/CHANGE, since we need to handle
+    // cleanup for delete anyways.
     if (!entry->IsDeleted()) {
         resp = DBEntryFilter(entry);
     }
@@ -245,6 +247,9 @@ void KSyncDBObject::Notify(DBTablePartBase *partition, DBEntryBase *e) {
             }
             delete key;
             entry->SetState(table, id_, ksync);
+            // Allow reuse of KSync Entry if the previous associated DB Entry
+            // is marked deleted. This can happen when Key for OPER DB entry
+            // deferes from that used in KSync Object.
             DBEntry *old_db_entry = ksync->GetDBEntry();
             if (old_db_entry != NULL) {
                 // cleanup previous state id the old db entry is delete marked.
