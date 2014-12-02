@@ -14,7 +14,6 @@ class AgentParam;
 class DiagTable;
 class ServicesModule;
 class PktModule;
-class TsnVrfListener;
 
 // The class to drive agent initialization. 
 // Defines control parameters used to enable/disable agent features

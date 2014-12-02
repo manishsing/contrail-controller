@@ -82,7 +82,6 @@ env.Append(LIBPATH = MapBuildDir([
     'vnsw/agent/ksync',
     'vnsw/agent/openstack',
     'vnsw/agent/oper',
-    'vnsw/agent/physical_devices/tsn',
     'vnsw/agent/pkt',
     'vnsw/agent/services',
     'vnsw/agent/uve',
@@ -144,7 +143,6 @@ env.Prepend(LIBS = [
     'ksync',
     'nova_ins',
     'nova_ins_thrift',
-    'tsn',
     'uve',
     'vgw',
 ])
@@ -294,7 +292,6 @@ subdirs = [
     'openstack',
     'oper',
     'ovs_tor_agent',
-    'physical_devices',
     'pkt',
     'services',
     'test',
