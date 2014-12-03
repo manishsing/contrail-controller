@@ -1304,7 +1304,6 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
         PhysicalInterfaceKey key(data->parent_);
         parent_ = static_cast<Interface *>
             (table->agent()->interface_table()->FindActiveEntry(&key));
-        assert(parent_ != NULL);
     }
 
     if (ifmap_node_ != data->ifmap_node_) {
