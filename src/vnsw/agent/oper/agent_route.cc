@@ -762,7 +762,7 @@ bool AgentRoute::ReComputeMulticastPaths(AgentPath *path, bool del) {
             tor_peer_path = it_path;
         } else if (it_path->peer()->GetType() == Peer::BGP_PEER) {
             //Pick up the first peer.
-            if (evpn_peer_path == NULL)
+            if ((evpn_peer_path == NULL) && (it_path->is_multicast()))
                 evpn_peer_path = it_path;
         } else if (it_path->peer()->GetType() ==
                    Peer::MULTICAST_FABRIC_TREE_BUILDER) {

@@ -172,6 +172,8 @@ public:
     bool ChangeCompositeNH(Agent *agent, CompositeNHKey *nh);
     // Get nexthop-ip address to be used for path
     const Ip4Address *NexthopIp(Agent *agent) const;
+    bool is_multicast() const {return is_multicast_;}
+    void set_is_multicast(bool is_multicast) {is_multicast_ = is_multicast;}
 private:
     const Peer *peer_;
     // Nexthop for route. Not used for gateway routes
@@ -225,6 +227,7 @@ private:
     //helping in deciding the priority during live migration and
     //allowed address pair
     IpAddress subnet_gw_ip_;
+    bool is_multicast_;
     DISALLOW_COPY_AND_ASSIGN(AgentPath);
 };
 

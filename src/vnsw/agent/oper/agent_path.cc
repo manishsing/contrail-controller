@@ -35,7 +35,8 @@ AgentPath::AgentPath(const Peer *peer, AgentRoute *rt):
     tunnel_type_(TunnelType::ComputeType(TunnelType::AllType())),
     vrf_name_(""), gw_ip_(0), unresolved_(true), is_stale_(false),
     is_subnet_discard_(false), dependant_rt_(rt), path_preference_(),
-    local_ecmp_mpls_label_(rt), composite_nh_key_(NULL), subnet_gw_ip_() {
+    local_ecmp_mpls_label_(rt), composite_nh_key_(NULL), subnet_gw_ip_(),
+    is_multicast_(false) {
 }
 
 AgentPath::~AgentPath() {
@@ -629,6 +630,7 @@ bool MulticastRoute::CopyPathParameters(Agent *agent,
     }
 
     path->set_is_subnet_discard(is_subnet_discard);
+    path->set_is_multicast(true);
     path->ChangeNH(agent, nh);
 
     return true;
