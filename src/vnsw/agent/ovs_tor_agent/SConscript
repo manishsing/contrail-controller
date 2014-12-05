@@ -34,7 +34,7 @@ env = AgentEnv.RemoveExceptionFlag(env)
 env.AppendUnique(CCFLAGS='-Wno-reorder')
 env.AppendUnique(CCFLAGS='-Wno-return-type')
 
-tor_agent = env.Program(target = 'tor_agent',
+contrail_tor_agent = env.Program(target = 'contrail-tor-agent',
                         source = [
                                   'buildinfo.cc',
                                   'main.cc',
@@ -42,7 +42,7 @@ tor_agent = env.Program(target = 'tor_agent',
                                   'tor_agent_param.cc',
                                  ])
 
-env.Alias('agent:tor_agent', tor_agent)
+env.Alias('agent:contrail-tor-agent', contrail_tor_agent)
 env.SConscript('ovsdb_client/SConscript', exports='AgentEnv', duplicate=0)
 
 # Local Variables:
