@@ -30,6 +30,12 @@ from cfgm_common.imid import *
 from cfgm_common import importutils
 from cfgm_common import svc_info
 
+from cfgm_common.vnc_kombu import VncKombuClient
+from cfgm_common.vnc_cassandra import VncCassandraClient
+from cfgm_common.vnc_db import DBBase
+from config_db import *
+from cfgm_common.dependency_tracker import DependencyTracker
+
 from pysandesh.sandesh_base import Sandesh
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
 from pysandesh.gen_py.process_info.ttypes import ConnectionType, \
@@ -44,6 +50,7 @@ import discoveryclient.client as client
 from db import ServiceMonitorDB
 from logger import ServiceMonitorLogger
 from instance_manager import InstanceManager
+from loadbalancer_agent import LoadbalancerAgent
 
 # zookeeper client connection
 _zookeeper_client = None
@@ -54,6 +61,32 @@ class SvcMonitor(object):
     """
     data + methods used/referred to by ssrc and arc greenlets
     """
+    _REACTION_MAP = {
+        "loadbalancer_pool": {
+            'self': [],
+            'virtual_ip': [],
+            'loadbalancer_member': [],
+            'loadbalancer_healthmonitor': [],
+        },
+        "loadbalancer_member": {
+            'self': ['loadbalancer_pool'],
+            'loadbalancer_pool': []
+        },
+        "virtual_ip": {
+            'self': ['loadbalancer_pool'],
+            'loadbalancer_pool': []
+        },
+        "loadbalancer_healthmonitor": {
+            'self': ['loadbalancer_pool'],
+            'loadbalancer_pool': []
+        },
+        "service_instance": {
+            'self': [],
+        },
+        "service_template": {
+            'self': [],
+        }
+    }
 
     def __init__(self, args=None):
         self._args = args
@@ -84,6 +117,90 @@ class SvcMonitor(object):
                 self._svc_err_logger.addHandler(handler)
         except IOError:
             self.logger.log("Failed to open trace file %s" % self._err_file)
+
+        # Connect to Rabbit and Initialize cassandra connection
+        # TODO activate this code
+        # self._connect_rabbit()
+
+    def _connect_rabbit(self):
+        rabbit_server = self._args.rabbit_server
+        rabbit_port = self._args.rabbit_port
+        rabbit_user = self._args.rabbit_user
+        rabbit_password = self._args.rabbit_password
+        rabbit_vhost = self._args.rabbit_vhost
+
+        self._db_resync_done = gevent.event.Event()
+
+        q_name = 'svc_mon.%s' % (socket.gethostname())
+        self._vnc_kombu = VncKombuClient(rabbit_server, rabbit_port,
+                                         rabbit_user, rabbit_password,
+                                         rabbit_vhost, q_name,
+                                         self._vnc_subscribe_callback,
+                                         self.config_log)
+
+        cass_server_list = self._args.cassandra_server_list
+        reset_config = self._args.reset_config
+        self._cassandra = VncCassandraClient(cass_server_list, reset_config,
+                                             self._args.cluster_id, None,
+                                             self.config_log)
+        DBBase.init(self, self.logger, self._cassandra)
+    # end _connect_rabbit
+
+    def config_log(self, msg, level):
+        self.logger.log(msg)
+
+    def _vnc_subscribe_callback(self, oper_info):
+        import pdb;pdb.set_trace()
+        self._db_resync_done.wait()
+        try:
+            msg = "Notification Message: %s" % (pformat(oper_info))
+            self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
+            obj_type = oper_info['type'].replace('-', '_')
+            obj_class = DBBase._OBJ_TYPE_MAP.get(obj_type)
+            if obj_class is None:
+                return
+
+            if oper_info['oper'] == 'CREATE' or oper_info['oper'] == 'UPDATE':
+                dependency_tracker = DependencyTracker(DBBase._OBJ_TYPE_MAP, self._REACTION_MAP)
+                obj_id = oper_info['uuid']
+                obj = obj_class.get(obj_id)
+                if obj is not None:
+                    dependency_tracker.evaluate(obj_type, obj)
+                else:
+                    obj = obj_class.locate(obj_id)
+                obj.update()
+                dependency_tracker.evaluate(obj_type, obj)
+            elif oper_info['oper'] == 'DELETE':
+                obj_id = oper_info['uuid']
+                obj = obj_class.get(obj_id)
+                if obj is None:
+                    return
+                dependency_tracker = DependencyTracker(DBBase._OBJ_TYPE_MAP, self._REACTION_MAP)
+                dependency_tracker.evaluate(obj_type, obj)
+                obj_class.delete(obj_id)
+            else:
+                # unknown operation
+                self.config_log('Unknown operation %s' % oper_info['oper'],
+                                level=SandeshLevel.SYS_ERR)
+                return
+
+            if obj is None:
+                self.config_log('Error while accessing %s uuid %s' % (
+                                obj_type, obj_id))
+                return
+
+
+        except Exception:
+            string_buf = cStringIO.StringIO()
+            cgitb.Hook(file=string_buf, format="text").handle(sys.exc_info())
+            self.config_log(string_buf.getvalue(), level=SandeshLevel.SYS_ERR)
+
+        for lb_pool_id in dependency_tracker.resources.get('loadbalancer_pool', []):
+            lb_pool = LoadbalancerPoolSM.get(lb_pool_id)
+            if lb_pool is not None:
+                lb_pool.add()
+    # end _vnc_subscribe_callback
+
 
     def post_init(self, vnc_lib, args=None):
         # api server
@@ -144,6 +261,112 @@ class SvcMonitor(object):
             'svc_monitor.vrouter_instance_manager.VRouterInstanceManager',
             self._vnc_lib, self.db, self.logger,
             self.vrouter_scheduler, self._nova_client, self._args)
+
+        # load a loadbalancer agent
+        # TODO : activate the code 
+        # self.loadbalancer_agent = LoadbalancerAgent(self._vnc_lib, self._args)
+
+        # Read the cassandra and populate the entry in ServiceMonitor DB
+        # TODO : activate the code 
+        # self.sync_sm()
+
+        # resync db
+        self.db_resync()
+
+    def db_resync(self):
+        si_list = self.db.service_instance_list()
+        for si_fq_str, si in si_list or []:
+            for idx in range(0, int(si.get('max-instances', '0'))):
+                prefix = self.db.get_vm_db_prefix(idx)
+                vm_key = prefix + 'uuid'
+                if vm_key not in si.keys():
+                    continue
+
+                try:
+                    vm_obj = self._vnc_lib.virtual_machine_read(id=si[vm_key])
+                except NoIdError:
+                    continue
+
+                vmi_back_refs = vm_obj.get_virtual_machine_interface_back_refs()
+                for vmi_back_ref in vmi_back_refs or []:
+                    try:
+                        vmi_obj = self._vnc_lib.virtual_machine_interface_read(
+                            id=vmi_back_ref['uuid'])
+                    except NoIdError:
+                        continue
+                    vmi_props = vmi_obj.get_virtual_machine_interface_properties()
+                    if not vmi_props:
+                        continue
+                    if_type = vmi_props.get_service_interface_type()
+                    if not if_type:
+                        continue
+                    key = prefix + 'if-' + if_type
+                    self.db.service_instance_insert(si_fq_str,
+                                                    {key:vmi_obj.uuid})
+
+    def sync_sm(self):
+        vn_set = set()
+        vmi_set = set()
+        iip_set = set()
+        ok, lb_pool_list = self._cassandra._cassandra_loadbalancer_pool_list()
+        if not ok:
+            pass
+        else:
+            for fq_name, uuid in lb_pool_list:
+                lb_pool = LoadbalancerPoolSM.locate(uuid)
+                if lb_pool.virtual_machine_interface:
+                    vmi_set.add(lb_pool.virtual_machine_interface)
+
+        ok, lb_pool_member_list = self._cassandra._cassandra_loadbalancer_member_list()
+        if not ok:
+            pass
+        else:
+            for fq_name, uuid in lb_pool_member_list:
+                lb_pool_member = LoadbalancerMemberSM.locate(uuid)
+
+        ok, lb_vip_list = self._cassandra._cassandra_virtual_ip_list()
+        if not ok:
+            pass
+        else:
+            for fq_name, uuid in lb_vip_list:
+                virtual_ip = VirtualIpSM.locate(uuid)
+                if virtual_ip.virtual_machine_interface:
+                    vmi_set.add(virtual_ip.virtual_machine_interface)
+
+        ok, lb_hm_list = self._cassandra._cassandra_loadbalancer_healthmonitor_list()
+        if not ok:
+            pass
+        else:
+            for fq_name, uuid in lb_hm_list:
+                lb_hm = HealthMonitorSM.locate(uuid)
+
+        ok, si_list = self._cassandra._cassandra_service_instance_list()
+        if not ok:
+            pass
+        else:
+            for fq_name, uuid in si_list:
+                si = ServiceInstanceSM.locate(uuid)
+
+        ok, st_list = self._cassandra._cassandra_service_template_list()
+        if not ok:
+            pass
+        else:
+            for fq_name, uuid in si_list:
+                si = ServiceInstanceSM.locate(uuid)
+
+        for vmi_id in vmi_set:
+            vmi = VirtualMachineInterfaceSM.locate(vmi_id)
+            if (vmi.instance_ip):
+                iip_set.add(vmi.instance_ip)
+
+        for iip_id in iip_set:
+            iip = InstanceIpSM.locate(iip_id)
+
+        for lb_pool in LoadbalancerPoolSM.values():
+            lb_pool.add()
+
+        self._db_resync_done.set()
+    # end sync_sm
 
     # create service template
     def _create_default_template(self, st_name, svc_type, svc_mode=None,
@@ -318,6 +541,7 @@ class SvcMonitor(object):
 
         try:
             if virt_type == svc_info.get_vm_instance_type():
+                self.vm_manager.delete_iip(vm_uuid)
                 self.vm_manager.delete_service(si_fq_str, vm_uuid, proj_name)
             elif virt_type == svc_info.get_netns_instance_type():
                 self.netns_manager.delete_service(si_fq_str, vm_uuid)
@@ -332,6 +556,19 @@ class SvcMonitor(object):
         return False
 
     def _delete_shared_vn(self, vn_uuid, proj_name):
+        try:
+            vn_obj = self._vnc_lib.virtual_network_read(id=vn_uuid)
+        except NoIdError:
+            self.logger.log("Deleted VN %s %s" % (proj_name, vn_uuid))
+            return True
+
+        iip_back_refs = vn_obj.get_instance_ip_back_refs()
+        for iip_back_ref in iip_back_refs or []:
+            try:
+                self._vnc_lib.instance_ip_delete(id=iip_back_ref['uuid'])
+            except (NoIdError, RefsExistError):
+                continue
+
         try:
             self.logger.log("Deleting VN %s %s" % (proj_name, vn_uuid))
             self._vnc_lib.virtual_network_delete(id=vn_uuid)
@@ -615,6 +852,10 @@ def parse_args(args_str):
                          --ifmap_server_port 8443
                          --ifmap_username test
                          --ifmap_password test
+                         --rabbit_server localhost
+                         --rabbit_port 5672
+                         --rabbit_user guest
+                         --rabbit_password guest
                          --cassandra_server_list 10.1.2.3:9160
                          --api_server_ip 10.1.2.3
                          --api_server_port 8082
@@ -645,6 +886,11 @@ def parse_args(args_str):
     args, remaining_argv = conf_parser.parse_known_args(args_str.split())
 
     defaults = {
+        'rabbit_server': 'localhost',
+        'rabbit_port': '5672',
+        'rabbit_user': 'guest',
+        'rabbit_password': 'guest',
+        'rabbit_vhost': None,
         'ifmap_server_ip': '127.0.0.1',
         'ifmap_server_port': '8443',
         'ifmap_username': 'test2',

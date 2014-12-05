@@ -196,6 +196,12 @@ void PktHandler::HandleRcvPkt(const AgentHdr &hdr, const PacketBufferPtr &buff){
         goto enqueue;
     }
 
+    // send time exceeded ICMP messages to diag module
+    if (IsDiagPacket(pkt_info.get())) {
+        mod = DIAG;
+        goto enqueue;
+    }
+
     if (pkt_type == PktType::ICMP && IsGwPacket(intf, pkt_info->ip_daddr)) {
         mod = ICMP;
         goto enqueue;
@@ -441,7 +447,8 @@ uint8_t *PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
 
     // If tunneling is not enabled on interface or if it is a DHCP packet,
     // dont parse any further
-    if (intf->IsTunnelEnabled() == false || IsDHCPPacket(pkt_info)) {
+    if (intf->IsTunnelEnabled() == false || IsDHCPPacket(pkt_info) ||
+        IsDiagPacket(pkt_info)) {
         return pkt;
     }
 
@@ -583,7 +590,13 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
         pkt = ParseIpPacket(pkt_info, pkt_type, pkt);
         return true;
     }
+    return false;
+}
 
+bool PktHandler::IsDiagPacket(PktInfo *pkt_info) {
+    if (pkt_info->agent_hdr.cmd == AgentHdr::TRAP_ZERO_TTL ||
+        pkt_info->agent_hdr.cmd == AgentHdr::TRAP_ICMP_ERROR)
+        return true;
     return false;
 }
 
