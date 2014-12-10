@@ -222,6 +222,7 @@ public:
     virtual AgentPath *FindPathUsingKey(const AgentRouteKey *key);
     virtual void DeletePath(const AgentRouteKey *key);
     virtual bool is_multicast() const {return is_multicast_;}
+    virtual bool FloodArp() const {return false;}
 
     // Accessor functions
     VrfEntry *vrf() const {return vrf_.get();}
@@ -248,7 +249,6 @@ public:
     void FillTrace(RouteInfo &route, Trace event, const AgentPath *path);
     bool WaitForTraffic() const;
 protected:
-    bool ReComputeMulticastPaths(AgentPath *path, bool del);
     void SetVrf(VrfEntryRef vrf) { vrf_ = vrf; }
     void RemovePathInternal(AgentPath *path);
     void RemovePath(AgentPath *path);

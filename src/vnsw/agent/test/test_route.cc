@@ -275,6 +275,9 @@ TEST_F(RouteTest, SubnetRoute_1) {
     EXPECT_TRUE(rt1->GetActiveNextHop()->GetType() == NextHop::DISCARD);
     EXPECT_TRUE(rt2->GetActiveNextHop()->GetType() == NextHop::DISCARD);
     EXPECT_TRUE(rt3->GetActiveNextHop()->GetType() == NextHop::DISCARD);
+    EXPECT_TRUE(rt1->FloodArp() == true);
+    EXPECT_TRUE(rt2->FloodArp() == true);
+    EXPECT_TRUE(rt3->FloodArp() == true);
     EXPECT_TRUE(rt1->IsRPFInvalid());
     EXPECT_TRUE(rt2->IsRPFInvalid());
     EXPECT_TRUE(rt3->IsRPFInvalid());
