@@ -131,7 +131,14 @@ public:
     }
     virtual std::string ToString() const {return "VLAN";};;
     virtual KSyncEntry *UnresolvedReference() {return NULL;};
-    virtual bool Sync(DBEntry *e) {return sync_pending_;};
+    virtual bool Sync(DBEntry *e) {
+        Vlan *entry = static_cast<Vlan *>(e);
+        if (name_ != entry->name()) {
+            name_ = entry->name();
+            return true;
+        }
+        return sync_pending_;
+    }
     void set_no_ack_trigger(bool val) {no_ack_trigger_ = val;}
     void set_sync_pending(bool val) {sync_pending_ = val;}
     virtual bool Add() {
@@ -149,6 +156,7 @@ public:
     KSyncDBObject *GetObject();
 
     uint32_t GetTag() const {return tag_;};
+    const string &name() const {return name_;}
     static void Reset() {
         add_count_ = 0;
         change_count_ = 0;
@@ -161,6 +169,7 @@ public:
 
 private:
     uint16_t tag_;
+    string name_;
     bool     no_ack_trigger_;
     bool     sync_pending_;
     static int add_count_;
@@ -442,15 +451,13 @@ TEST_F(DBKSyncTest, OneKSyncEntryForTwoOperDBEntry) {
     itbl->Enqueue(&req);
 
     task_util::WaitForIdle();
-    Vlan *entry;
     VlanKSyncEntry v(10);
     VlanKSyncEntry *ksync_vlan =
         static_cast<VlanKSyncEntry *>(VlanKSyncObject::GetKSyncObject()->Find(&v));
 
     // check ksync entry in sync and db entry vlan 10 being in use
-    entry = static_cast<Vlan *>(ksync_vlan->GetDBEntry());
     EXPECT_EQ(ksync_vlan->GetState(), KSyncEntry::IN_SYNC);
-    EXPECT_TRUE(entry->name().compare("vlan10") == 0);
+    EXPECT_TRUE(ksync_vlan->name().compare("vlan10") == 0);
 
     req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
     req.key.reset(new Vlan::VlanKey("new_vlan10", 10));
@@ -459,9 +466,8 @@ TEST_F(DBKSyncTest, OneKSyncEntryForTwoOperDBEntry) {
     task_util::WaitForIdle();
 
     // check ksync entry in sync and db entry vlan 10 being in use
-    entry = static_cast<Vlan *>(ksync_vlan->GetDBEntry());
     EXPECT_EQ(ksync_vlan->GetState(), KSyncEntry::IN_SYNC);
-    EXPECT_TRUE(entry->name().compare("vlan10") == 0);
+    EXPECT_TRUE(ksync_vlan->name().compare("vlan10") == 0);
 
     req.oper = DBRequest::DB_ENTRY_DELETE;
     req.key.reset(new Vlan::VlanKey("vlan10", 10));
@@ -470,9 +476,8 @@ TEST_F(DBKSyncTest, OneKSyncEntryForTwoOperDBEntry) {
     task_util::WaitForIdle();
 
     // check ksync entry in sync and db entry new vlan 10 being in use
-    entry = static_cast<Vlan *>(ksync_vlan->GetDBEntry());
     EXPECT_EQ(ksync_vlan->GetState(), KSyncEntry::IN_SYNC);
-    EXPECT_TRUE(entry->name().compare("new_vlan10") == 0);
+    EXPECT_TRUE(ksync_vlan->name().compare("new_vlan10") == 0);
 
     req.oper = DBRequest::DB_ENTRY_DELETE;
     req.key.reset(new Vlan::VlanKey("new_vlan10", 10));

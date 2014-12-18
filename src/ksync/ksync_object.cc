@@ -232,7 +232,9 @@ void KSyncDBObject::Notify(DBTablePartBase *partition, DBEntryBase *e) {
                 ksync->dup_entry_list_.pop_front();
 
                 // DB entry association changed, trigger re-sync.
-                NotifyEvent(ksync, KSyncEntry::ADD_CHANGE_REQ);
+                if (ksync->Sync(ksync->GetDBEntry())) {
+                    NotifyEvent(ksync, KSyncEntry::ADD_CHANGE_REQ);
+                }
             } else {
                 // iterate through entries and delete the corresponding DB ref.
                 KSyncDBEntry::DupEntryList::iterator it_dup;
