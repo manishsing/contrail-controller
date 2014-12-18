@@ -293,6 +293,11 @@ void KSyncDBObject::Notify(DBTablePartBase *partition, DBEntryBase *e) {
             }
             ksync->SetDBEntry(entry);
             need_sync = true;
+        } else {
+            // ignore change on non-associated entry. 
+            if (entry != ksync->GetDBEntry()) {
+                return;
+            }
         }
 
         if (ksync->IsDeleted()) {

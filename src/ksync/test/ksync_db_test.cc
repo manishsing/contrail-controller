@@ -469,6 +469,35 @@ TEST_F(DBKSyncTest, OneKSyncEntryForTwoOperDBEntry) {
     EXPECT_EQ(ksync_vlan->GetState(), KSyncEntry::IN_SYNC);
     EXPECT_TRUE(ksync_vlan->name().compare("vlan10") == 0);
 
+    // trigger a change on un associated entry
+    req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
+    req.key.reset(new Vlan::VlanKey("new_vlan10", 10));
+    req.data.reset(NULL);
+    itbl->Enqueue(&req);
+    task_util::WaitForIdle();
+
+    // check ksync entry in sync and db entry vlan 10 being in use
+    EXPECT_EQ(ksync_vlan->GetState(), KSyncEntry::IN_SYNC);
+    EXPECT_TRUE(ksync_vlan->name().compare("vlan10") == 0);
+
+    // trigger delete on un associated entry
+    req.oper = DBRequest::DB_ENTRY_DELETE;
+    req.key.reset(new Vlan::VlanKey("new_vlan10", 10));
+    req.data.reset(NULL);
+    itbl->Enqueue(&req);
+    task_util::WaitForIdle();
+
+    // check ksync entry in sync and db entry vlan 10 being in use
+    EXPECT_EQ(ksync_vlan->GetState(), KSyncEntry::IN_SYNC);
+    EXPECT_TRUE(ksync_vlan->name().compare("vlan10") == 0);
+
+    // Add duplicate entry again and then trigger delete on associated entry.
+    req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
+    req.key.reset(new Vlan::VlanKey("new_vlan10", 10));
+    req.data.reset(NULL);
+    itbl->Enqueue(&req);
+    task_util::WaitForIdle();
+
     req.oper = DBRequest::DB_ENTRY_DELETE;
     req.key.reset(new Vlan::VlanKey("vlan10", 10));
     req.data.reset(NULL);
@@ -485,8 +514,8 @@ TEST_F(DBKSyncTest, OneKSyncEntryForTwoOperDBEntry) {
     itbl->Enqueue(&req);
     task_util::WaitForIdle();
 
-    EXPECT_EQ(adc_notification, 2);
-    EXPECT_EQ(del_notification, 2);
+    EXPECT_EQ(adc_notification, 4);
+    EXPECT_EQ(del_notification, 3);
 
     EXPECT_EQ(VlanKSyncEntry::GetAddCount(), 1);
     EXPECT_EQ(VlanKSyncEntry::GetDelCount(), 1);
